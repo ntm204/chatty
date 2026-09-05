@@ -50,23 +50,11 @@ export function createApp() {
 	// Conversation pages repeat keys, authors and signed URL structure, which
 	// makes their JSON especially compressible. Keep the default 1KB threshold:
 	// compressing tiny health/error bodies spends CPU to save almost nothing.
-	//
-	// The filter extends the default rather than replacing it, to close one hole
-	// ADR 0016 assumed was already closed. "Images and other already compressed
-	// media are unaffected" is true of `image/*` and `audio/mp4`, which
-	// `compressible` marks incompressible — but not of the one media type this API
-	// invents. `lib/file-attachment.ts` demotes every browser-interpretable upload
-	// to `application/octet-stream`, and `compressible` marks *that* compressible,
-	// so every FILE download was being gzipped on the way out:
-	//
-	// - **`Content-Length` disappears.** A compressed body's length is not known
-	//   when the headers go out, so a download loses its progress bar and its
-	//   `Range` support — which is what a resumed download asks for.
-	// - **It spends CPU to add bytes.** What is behind `octet-stream` here is an
-	//   arbitrary upload, usually a JPEG, a zip or an MP4 that is already
-	//   compressed.
-	//
-	// Everything else still negotiates Brotli, gzip or deflate exactly as before.
+	// Opaque downloads may contain text or unknown binary data. Keep their stored
+	// length and byte representation for progress and range responses. This trades
+	// away compression savings for text files; detected JPEG/ZIP/PDF types already
+	// bypass compression via the default MIME filter. Gzip itself does not remove
+	// Range support, but it removes Content-Length and transforms the response body.
 	app.use(
 		compression({
 			filter: (req, res) =>

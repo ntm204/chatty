@@ -1,15 +1,16 @@
-import type { ParticipantDTO, ReactionEmoji } from "@chatty/shared-types";
+import type { ParticipantDTO } from "@chatty/shared-types";
 import { Fragment, memo } from "react";
+import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
-import { getClusterPosition, hasMessageTimeGap, isNewDay, isWithinMessageBurst, scrollToMessage } from "../utils";
+import { getClusterPosition, hasMessageTimeGap, isNewDay, isWithinMessageBurst } from "../utils";
 import { DaySeparator } from "./day-separator";
 import { MessageRow } from "./message-row";
 import { MessageTimeSeparator } from "./message-time-separator";
 import { SystemMessage } from "./system-message";
 import { UnreadDivider } from "./unread-divider";
 
-interface MessageRowsProps {
+interface MessageRowsProps extends MessageRowActions {
 	messages: ThreadMessage[];
 	currentUserId: string;
 	participants: ParticipantDTO[];
@@ -20,44 +21,12 @@ interface MessageRowsProps {
 	editingMessageId: string | null;
 	targetMessageId?: string | null | undefined;
 	pinnedMessageIds: string[];
-	onStartEdit: (messageId: string) => void;
-	onSaveEdit: (messageId: string, content: string) => void;
-	onCancelEdit: () => void;
-	onDeleteMessage: (messageId: string) => void;
-	onHideMessage: (messageId: string) => void;
-	onShowHistory: (messageId: string) => void;
-	onRetrySend: (messageId: string) => void;
-	onDiscardDraft: (messageId: string) => void;
-	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
-	/** Opens the reactor list. One dialog for the whole thread, owned by `MessageList`. */
-	onShowReactions: (messageId: string) => void;
-	onReplyToMessage: (message: ThreadMessage) => void;
-	onForwardMessage: (message: ThreadMessage) => void;
-	onSaveMessage: (messageId: string) => void;
-	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
-	onJumpToMessage: (messageId: string) => void;
 }
 
 /**
- * Memoised, and this is the one that pays for the whole phase-39 render work.
- *
- * `ChatPage` holds presence and typing state, so a `typing:update` — 109 bytes,
- * several per sentence, per typist — re-rendered it and everything under it,
- * down to `MAX_RETAINED_MESSAGES` message rows that had nothing to do with
- * either. A busy group reconciled its entire thread several times a second
- * because somebody was holding down a key.
- *
- * `MAX_RETAINED_MESSAGES` already bounds how *long* this array is, and the
- * reasoning in `constants/pagination.ts` for preferring that to windowing still
- * holds — but a bound on length says nothing about how *often* the list is
- * walked, and that was the cost.
- *
- * The memo only works while every prop below is referentially stable, which is
- * why `readReceipt` is a `useMemo` in `MessageList`, `cancelEdit` a `useCallback`
- * in `useMessageEditing`, and the handlers in `ChatPage` are wrapped rather than
- * written inline. Adding an inline `onSomething={() => ...}` at any of those call
- * sites silently turns this back off — it will still be correct, and it will
- * quietly cost what it cost before.
+ * Skip the list walk on typing and unrelated presence updates. Each MessageRow
+ * also receives unbound callbacks, so unchanged rows can skip message updates.
+ * Keep callback props stable at the page and list boundaries.
  */
 export const MessageRows = memo(function MessageRows({
 	messages,
@@ -70,21 +39,7 @@ export const MessageRows = memo(function MessageRows({
 	editingMessageId,
 	targetMessageId,
 	pinnedMessageIds,
-	onStartEdit,
-	onSaveEdit,
-	onCancelEdit,
-	onDeleteMessage,
-	onHideMessage,
-	onShowHistory,
-	onRetrySend,
-	onDiscardDraft,
-	onToggleReaction,
-	onShowReactions,
-	onReplyToMessage,
-	onForwardMessage,
-	onSaveMessage,
-	onTogglePinMessage,
-	onJumpToMessage,
+	...actions
 }: MessageRowsProps) {
 	return messages.map((message, index) => {
 		const previous = messages[index - 1];
@@ -150,27 +105,10 @@ export const MessageRows = memo(function MessageRows({
 					isTargeted={message.id === targetMessageId}
 					isEditing={editingMessageId === message.id}
 					receipt={readReceipt?.messageId === message.id ? readReceipt : null}
-					onStartEdit={() => onStartEdit(message.id)}
-					onSaveEdit={(content) => onSaveEdit(message.id, content)}
-					onCancelEdit={onCancelEdit}
-					onDeleteForEveryone={() => onDeleteMessage(message.id)}
-					onDeleteForMe={() => onHideMessage(message.id)}
-					onShowHistory={() => onShowHistory(message.id)}
-					onRetrySend={() => onRetrySend(message.id)}
-					onDiscardDraft={() => onDiscardDraft(message.id)}
 					currentUserId={currentUserId}
 					participants={participants}
-					onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)}
-					onShowReactions={() => onShowReactions(message.id)}
-					onReply={() => onReplyToMessage(message)}
-					onForward={() => onForwardMessage(message)}
-					onSave={() => onSaveMessage(message.id)}
 					isPinned={isPinned}
-					onTogglePin={() => onTogglePinMessage(message.id, isPinned)}
-					onJumpToReplyOriginal={() => {
-						const originalId = message.replyTo?.id;
-						if (originalId && !scrollToMessage(originalId)) onJumpToMessage(originalId);
-					}}
+					{...actions}
 				/>
 			</Fragment>
 		);

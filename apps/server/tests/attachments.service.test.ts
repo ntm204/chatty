@@ -1,8 +1,9 @@
 import { rm } from "node:fs/promises";
 import sharp from "sharp";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildAttachmentUrls, findAttachmentPath } from "../src/lib/attachment-storage.js";
 import { isValidAttachmentToken, signAttachmentToken } from "../src/lib/attachment-token.js";
+import * as attachmentTokens from "../src/lib/attachment-token.js";
 import { ValidationError } from "../src/lib/errors.js";
 import { prisma } from "../src/lib/prisma.js";
 import { getAttachmentFilePath } from "../src/modules/attachments/attachments.service.js";
@@ -277,17 +278,15 @@ describe("attachment tokens", () => {
 });
 
 describe("buildAttachmentUrls", () => {
+	afterEach(() => vi.restoreAllMocks());
+
 	it("derives the thumbnail URL from the full-size one, so both carry one signature", () => {
-		// The guarantee phase 39 introduced, and it is worth pinning even though
-		// the previous code usually passed this too: it signed twice, and a JWT's
-		// `iat` has one-second resolution, so the two signatures were identical
-		// whenever both landed in the same second and different when they
-		// straddled one. "Usually the same" is the worst kind of contract — the
-		// failure is a broken thumbnail once every few thousand renders, at a
-		// boundary no test would reliably hit. Now there is one token by
-		// construction.
+		// Equal tokens are a construction guarantee, not a thumbnail-validity fix:
+		// independently signed, unexpired tokens were also valid for either size.
+		const sign = vi.spyOn(attachmentTokens, "signAttachmentToken");
 		const { url, thumbUrl } = buildAttachmentUrls("attachment-1", true);
 
+		expect(sign).toHaveBeenCalledExactlyOnceWith("attachment-1");
 		expect(thumbUrl).toBe(`${url}&size=thumb`);
 		expect(isValidAttachmentToken(new URL(url).searchParams.get("token")!, "attachment-1")).toBe(true);
 	});

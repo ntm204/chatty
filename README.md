@@ -31,12 +31,38 @@ nothing like a version problem.
 
 ```bash
 npm install
-cp .env.example apps/server/.env
-
-npm run db:up           # starts Postgres in Docker
-npm run dev:server      # API + WebSocket server on :4000
-npm run dev:web         # React app on :5173 (separate terminal)
+# First setup only: copy .env.example to apps/server/.env (do not overwrite an existing file).
+# PowerShell: Copy-Item .env.example apps/server/.env
+# macOS/Linux: cp .env.example apps/server/.env
+docker compose up -d postgres mailpit
+npx prisma generate --schema apps/server/prisma/schema.prisma
+npm run db:migrate --workspace apps/server
 ```
+
+For everyday development, run these in two terminals at the repository root:
+
+```bash
+npm run dev:server      # terminal 1: API + WebSocket on http://localhost:4000
+npm run dev:web         # terminal 2: open http://localhost:5173
+```
+
+Use **http://localhost:5173** for normal local work. Vite refuses to start if 5173 is occupied;
+it does not silently choose another port. Stop the previous Chatty dev process with Ctrl+C in
+its terminal, then restart. Do not change ports or stop an unrelated application's process to
+work around a conflict.
+
+| Mode | Web URL | API URL | Purpose |
+| --- | --- | --- | --- |
+| `npm run dev:web` + `npm run dev:server` | `http://localhost:5173` | `http://localhost:4000` | Daily development with live updates |
+| Docker production stack | `http://localhost:8080` | `http://localhost:4000` | Test the built production topology; see [deployment](docs/DEPLOYMENT.md) |
+| `npm run test:e2e` | `http://localhost:5273` | `http://localhost:4100` | Automated tests with a separate database |
+
+The development API uses `PORT=4000`, `CORS_ORIGIN=http://localhost:5173` and
+`PUBLIC_URL=http://localhost:4000` in `apps/server/.env`. The web client defaults to that API;
+remove an old `VITE_API_URL` override if it points elsewhere. Do not run the development API
+and Docker production gateway together: both bind port 4000. The Docker production stack also
+has its own database volume. Seeing the same interface at two ports does not mean it is the
+same running build or the same data.
 
 Redis is optional in development and the server starts without it. Set `REDIS_URL` (and
 `docker compose up -d redis`) only to exercise the multi-instance path — see

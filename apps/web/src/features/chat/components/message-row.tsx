@@ -1,21 +1,22 @@
-import type { ParticipantDTO, ReactionEmoji } from "@chatty/shared-types";
+import type { ParticipantDTO } from "@chatty/shared-types";
 import { Ban } from "lucide-react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/utils/cn";
 import { DELETED_AUTHOR_NAME, DELETED_MESSAGE_TEXT } from "../constants/message";
 import { DEFAULT_REACTION } from "../constants/reactions";
 import type { ClusterPosition } from "../types/message-cluster";
+import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
-import { countJumboEmoji, findMyReaction } from "../utils";
+import { bindMessageRowActions, countJumboEmoji, findMyReaction } from "../utils";
 import { MessageActions } from "./message-actions";
 import { MessageBubble } from "./message-bubble";
 import { MessageEditor } from "./message-editor";
 import { MessageMeta } from "./message-meta";
 import { MessageReactions } from "./message-reactions";
 
-interface MessageRowProps {
+interface MessageRowProps extends MessageRowActions {
 	message: ThreadMessage;
 	isMine: boolean;
 	isGroup: boolean;
@@ -36,24 +37,7 @@ interface MessageRowProps {
 	/** Whose view this is — the reaction chips need it to know which are theirs. */
 	currentUserId: string;
 	participants: ParticipantDTO[];
-	onToggleReaction: (emoji: ReactionEmoji) => void;
-	/** Opens the reactor list, which is owned by the list so one dialog serves every row. */
-	onShowReactions: () => void;
-	onReply: () => void;
-	onForward: () => void;
-	onSave: () => void;
-	onTogglePin: () => void;
 	isPinned: boolean;
-	onJumpToReplyOriginal: () => void;
-	onStartEdit: () => void;
-	onSaveEdit: (content: string) => void;
-	onCancelEdit: () => void;
-	onDeleteForEveryone: () => void;
-	onDeleteForMe: () => void;
-	onShowHistory: () => void;
-	/** Both only ever reached from a draft that failed to send. */
-	onRetrySend: () => void;
-	onDiscardDraft: () => void;
 }
 
 /**
@@ -66,7 +50,7 @@ interface MessageRowProps {
  * that space in the layout while fading secondary information prevents hover
  * from moving the thread and lets message runs retain their compact 3px rhythm.
  */
-export function MessageRow({
+export const MessageRow = memo(function MessageRow({
 	message,
 	isMine,
 	isGroup,
@@ -78,23 +62,27 @@ export function MessageRow({
 	receipt,
 	currentUserId,
 	participants,
-	onToggleReaction,
-	onShowReactions,
-	onReply,
-	onForward,
-	onSave,
-	onTogglePin,
 	isPinned,
-	onJumpToReplyOriginal,
-	onStartEdit,
-	onSaveEdit,
-	onCancelEdit,
-	onDeleteForEveryone,
-	onDeleteForMe,
-	onShowHistory,
-	onRetrySend,
-	onDiscardDraft,
+	...actions
 }: MessageRowProps) {
+	// Bind only after React's shallow comparison has admitted this row's update.
+	const {
+		onStartEdit,
+		onSaveEdit,
+		onCancelEdit,
+		onDeleteForEveryone,
+		onDeleteForMe,
+		onShowHistory,
+		onRetrySend,
+		onDiscardDraft,
+		onToggleReaction,
+		onShowReactions,
+		onReply,
+		onForward,
+		onSave,
+		onTogglePin,
+		onJumpToReplyOriginal,
+	} = bindMessageRowActions(message, isPinned, actions);
 	const author = message.author;
 	const isDeleted = Boolean(message.deletedAt);
 	const isEdited = Boolean(message.editedAt) && !isDeleted;
@@ -297,4 +285,4 @@ export function MessageRow({
 			</div>
 		</div>
 	);
-}
+});

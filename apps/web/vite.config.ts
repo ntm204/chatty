@@ -15,5 +15,7 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
+		// The API allows this exact origin. A silent port fallback breaks that contract.
+		strictPort: true,
 	},
 });

@@ -204,3 +204,26 @@ Checked September 2026; re-check limits immediately before launch.
 - [Prometheus overview](https://prometheus.io/docs/introduction/overview/) and
   [Grafana OSS](https://grafana.com/oss/grafana/)
 - [age file encryption](https://github.com/FiloSottile/age)
+
+## Changing the Socket.IO adapter
+
+The classic Redis adapter and the sharded adapter use different Pub/Sub mechanisms and protocols.
+A mixed pool splits realtime delivery and presence even when every process reports healthy. Redis 7
+is required for the sharded adapter. A one-line source revert still requires a coordinated rollout.
+
+For the first classic-to-sharded transition (and for a rollback across this boundary):
+
+1. Build or pull the target images before the maintenance window. Keep the previous images available.
+2. Pause user traffic at the ingress and stop **both** API instances. With the provided stack,
+   `docker compose -f docker-compose.prod.yml stop api-1 api-2` closes existing sockets. Keep Redis,
+   PostgreSQL and the upload volume running; do not remove volumes.
+3. Start both API instances from the same target revision, with the deployment environment loaded:
+   `docker compose -f docker-compose.prod.yml up -d --no-deps api-1 api-2`.
+4. Confirm both instances are ready, then verify message delivery and presence using clients connected
+   to different instances before restoring user traffic. Readiness alone cannot prove cross-node delivery.
+5. If rolling back, stop both instances again and restore the same previous adapter revision on both
+   before reopening traffic. Do not leave classic and sharded instances serving together.
+
+This procedure has a brief interruption. For the host-only smoke test, the built web app is at
+`http://localhost:8080`; everyday development uses `http://localhost:5173` instead. See the
+[local port table](../README.md#getting-started).

@@ -1,3 +1,4 @@
+export { bindMessageRowActions } from "./bind-message-row-actions";
 export { getAttachmentPreviewText } from "./attachment-preview-text";
 export { getAttachmentPreviewUrl } from "./attachment-preview-url";
 export { getAttachmentDisplaySize } from "./attachment-size";

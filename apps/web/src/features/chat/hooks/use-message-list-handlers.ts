@@ -16,7 +16,7 @@ interface MessageListHandlers {
  * every `presence:update` — 109-byte events, several per sentence, per typist —
  * so writing these inline there would hand the thread three new props a second
  * and reconcile up to `MAX_RETAINED_MESSAGES` rows each time. That is the cost
- * phase 39 set out to remove; see the comment on `MessageRows`.
+ * phase 46 set out to remove; see the comment on `MessageRows`.
  *
  * Here rather than inline in the page for the ordinary reason too: a page
  * assembles, it does not compute. What is worth knowing beyond that is *why*

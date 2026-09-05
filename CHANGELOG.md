@@ -6,6 +6,18 @@ remain in [the roadmap](docs/ROADMAP.md) and [architecture decisions](docs/adr/)
 This project follows [Semantic Versioning](https://semver.org/) and the repository's
 [release conventions](docs/conventions/releases.md).
 
+## Unreleased
+
+### Fixed
+
+- Preserve unrelated conversation references on presence events and memoise individual message rows
+  with current action callbacks, so ordinary edits and reactions skip unchanged rows.
+- Refuse an occupied local web port instead of silently changing the API's allowed origin.
+- Cover opaque downloads above the compression threshold, including exact full and range responses,
+  and verify that attachment URL pairs perform one signing operation.
+- Correct attachment bandwidth claims and document coordinated classic/sharded Redis adapter
+  upgrades and rollbacks, along with the separate development, Docker and E2E entry points.
+
 ## [0.2.0-rc.1] — 2026-09-05
 
 ### Added

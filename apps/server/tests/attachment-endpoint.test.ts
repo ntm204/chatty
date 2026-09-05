@@ -298,16 +298,11 @@ describe("POST /conversations/:id/messages with a file", () => {
 	});
 
 	it("streams a downloaded file uncompressed, so it keeps its length", async () => {
-		// The hole in ADR 0016's "already compressed media are unaffected". That
-		// holds for `image/*` and `audio/mp4`, which `compressible` marks
-		// incompressible — but every browser-interpretable upload is demoted to
-		// `application/octet-stream`, which it marks *compressible*. Left to the
-		// default filter, `compression` gzipped every download: no `Content-Length`,
-		// so no progress bar and no `Range` for a resume, in exchange for deflating
-		// bytes that are usually a JPEG or a zip already.
+		// Exceed the 1 KB threshold so removing the filter makes this test fail.
 		const { token, conversationId } = await makeSender();
 
-		const response = await sendFile(token, conversationId, Buffer.from("plain bytes"), "notes.bin");
+		const bytes = Buffer.alloc(8192, "a");
+		const response = await sendFile(token, conversationId, bytes, "notes.bin");
 		const message = (await response.json()) as { attachments: { url: string }[] };
 		const download = await fetch(onTestServer(message.attachments[0]!.url), {
 			headers: { "Accept-Encoding": "gzip, deflate, br" },
@@ -315,7 +310,17 @@ describe("POST /conversations/:id/messages with a file", () => {
 
 		expect(download.status).toBe(200);
 		expect(download.headers.get("content-encoding")).toBeNull();
-		expect(download.headers.get("content-length")).not.toBeNull();
+		expect(download.headers.get("content-length")).toBe(String(bytes.length));
+		expect(Buffer.from(await download.arrayBuffer())).toEqual(bytes);
+
+		const ranged = await fetch(onTestServer(message.attachments[0]!.url), {
+			headers: { "Accept-Encoding": "gzip, deflate, br", Range: "bytes=1024-3071" },
+		});
+		expect(ranged.status).toBe(206);
+		expect(ranged.headers.get("content-encoding")).toBeNull();
+		expect(ranged.headers.get("content-length")).toBe("2048");
+		expect(ranged.headers.get("content-range")).toBe("bytes 1024-3071/8192");
+		expect(Buffer.from(await ranged.arrayBuffer())).toEqual(bytes.subarray(1024, 3072));
 	});
 
 	it("refuses mixed image and file fields before either can become a message", async () => {
