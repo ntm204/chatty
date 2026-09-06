@@ -262,6 +262,16 @@ A dialog is not automatically the right answer. `GroupMembersPanel` deliberately
 panel — it acts on the conversation on screen, and covering the thing you are editing the membership
 of is worse than sitting above it.
 
+**A dialog's size is fixed, not driven by how much content it happens to hold.** Use a fixed height
+(`h-[…]`, not `max-h-[…]`) and let the content scroll inside it — one pinned message and twenty must
+open the same size. A modal that grows and shrinks with its content reads as the interface resizing
+itself under the reader.
+
+A menu or dropdown opened from inside a dialog is portalled to `<body>` (see `ConversationActions`
+for the pattern: a ref-measured position, `fixed`, rendered via `createPortal`), never absolutely
+positioned inside the dialog's own scroll container — a clipped or dialog-stretching menu is the bug
+this avoids.
+
 ---
 
 ## UI elements — one source per element type

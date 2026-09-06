@@ -40,7 +40,7 @@ export function MessageText({ content, mentionedUserIds = [], participants = [],
 								href={url}
 								target="_blank"
 								rel="noopener noreferrer nofollow"
-								className="inline-block max-w-64 overflow-hidden text-ellipsis align-bottom underline underline-offset-2"
+								className="wrap-anywhere underline underline-offset-2"
 							>
 								{url}
 							</a>

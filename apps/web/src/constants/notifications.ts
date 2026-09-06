@@ -11,3 +11,9 @@
  * belongs to neither.
  */
 export const NOTIFICATIONS_STORAGE_KEY = "chatty:notifications";
+
+/**
+ * Unlike the popup preference, sound needs no browser permission — so it
+ * defaults to on rather than requiring an explicit first opt-in.
+ */
+export const SOUND_STORAGE_KEY = "chatty:notification-sound";

@@ -35,6 +35,9 @@ test.describe("account", () => {
 		// The chat is still there underneath rather than unmounted.
 		await expect(page.getByLabel("Find someone")).toBeVisible();
 
+		expect(await page.getByRole("dialog").evaluate((element) => getComputedStyle(element).animationName)).toBe(
+			"none",
+		);
 		// Back closes the dialog, because closing it is a navigation.
 		await page.goBack();
 		await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -47,6 +50,13 @@ test.describe("account", () => {
 		await page.keyboard.press("Escape");
 		await expect(page.getByRole("dialog")).toHaveCount(0);
 		await expect(page).toHaveURL(/\/chat$/);
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await page.getByLabel("Account settings").click();
+		expect(await page.getByRole("dialog").evaluate((element) => getComputedStyle(element).animationName)).toBe(
+			"none",
+		);
+		await page.keyboard.press("Escape");
+		await expect(page.getByRole("dialog")).toHaveCount(0);
 	});
 
 	test("a changed password is the one that works afterwards", async ({ page }) => {

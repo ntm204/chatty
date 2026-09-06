@@ -9,14 +9,12 @@ export function MessageTimeSeparator({ isoTimestamp }: MessageTimeSeparatorProps
 	return (
 		<div
 			role="separator"
-			className="flex items-center gap-3.5 py-5"
+			className="flex justify-center py-5"
 			aria-label={`Conversation resumed at ${formatMessageTime(isoTimestamp)}`}
 		>
-			<span aria-hidden="true" className="h-px flex-1 bg-rule-soft" />
-			<time dateTime={isoTimestamp} className="meta shrink-0 text-ink-faint">
+			<time dateTime={isoTimestamp} className="meta rounded-full bg-paper-sunken px-3 py-1 text-ink-faint">
 				{formatMessageTime(isoTimestamp)}
 			</time>
-			<span aria-hidden="true" className="h-px flex-1 bg-rule-soft" />
 		</div>
 	);
 }

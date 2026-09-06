@@ -182,24 +182,16 @@
 	--font-mono: "Geist Mono", ui-monospace, monospace;
 	--font-display: "Instrument Serif", Georgia, serif;
 
-	/*
-	 * Four radii, named for what they belong to rather than by size, because the
-	 * relationship between them is the point: a bubble is rounder than a control,
-	 * a control is rounder than a badge, and `notch` is the 2px corner that marks
-	 * which side a message came from.
-	 */
+	/* Controls stay compact; text, media and the composer have their own geometry. */
 	--radius-badge: 3px;
 	--radius-control: 6px;
 	--radius-bubble: 10px;
-	/*
-	 * The join between two bubbles of one run. Not 0: a squared-off corner
-	 * against a neighbour of the same fill reads as a clipping fault rather than
-	 * as a decision, and the eye stops on it. 4px against the bubble's 10 is
-	 * visibly tighter without becoming a straight edge — a fold, not a cut.
-	 */
-	--radius-seam: 4px;
-	--radius-notch: 2px;
 	--radius-panel: 12px;
+	--radius-message: 18px;
+	/* Only the facing corners tighten inside a sender's run; its ends stay soft. */
+	--radius-message-join: 5px;
+	--radius-media: 12px;
+	--radius-composer: 20px;
 
 	/*
 	 * The one shadow in the app, and it is a lift rather than a glow: a 1px
@@ -417,9 +409,177 @@
 	animation: media-enter 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* Keep the control mounted so leaving the live edge and returning both settle
+   gently. Its hidden state is also removed from focus and accessibility in JSX. */
+@keyframes typing-beat {
+	0%,
+	55%,
+	100% {
+		transform: translateY(0);
+		opacity: 0.45;
+	}
+	28% {
+		transform: translateY(-2px);
+		opacity: 0.9;
+	}
+}
+
+.typing-dots > span {
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+	background: currentColor;
+	animation: typing-beat 1400ms cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.typing-dots > span:nth-child(2) {
+	animation-delay: 140ms;
+}
+.typing-dots > span:nth-child(3) {
+	animation-delay: 280ms;
+}
+.thread-typing {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	transition:
+		grid-template-rows 180ms ease,
+		opacity 180ms ease;
+}
+.thread-typing[data-active="true"] {
+	grid-template-rows: 1fr;
+	opacity: 1;
+}
+.thread-typing[data-active="false"] .typing-dots > span,
+.scroll-latest[data-visible="false"] .typing-dots > span {
+	animation-play-state: paused;
+}
+
+.scroll-latest {
+	visibility: hidden;
+	opacity: 0;
+	transform: translateY(6px);
+	pointer-events: none;
+	transition:
+		width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+		opacity 160ms ease,
+		transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+		visibility 0s 180ms;
+}
+
+.scroll-latest[data-visible="true"] {
+	visibility: visible;
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
+	transition-delay: 0s;
+}
+
+.scroll-latest-arrow {
+	transition: transform 160ms ease;
+}
+
+.scroll-latest:is(:hover, :focus-visible) .scroll-latest-arrow {
+	transform: translateY(1px);
+}
+
 @media (prefers-reduced-motion: reduce) {
+	.typing-dots > span {
+		animation: none;
+		opacity: 0.7;
+	}
+	.thread-typing {
+		transition: none;
+	}
 	.popover-enter,
 	.media-enter {
 		animation: none;
+	}
+
+	.scroll-latest,
+	.scroll-latest-arrow {
+		transition: none;
+		transform: none;
+	}
+}
+
+/* Shared presence contract: retain the element while data-motion="closed" runs.
+   Duration is paired with constants/motion.ts; reduced motion removes both waits. */
+:root {
+	--surface-motion-duration: 240ms;
+	--surface-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes surface-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes surface-out {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+@keyframes dialog-in {
+	from {
+		transform: translateY(24px) scale(0.94);
+	}
+	to {
+		transform: none;
+	}
+}
+@keyframes dialog-out {
+	from {
+		transform: none;
+	}
+	to {
+		transform: translateY(20px) scale(0.94);
+	}
+}
+@keyframes image-in {
+	from {
+		opacity: 0;
+		transform: translateY(16px) scale(0.86);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes image-out {
+	from {
+		opacity: 1;
+		transform: none;
+	}
+	to {
+		opacity: 0;
+		transform: translateY(16px) scale(0.86);
+	}
+}
+.motion-backdrop[data-motion="closed"] {
+	pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.motion-backdrop[data-motion="open"] {
+		animation: surface-in var(--surface-motion-duration) ease-out;
+	}
+	.motion-backdrop[data-motion="closed"] {
+		animation: surface-out var(--surface-motion-duration) ease-in forwards;
+	}
+	[data-motion="open"] .motion-dialog {
+		animation: dialog-in var(--surface-motion-duration) var(--surface-motion-ease);
+	}
+	[data-motion="closed"] .motion-dialog {
+		animation: dialog-out var(--surface-motion-duration) ease-in forwards;
+	}
+	[data-motion="open"] .motion-image {
+		animation: image-in var(--surface-motion-duration) var(--surface-motion-ease);
+	}
+	[data-motion="closed"] .motion-image {
+		animation: image-out var(--surface-motion-duration) ease-in forwards;
 	}
 }

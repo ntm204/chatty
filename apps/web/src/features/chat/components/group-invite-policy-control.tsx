@@ -1,20 +1,23 @@
 import type { GroupInvitePolicy } from "@chatty/shared-types";
 import { useState } from "react";
 import { api } from "@/api/client";
+import { Button } from "@/components/button";
+import { cn } from "@/utils/cn";
 
 interface GroupInvitePolicyControlProps {
 	conversationId: string;
 	policy: GroupInvitePolicy;
-	isOwner: boolean;
+	isAdmin: boolean;
 }
 
-/** The one owner-only group setting, kept separate from day-to-day admin tools. */
-export function GroupInvitePolicyControl({ conversationId, policy, isOwner }: GroupInvitePolicyControlProps) {
+export function GroupInvitePolicyControl({ conversationId, policy, isAdmin }: GroupInvitePolicyControlProps) {
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState("");
+	const isAdminsOnly = policy === "managers";
 
-	async function changePolicy(nextPolicy: GroupInvitePolicy) {
-		if (nextPolicy === policy) return;
+	async function toggle() {
+		if (!isAdmin || isSaving) return;
+		const nextPolicy: GroupInvitePolicy = isAdminsOnly ? "everyone" : "managers";
 		setIsSaving(true);
 		setError("");
 		try {
@@ -28,20 +31,40 @@ export function GroupInvitePolicyControl({ conversationId, policy, isOwner }: Gr
 
 	return (
 		<div className="mt-4">
-			<label htmlFor="group-invite-policy" className="eyebrow text-ink-faint">
-				Who can add people
-			</label>
-			<select
-				id="group-invite-policy"
-				value={policy}
-				disabled={!isOwner || isSaving}
-				onChange={(event) => void changePolicy(event.target.value as GroupInvitePolicy)}
-				className="mt-1.5 w-full rounded-control border border-rule bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-ink disabled:cursor-not-allowed disabled:opacity-55"
-			>
-				<option value="everyone">Everyone</option>
-				<option value="managers">Owners and admins</option>
-			</select>
-			{!isOwner && <p className="eyebrow mt-2 text-ink-faint">Only the owner can change this policy.</p>}
+			<div className="flex items-center justify-between gap-3">
+				<span className="text-[13px] text-ink">Only admins can add people</span>
+				<Button
+					variant="ghost"
+					role="switch"
+					aria-checked={isAdminsOnly}
+					aria-label="Only admins can add people"
+					disabled={!isAdmin || isSaving}
+					onClick={() => void toggle()}
+					className={cn(
+						"relative h-6 w-11 shrink-0 rounded-full border p-0 transition-colors",
+						// Ghost's own hover:bg-ink/5 would otherwise win over the track's
+						// solid "on" fill while the pointer rests on it, mid-hover, turning
+						// a solid switch hollow — so the hover state is restated here too.
+						// The off track is `paper-sunken`, not a translucent ink tint: an
+						// opacity-based fill and a `paper-raised` knob both read as "the
+						// panel's own surface" in dark mode, where ink is pale — the two
+						// nearly vanished into each other. Raised-above-sunken is the pair
+						// this app already uses for "this sits above that", in both themes.
+						isAdminsOnly
+							? "border-ink bg-ink hover:bg-ink"
+							: "border-rule bg-paper-sunken hover:bg-paper-sunken",
+					)}
+				>
+					<span
+						aria-hidden="true"
+						className={cn(
+							"absolute top-0.5 size-5 rounded-full bg-paper-raised shadow-sm transition-transform",
+							isAdminsOnly ? "translate-x-5" : "translate-x-0.5",
+						)}
+					/>
+				</Button>
+			</div>
+			{!isAdmin && <p className="eyebrow mt-2 text-ink-faint">Only group admins can change this policy.</p>}
 			{error && (
 				<p role="alert" className="eyebrow mt-2 text-signal">
 					{error}

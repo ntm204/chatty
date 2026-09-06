@@ -138,7 +138,7 @@ test.describe("two people, one conversation", () => {
 		await alicePage.getByRole("textbox", { name: "Search in conversation" }).fill("blue-orchid");
 		await expect(alicePage.getByText("1 of 1")).toBeVisible({ timeout: 15_000 });
 		await expect(messages(alicePage).getByText("the release codename is blue-orchid")).toBeVisible();
-		await expect(alicePage.getByRole("button", { name: "Return to latest messages" })).toBeVisible();
+		await expect(alicePage.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
 
 		await alice.close();
 		await bob.close();

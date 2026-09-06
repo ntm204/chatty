@@ -3,11 +3,13 @@ import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { MAX_UNREAD_BADGE_COUNT } from "../constants/conversation-list";
 import { EMPTY_CONVERSATION_TEXT } from "../constants/message";
-import { formatConversationTime, getConversationPreview, getConversationTitle } from "../utils";
+import { formatRelativeTime, getConversationPreview, getConversationTitle, isConversationMuted } from "../utils";
 import { ConversationAvatar } from "./conversation-avatar";
 import { useInfiniteScroll } from "../hooks/use-infinite-scroll";
 import type { ConversationPaging } from "../types/conversation-paging";
 import { ConversationActions } from "./conversation-actions";
+import { TypingDots } from "./typing-dots";
+import { useDraftPreviews } from "../hooks/use-draft-previews";
 
 interface ConversationListProps {
 	conversations: ConversationDTO[];
@@ -29,6 +31,7 @@ export function ConversationList({
 	paging,
 }: ConversationListProps) {
 	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(paging.hasMore, paging.isLoadingMore, paging.loadMore);
+	const draftPreviews = useDraftPreviews(conversations.map((conversation) => conversation.id));
 
 	if (conversations.length === 0) {
 		return (
@@ -45,28 +48,32 @@ export function ConversationList({
 				const isSelected = conversation.id === selectedConversationId;
 				const lastMessage = conversation.lastMessage;
 				const isLastMessageMine = lastMessage?.author?.id === currentUserId;
+				const draftPreview = draftPreviews[conversation.id];
+				const hasDraft = Boolean(draftPreview);
 				// Only in groups, and only in mono: it is a handle, not a name.
 				const authorHandle =
 					conversation.isGroup && lastMessage?.kind === "user" ? (lastMessage.author?.handle ?? null) : null;
-				const isSomeoneTyping = (typingByConversation[conversation.id] ?? []).some(
-					(userId) => userId !== currentUserId,
-				);
+				const isSomeoneTyping =
+					!hasDraft &&
+					(typingByConversation[conversation.id] ?? []).some((userId) => userId !== currentUserId);
 				const isMentioned = Boolean(lastMessage?.mentionedUserIds.includes(currentUserId) && hasUnread);
+				const isMuted = isConversationMuted(conversation);
 
 				return (
 					<li key={conversation.id} className="group relative">
 						<Button
 							variant="ghost"
 							onClick={() => onSelect(conversation.id)}
+							aria-current={isSelected ? "page" : undefined}
 							// A conversation row is a full-width, left-aligned block, not a
 							// centred action. twMerge lets these win over Button's defaults.
 							className={cn(
-								"relative w-full items-center justify-start gap-3 rounded-panel px-2.5 py-2 text-left font-normal",
+								"relative w-full items-center justify-start gap-3 rounded-panel px-3 py-3 text-left font-normal",
 								isSelected
 									? "bg-paper-sunken hover:bg-paper-sunken"
 									: isMentioned
 										? "bg-signal-soft hover:bg-signal-soft"
-										: "hover:bg-ink/[0.035]",
+										: "hover:bg-transparent",
 							)}
 						>
 							<ConversationAvatar
@@ -75,68 +82,68 @@ export function ConversationList({
 								onlineUserIds={onlineUserIds}
 							/>
 
-							{/* min-w-0 is what lets the truncation below actually happen:
-							    a flex child defaults to min-width:auto and refuses to
-							    shrink below its content. */}
-							<span className="flex min-w-0 flex-1 items-center gap-2 pr-7">
-								<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+							<span className="flex min-w-0 flex-1 flex-col">
+								<span className="flex min-w-0 items-baseline gap-3 pr-14">
 									<span
 										className={cn(
-											"truncate text-sm text-ink",
-											hasUnread ? "font-bold" : isSelected ? "font-semibold" : "font-medium",
+											"min-w-0 truncate text-[14px] leading-5 text-ink",
+											hasUnread ? "font-semibold" : "font-medium",
 										)}
 									>
 										{getConversationTitle(conversation, currentUserId)}
 									</span>
-
-									<span className="flex min-w-0 items-center gap-1 text-[13px]">
-										{isLastMessageMine && !isSomeoneTyping && (
-											<span className={cn("shrink-0", hasUnread ? "text-ink" : "text-ink-faint")}>
-												You:
-											</span>
+								</span>
+								<span
+									className={cn("flex min-w-0 items-center gap-2", isMuted && !hasUnread && "pr-8")}
+								>
+									<span className="flex min-w-0 flex-1 items-center gap-1 text-[13px] leading-5">
+										{hasDraft && <span className="shrink-0 font-medium text-signal">Draft:</span>}
+										{isLastMessageMine && !isSomeoneTyping && !hasDraft && (
+											<span className="shrink-0 text-ink-soft">You:</span>
 										)}
-										{authorHandle && !isLastMessageMine && (
-											<span className="shrink-0 text-ink-soft">{authorHandle}:</span>
+										{authorHandle && !isLastMessageMine && !isSomeoneTyping && !hasDraft && (
+											<span className="max-w-[35%] truncate text-ink-soft">{authorHandle}:</span>
 										)}
 										<span
 											className={cn(
 												"min-w-0 truncate",
-												isSomeoneTyping
-													? "font-medium text-live"
-													: hasUnread
-														? "font-medium text-ink"
-														: "text-ink-faint",
+												hasUnread && !hasDraft && !isSomeoneTyping
+													? "font-medium text-ink"
+													: "text-ink-soft",
 											)}
 										>
-											{isSomeoneTyping
-												? "Typing…"
-												: lastMessage
-													? getConversationPreview(lastMessage)
-													: EMPTY_CONVERSATION_TEXT}
+											{hasDraft
+												? draftPreview
+												: isSomeoneTyping
+													? "Typing"
+													: lastMessage
+														? getConversationPreview(lastMessage)
+														: EMPTY_CONVERSATION_TEXT}
 										</span>
-										{lastMessage && !isSomeoneTyping && (
-											<span className="meta shrink-0 text-ink-faint">
-												· {formatConversationTime(conversation.updatedAt)}
+										{isSomeoneTyping && (
+											<span className="flex self-center">
+												<TypingDots />
+											</span>
+										)}
+										{lastMessage && !hasDraft && !isSomeoneTyping && (
+											<span className="shrink-0 text-ink-faint">
+												· {formatRelativeTime(conversation.updatedAt)}
 											</span>
 										)}
 									</span>
+									{hasUnread && (
+										<span
+											aria-label={`${conversation.unreadCount} unread messages${isMentioned ? ", including a mention" : ""}`}
+											className="meta flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-signal px-1.5 font-semibold text-paper-raised"
+										>
+											{isMentioned
+												? "@"
+												: conversation.unreadCount > MAX_UNREAD_BADGE_COUNT
+													? `${MAX_UNREAD_BADGE_COUNT}+`
+													: conversation.unreadCount}
+										</span>
+									)}
 								</span>
-
-								{hasUnread && (
-									<span
-										// The number is spelled out for assistive tech because
-										// "3" beside a name is only meaningful next to the badge
-										// shape, which a screen reader does not convey.
-										aria-label={`${conversation.unreadCount} unread messages${isMentioned ? ", including a mention" : ""}`}
-										className="meta flex h-[17px] min-w-[17px] shrink-0 items-center justify-center rounded-full bg-signal px-1.5 font-semibold text-paper-raised transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
-									>
-										{isMentioned
-											? "@"
-											: conversation.unreadCount > MAX_UNREAD_BADGE_COUNT
-												? `${MAX_UNREAD_BADGE_COUNT}+`
-												: conversation.unreadCount}
-									</span>
-								)}
 							</span>
 						</Button>
 						<ConversationActions conversation={conversation} currentUserId={currentUserId} />

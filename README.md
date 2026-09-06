@@ -5,6 +5,11 @@ A messaging app (Zalo/Telegram-style: 1-1 and group chat, realtime delivery) bui
 Current release: **`v0.2.0-rc.1`** — feature-complete release candidate for private acceptance;
 public launch still requires the external conditions in [Deployment](docs/DEPLOYMENT.md).
 
+Current development focus: **everyday usability and interface polish**. The
+[experience polish plan](docs/plans/experience-polish.md) lists 60 scoped tasks in 12 batches, with
+acceptance criteria and dependencies. Public launch and large feature additions are deferred while
+this work improves the existing messaging experience.
+
 ## Read first
 
 | Document | What it answers |
@@ -12,6 +17,7 @@ public launch still requires the external conditions in [Deployment](docs/DEPLOY
 | [CLAUDE.md](CLAUDE.md) | The conventions block — button/icon/alias/filename decisions, and the checklists |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to run it, what the gate is, and what a good pull request looks like |
 | [docs/PRODUCT-DIRECTION.md](docs/PRODUCT-DIRECTION.md) | The product values, free-first constraint, UI rules and feature-selection rubric |
+| [docs/plans/experience-polish.md](docs/plans/experience-polish.md) | The current implementation backlog: everyday workflows, interface details and acceptance criteria |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together and why |
 | [docs/conventions/](docs/conventions/) | The rules for writing frontend, backend, and commits |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each published release |
@@ -96,7 +102,8 @@ npm run seed:demo
 
 This goes through the real HTTP API without wiping data. It creates five reusable accounts, a direct
 thread and a managed group with hundreds of alternating messages, image/gallery thumbnails, voice,
-files, reply/forward/mention/link, pin and saved-message examples. Fixed message keys make reruns
+files, reply/forward/mention/link, pin and saved-message examples. Demo files contain no instructional
+caption, matching the standalone file-send flow. Fixed message keys make reruns
 converge rather than duplicate the dataset. The credentials are printed after the script verifies the
 message counts and every attachment kind. To exercise group administration directly, sign in as
 `admin.demo@chatty.test` with password `ChattyDemo123`; that account is an admin in
@@ -176,6 +183,55 @@ you half remember, and block somebody so neither of you can reach the other in a
 conversation. Last-seen timestamps follow the privacy choice in account settings, which open as a dialog over the
 chat rather than replacing it.
 
+Restrict/Unrestrict lives in each direct conversation's sidebar menu, alongside its other actions;
+the account settings list remains available. Choosing, pasting or dropping an ordinary file sends
+that file immediately as a standalone message and keeps the text/reply draft for the next send.
+Images still use the preview-and-send flow. A failed file upload keeps its file with Retry/Remove.
+
+Text runs now use soft 18px ends and 5px joins, while photos/files use their own 12px
+corners. Hover does not add a background tile behind an idle conversation row, emoji or attachment
+trigger, and reaction emoji no longer enlarge. While reading more than 120px above the latest messages,
+a quiet 32px down-arrow control sits above the composer, inside a 44px touch target. It fades into view
+and smoothly expands for actual typing or new arrivals. Returning within 80px hides it, avoiding flicker
+at the boundary. A jump follows its destination as new content arrives and stops when the reader
+deliberately scrolls. Search history uses the same control, with loading feedback and retry on failure.
+Reduced motion skips the transitions; keyboard activation keeps focus in the thread.
+See [the roadmap](docs/ROADMAP.md), phases 47 and 50.
+
+Typing appears beneath the last message as a quiet three-dot bubble. Direct chats show just the
+bubble; groups add the typing names. Each dot rises 2px in a staggered 1.4-second rhythm. The header
+uses quiet sentence-case text; sidebar and Jump labels end in animated dots, without a second ellipsis. Reading history keeps the bubble offscreen and the activity
+available on Jump; historical search never places live typing under an old message. One/two typists
+are named, larger groups are counted, and your own typing is excluded. Sending, clearing the input,
+offline presence and disconnect retract typing; idle and missing-stop timers provide a fallback.
+Reduced motion keeps the dots still. Typing is never stored or counted as a new message.
+
+Unsent text drafts are saved on this browser and restored when reopening a conversation. Switching
+conversations keeps their drafts separate; leaving or hiding the page flushes the latest text before
+the normal save delay. Drafts are not synchronized between devices, and selected files are not saved
+as composer drafts.
+
+The sidebar shows `Draft: <text>` immediately while composing, including the selected conversation.
+A reply without text shows `Draft: Reply`; whitespace alone does not create an indicator. Drafts take
+priority over typing and the last-message preview, but unread/mention badges remain visible. The old
+message timestamp and author prefix are hidden while showing a draft; drafting does not reorder chats.
+Conversation rows use two aligned lines: name and right-aligned time above, preview and unread badge
+below. The actions button has its own space on the lower right, so hover never hides the unread badge
+or shifts the text. Timestamps no longer sit inside the message preview.
+Clearing or sending returns the row to typing/the last message. Files and stickers preserve unrelated
+text drafts. Sidebar previews flatten whitespace without changing the saved text and refresh after
+reload or browser storage changes; this does not synchronize an already open composer's caret or text.
+
+Plain wrapped text bubbles fit their visible lines and recalculate when the thread resizes. Long links
+wrap in full, and message padding, speaker gaps and system notices keep the thread compact.
+
+Voice messages use a compact 240×56px player with 32px controls, a waveform that can
+be scrubbed by pointer or keyboard, elapsed/total time and a 1×/1.5×/2× speed control.
+Only one player runs at a time; loading and playback failures are visible with a retry action.
+The 44px recording bar shows actual microphone levels and lets you listen, seek, discard or
+send the preview. Failed uploads retain that recording in the current session.
+Starting a recording pauses voice playback, and sidebar previews identify voice messages correctly.
+
 Deleting leaves a marked-out placeholder rather than a hole: the text is emptied and the image and its
 file are removed, but the row stays so that other people's read markers and the paging cursor still
 have something to point at. See [docs/ROADMAP.md](docs/ROADMAP.md) phase 8.
@@ -184,9 +240,11 @@ An author may edit or delete for everyone for eight hours after sending. The act
 that window closes; deleting only from your own view remains available without a time limit and also
 removes the message from your sidebar preview, search results and unread count.
 
-A group has exactly one owner and may have admins. Owner/admin can rename and moderate ordinary
-members; only the owner changes roles, transfers ownership and chooses whether everyone or only
-managers may invite. Anyone can leave. See [ADR 0018](docs/adr/0018-group-admins-and-invite-policy.md).
+A group has admins and members, and every admin has equal standing — any admin can rename it, remove
+or promote/demote anyone else (another admin included), and choose whether everyone or only admins may
+invite. Anyone can leave; a non-empty group always keeps at least one admin, promoting the
+longest-standing remaining member if the last one leaves. See
+[ADR 0021](docs/adr/0021-flatten-group-roles-to-admin-member.md).
 
 Deleting your account removes the account, its avatar file and every session it had open — but not
 its messages. Those stay in their conversations with the author taken off them, rendered as "Deleted
@@ -206,7 +264,7 @@ an explicit E2EE protocol/readiness decision; implementation remains behind the 
 gate in ADR 0020. Future ideas still enter through [docs/PRODUCT-DIRECTION.md](docs/PRODUCT-DIRECTION.md)'s
 rubric. Phase 7 makes group and password-reset transitions safe under
 concurrent requests: one conversation lock orders membership-sensitive writes, PostgreSQL enforces
-the owner/message invariants, and fault-injection tests prove partial writes do not escape. Phase 8
+the admin/message invariants, and fault-injection tests prove partial writes do not escape. Phase 8
 adds editing and deleting your own messages, on the same lock, with the deletion kept as a tombstone
 so that read markers and paging cursors still have a row to point at. Phase 9 makes outbound mail
 durable: it is queued in the same transaction as the thing that promised it, and a worker retries
@@ -258,8 +316,9 @@ picture out of somebody else's chat.
 
 Phases 24–28 complete the everyday messaging surface: arbitrary files are served as safe downloads,
 voice is normalized to AAC/MP4 with a shared waveform, and each conversation has a paged vault for
-media, files, voice, links and saved messages — opened as a list of categories with their counts,
-each drilling into one list at a time under sticky month headings (phase 35). Archive, pin and mute are per participant and sync only
+media, files, voice and links — opened as a list of categories with their counts, each drilling into
+one list at a time, with a tab row to switch between the other categories without leaving the one
+that's open, under sticky month headings (phase 35). Archive, pin and mute are per participant and sync only
 to that person's devices; the sidebar patches socket events in place. Drafts survive navigation on
 the local device, and the thread adds unread navigation, drag/paste, links, forwarding, mentions,
 message pins, reply jumps, keyboard shortcuts, sidebar typing and group seen-by avatars.
@@ -361,3 +420,34 @@ where the docs and the code say different things.
 ## License
 
 [MIT](LICENSE). `scripts/audit-rules.sh` is adapted from evondev's Dev Rules, also MIT.
+
+Conversation details dock in a separate right panel on screens at least 1280px wide.
+Desktop panels have subtle frames and gutters: drag either divider to resize, or focus it and use
+arrow keys (Home/End for limits, Enter or double-click to reset). Widths are remembered locally.
+Both side panels default to 320px; the sidebar supports 260–400px and details support 280–400px.
+On smaller screens they replace the thread until closed, preserving the composer draft.
+The panel stays open while chatting on desktop; use the header toggle, Close, or Escape to close it.
+
+Only conversation details use the 240ms enter/exit motion system. Reduced motion skips movement
+and the close delay. Images and settings open and close immediately.
+Both direct and group details open on an overview, mirroring Messenger's layout: mute/search quick
+actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared theme color,
+and per-member nicknames — all shared with everyone in the conversation, not private to whoever set
+them), then Media/files/links, Members, Group options and Privacy & support as collapsible
+sections — content, then people, then settings, then the rare, sensitive controls, rather than
+interleaving settings between content. Renaming and the group photo are admin-gated; the rest of
+Customize chat is open to any participant — cosmetic, not moderation. See
+[ADR 0022](docs/adr/0022-conversation-customize-and-shared-nicknames.md). Rename, the group photo
+and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
+place, replacing the real name rather than opening a second input beside it. Adding people to a
+group is search-then-multi-select-then-confirm in its own modal, matching how starting a new
+conversation already works, rather than adding on first click. A member row's actions menu is
+portalled above the list rather than pushed inline, so opening it never shifts the rows below.
+Invite permissions (Group options, admin-gated) use a toggle switch, not a dropdown — there are
+only two states. Pinned messages have previous/next navigation and a selectable list, also
+reachable from conversation details.
+
+Pinned messages open in a separate dialog without resizing the thread. Photo/file/voice previews
+include their attachment identity; captions remain secondary. Each original message shows a Pinned
+marker, and pins can be removed from the list. Message jumps scroll only the history viewport and
+wait for it to become visible after closing mobile details.

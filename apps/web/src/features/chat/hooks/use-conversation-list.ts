@@ -191,8 +191,19 @@ export function useConversationList(
 		useCallback((message: MessageDTO) => {
 			setConversations((current) =>
 				current.map((conversation) =>
-					conversation.id === message.conversationId && conversation.lastMessage?.id === message.id
-						? { ...conversation, lastMessage: message }
+					conversation.id === message.conversationId
+						? {
+								...conversation,
+								lastMessage:
+									conversation.lastMessage?.id === message.id ? message : conversation.lastMessage,
+								pinnedMessages: conversation.pinnedMessages
+									.filter((pin) => pin.messageId !== message.id || !message.deletedAt)
+									.map((pin) =>
+										pin.messageId === message.id
+											? { ...pin, content: message.content, message }
+											: pin,
+									),
+							}
 						: conversation,
 				),
 			);
@@ -304,6 +315,9 @@ export function useConversationList(
 								...conversation,
 								name: event.name,
 								invitePolicy: event.invitePolicy,
+								avatarUrl: event.avatarUrl,
+								themeColor: event.themeColor,
+								quickReactionEmoji: event.quickReactionEmoji,
 								participants: event.participants,
 							}
 						: conversation,

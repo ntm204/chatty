@@ -20,7 +20,6 @@ interface MessageActionsProps {
 	/** Absent until somebody has reacted: a list of nobody is a menu row that opens an empty dialog. */
 	onShowReactions?: (() => void) | undefined;
 	onForward?: (() => void) | undefined;
-	onSave?: (() => void) | undefined;
 	onTogglePin?: (() => void) | undefined;
 	isPinned?: boolean;
 	/** The one emoji the viewer has left here, so the bar can show it as set. Null if none. */
@@ -51,7 +50,6 @@ export function MessageActions({
 	onToggleReaction,
 	onShowReactions,
 	onForward,
-	onSave,
 	onTogglePin,
 	isPinned = false,
 	myReaction,
@@ -237,7 +235,6 @@ export function MessageActions({
 						onReply={onReply}
 						onShowReactions={onShowReactions}
 						onForward={onForward}
-						onSave={onSave}
 						onTogglePin={onTogglePin}
 						isPinned={isPinned}
 						canChangeForEveryone={canChangeForEveryone}

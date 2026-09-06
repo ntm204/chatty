@@ -6,4 +6,4 @@
  * for an avatar — the group icon that stands in for one, for instance — has to
  * agree with it exactly or the rows stop lining up.
  */
-export type AvatarSize = "xs" | "sm" | "md" | "lg";
+export type AvatarSize = "2xs" | "xs" | "sm" | "md" | "lg";

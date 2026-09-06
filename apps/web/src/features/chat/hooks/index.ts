@@ -11,6 +11,7 @@ export { useMessageActions } from "./use-message-actions";
 export { useMessageListHandlers } from "./use-message-list-handlers";
 export { useMessageEditing } from "./use-message-editing";
 export { useMessageNotifications } from "./use-message-notifications";
+export { useMessageSound } from "./use-message-sound";
 export { useMessageScroll } from "./use-message-scroll";
 export { useMessageSearch } from "./use-message-search";
 export { usePresence } from "./use-presence";
@@ -24,3 +25,5 @@ export { useTypingParticipants } from "./use-typing-participants";
 export { useUserSearch } from "./use-user-search";
 export { useStickers } from "./use-stickers";
 export { useAttachmentZoom } from "./use-attachment-zoom";
+
+export { useDraftPreviews } from "./use-draft-previews";

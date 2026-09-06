@@ -1,6 +1,8 @@
 import { cn } from "@/utils/cn";
 import { STICKER_DISPLAY_SIZE } from "../constants/attachment";
+import { getConversationThemeClasses } from "../constants/conversation-theme";
 import { INCOMING_BUBBLE_RADIUS, OUTGOING_BUBBLE_RADIUS } from "../constants/message-cluster";
+import { useCompactMessage } from "../hooks/use-compact-message";
 import type { ClusterPosition } from "../types/message-cluster";
 import type { ThreadMessage } from "../types/thread-message";
 import { formatMessageTime } from "../utils/format-time";
@@ -9,14 +11,12 @@ import { MessageFileCard } from "./message-file-card";
 import { MessageReplyQuote } from "./message-reply-quote";
 import { MessageText } from "./message-text";
 import { VoicePlayer } from "./voice-player";
-import type { ParticipantDTO } from "@chatty/shared-types";
+import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
 
 interface MessageBubbleProps {
 	message: ThreadMessage;
 	isMine: boolean;
 	clusterPosition: ClusterPosition;
-	/** Whether this message is the visible time anchor for its activity burst. */
-	isTimeAlwaysVisible: boolean;
 	/**
 	 * How many emoji this message is, when it is *only* emoji — zero otherwise.
 	 * Decided by the row, which is where the conditions that disqualify a message
@@ -25,6 +25,8 @@ interface MessageBubbleProps {
 	jumboCount: number;
 	onJumpToReplyOriginal: () => void;
 	participants: ParticipantDTO[];
+	/** The conversation's shared accent, replacing the fixed default for "mine" surfaces — see ADR 0022. */
+	themeColor: ConversationTheme | null;
 	/**
 	 * Forwards this message from inside the image viewer. Optional and omitted
 	 * for a message nothing may act on yet — one still on its way has no server
@@ -53,17 +55,26 @@ export function MessageBubble({
 	message,
 	isMine,
 	clusterPosition,
-	isTimeAlwaysVisible,
 	jumboCount,
 	onJumpToReplyOriginal,
 	participants,
+	themeColor,
 	onForward,
 }: MessageBubbleProps) {
+	const theme = getConversationThemeClasses(themeColor);
 	const images = message.attachments.filter((attachment) => attachment.kind === "image");
 	const file = message.attachments.find((attachment) => attachment.kind === "file");
 	const voice = message.attachments.find((attachment) => attachment.kind === "audio");
 	const hasImages = images.length > 0;
 	const sticker = message.isSticker ? images[0] : undefined;
+	const bubbleRef = useCompactMessage(
+		message.content,
+		message.attachments.length === 0 &&
+			!message.replyTo &&
+			!message.isForwarded &&
+			message.mentionedUserIds.length === 0 &&
+			jumboCount === 0,
+	);
 
 	// A sticker gets no bubble, for the same reason a message of pure emoji does
 	// not: the picture *is* the message, and a fill around it is chrome around
@@ -100,10 +111,7 @@ export function MessageBubble({
 				<MessageGallery
 					attachments={images}
 					caption={message.content}
-					isMine={isMine}
-					clusterPosition={clusterPosition}
 					{...(message.deliveryState ? {} : { timeLabel: formatMessageTime(message.createdAt) })}
-					isTimeAlwaysVisible={isTimeAlwaysVisible}
 					{...(onForward && { onForward })}
 				/>
 			</div>
@@ -121,7 +129,11 @@ export function MessageBubble({
 						onJumpToOriginal={onJumpToReplyOriginal}
 					/>
 				)}
-				{file ? <MessageFileCard attachment={file} /> : voice ? <VoicePlayer attachment={voice} /> : null}
+				{file ? (
+					<MessageFileCard attachment={file} />
+				) : voice ? (
+					<VoicePlayer attachment={voice} isMine={isMine} themeColor={themeColor} />
+				) : null}
 				{message.content && (
 					<MessageText
 						content={message.content}
@@ -136,14 +148,15 @@ export function MessageBubble({
 
 	return (
 		<div
+			ref={bubbleRef}
 			className={cn(
-				"min-w-0 text-sm/[1.55]",
+				"min-w-0 max-w-full text-sm/[1.55]",
 				jumboCount > 0
 					? "bg-transparent px-1 py-0.5"
 					: cn(
-							isMine ? "bg-block text-block-ink" : "border border-rule bg-paper-raised text-ink",
+							isMine ? cn(theme.bubble, theme.bubbleInk) : "bg-paper-sunken text-ink",
 							(isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition],
-							"px-3.5 py-2",
+							"px-3 py-1.5",
 						),
 			)}
 		>
@@ -158,7 +171,7 @@ export function MessageBubble({
 					mentionedUserIds={message.mentionedUserIds}
 					participants={participants}
 					className={cn(
-						"whitespace-pre-wrap wrap-break-word",
+						"whitespace-pre-wrap wrap-anywhere text-pretty",
 						// Smaller as the count grows, so three still fit the column a
 						// bubble would have occupied.
 						jumboCount === 1 && "text-[44px] leading-[1.15]",

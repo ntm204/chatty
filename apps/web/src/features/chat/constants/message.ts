@@ -34,3 +34,6 @@ export const EMPTY_CONVERSATION_TEXT = "No messages yet";
 
 /** What a quoted image with no caption says, where the picture cannot be shown. */
 export const IMAGE_ONLY_QUOTE_TEXT = "Photo";
+
+/** How long the newest message's "Sent"/"Seen" caption stays up before it needs a hover like any other. */
+export const SENT_CAPTION_WINDOW_MS = 60 * 60 * 1000;

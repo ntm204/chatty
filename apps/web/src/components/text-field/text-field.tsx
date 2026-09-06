@@ -32,8 +32,8 @@ export function TextField({ label, error, className, ...rest }: TextFieldProps) 
 					"rounded-control border bg-paper-raised px-3 py-2.5 text-sm text-ink outline-none transition",
 					"placeholder:text-ink-faint",
 					// A field that takes no input has to look like one. The group
-					// panel disables the name field for everyone but the owner, and
-					// without this it is indistinguishable from an editable one.
+					// panel disables the name field for non-admins, and without this
+					// it is indistinguishable from an editable one.
 					"disabled:bg-rule-soft disabled:text-ink-faint",
 					error
 						? "border-signal focus:ring-3 focus:ring-signal/10"

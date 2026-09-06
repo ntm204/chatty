@@ -4,24 +4,16 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
+import { cn } from "@/utils/cn";
 
 interface ConversationBlockControlProps {
 	peer: UserDTO;
 }
 
 /**
- * Blocking, at the foot of the panel about the person.
- *
- * **Placement is the decision here.** This sat directly under the name to begin
- * with, which made a red-outlined button the loudest thing on a panel whose job
- * is to show what a conversation holds — and `Button`'s `danger` variant is
- * outlined precisely so it does not invite the click. Every messenger puts block
- * at the bottom, after the content, and that is where it belongs: reachable
- * deliberately, not encountered on the way to the photos.
- *
- * Blocking asks first and unblocking does not. One of them is the decision;
- * making somebody confirm the way back out of it only punishes changing
- * their mind.
+ * Blocking, behind the "Privacy & support" disclosure at the foot of the panel
+ * — reachable deliberately, not the loudest thing on a panel about a person.
+ * Blocking asks first; unblocking does not punish changing your mind.
  */
 export function ConversationBlockControl({ peer }: ConversationBlockControlProps) {
 	const isBlocked = useBlockedUsers((state) => state.blockedIds.has(peer.id));
@@ -51,16 +43,16 @@ export function ConversationBlockControl({ peer }: ConversationBlockControlProps
 	}
 
 	return (
-		<div className="shrink-0 border-t border-rule px-6 py-4">
+		<div className="shrink-0 px-1 pb-2">
 			<Button
-				variant={isBlocked ? "outline" : "danger"}
+				variant="ghost"
 				disabled={isSaving}
 				onClick={() => {
 					setError("");
 					if (isBlocked) void apply(false);
 					else setIsAsking(true);
 				}}
-				className="w-full"
+				className={cn("w-full justify-start gap-2 px-2 py-2 text-sm", !isBlocked && "text-signal")}
 			>
 				<Ban className="size-4" />
 				{isBlocked ? `Unblock ${peer.displayName}` : `Block ${peer.displayName}`}

@@ -45,6 +45,14 @@ test.describe("sidebar organisation", () => {
 
 		await expect(listenerPage.getByLabel("1 unread messages")).toBeVisible({ timeout: 15_000 });
 		await expect(listenerPage).toHaveTitle("Chatty");
+		const sidebar = listenerPage.locator("aside");
+		await sidebar.getByRole("button", { name: new RegExp(senderUser.displayName) }).hover();
+		await expect(listenerPage.getByLabel("1 unread messages")).toBeVisible();
+		await listenerPage.screenshot({ path: "/tmp/chatty-sidebar-layout-light.png" });
+		await listenerPage.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+		await listenerPage.setViewportSize({ width: 375, height: 760 });
+		await expect(sidebar.getByText("quiet but still unread", { exact: true })).toBeVisible();
+		await listenerPage.screenshot({ path: "/tmp/chatty-sidebar-layout-mobile-dark.png" });
 
 		await listener.close();
 		await sender.close();

@@ -1,5 +1,9 @@
 # Phase 24 — an attachment that is not a picture
 
+Historical implementation plan. [Phase 47](../ROADMAP.md#phase-47--quieter-message-surfaces-and-direct-actions--done)
+updates the composer interaction: selecting an ordinary file sends it immediately without a caption
+or reply, preserving the existing draft. Images still use their preview before sending.
+
 `Attachment` currently means "one image". Not by accident: phase 4 chose the re-encode as the whole
 security control, and everything downstream was built on the guarantee it gives. Sending a PDF breaks
 that guarantee, so this phase is mostly about **replacing** it rather than about adding a column.

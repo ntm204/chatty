@@ -86,7 +86,7 @@ export function ComposerControls({
 
 			<div
 				className={cn(
-					"flex min-w-0 flex-1 items-center rounded-panel bg-paper-sunken pl-1",
+					"flex min-w-0 flex-1 items-center rounded-composer bg-paper-sunken pl-1",
 					"transition-shadow focus-within:ring-2 focus-within:ring-ink/10",
 					isVoiceActive && "hidden",
 				)}
@@ -98,7 +98,7 @@ export function ComposerControls({
 					disabled={isDisabled || isSending}
 					aria-label="Insert an emoji"
 					aria-expanded={isEmojiPickerOpen}
-					className="mr-1 size-8 shrink-0 rounded-bubble p-0 text-ink-faint hover:text-ink"
+					className="mr-1 size-8 shrink-0 rounded-full p-0 text-ink-faint hover:bg-transparent hover:text-ink"
 				>
 					<Smile className="size-[17px]" />
 				</Button>

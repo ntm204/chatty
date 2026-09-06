@@ -4,6 +4,7 @@ import type { MessageDTO, ParticipantDTO } from "@chatty/shared-types";
 import { cn } from "@/utils/cn";
 import { useTypingNotifier } from "../hooks";
 import { useComposerAttachments } from "../hooks/use-composer-attachments";
+import { useComposerFileSend } from "../hooks/use-composer-file-send";
 import { useMessageDraft } from "../hooks/use-message-draft";
 import { ComposerControls } from "./composer-controls";
 import { ComposerMentionSuggestions } from "./composer-mention-suggestions";
@@ -52,8 +53,6 @@ export function MessageInput({
 	onRestoreReply,
 }: MessageInputProps) {
 	const [content, setContent] = useState("");
-	const [isSending, setIsSending] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState(0);
 	const [error, setError] = useState("");
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const [isStickerTrayOpen, setIsStickerTrayOpen] = useState(false);
@@ -62,11 +61,18 @@ export function MessageInput({
 	const contentRef = useRef(content);
 	contentRef.current = content;
 	const { notifyTyping, stopTyping } = useTypingNotifier(conversationId);
+	const { selectedFile, isSending, uploadProgress, sendFile, removeFile } = useComposerFileSend({
+		isDisabled: isDisabled || isVoiceActive,
+		onSendFile,
+		setError,
+		onStart: useCallback(() => {
+			setIsEmojiPickerOpen(false);
+			setIsStickerTrayOpen(false);
+		}, []),
+	});
 	const {
 		attachments,
 		setAttachments,
-		selectedFile,
-		setSelectedFile,
 		previewUrls,
 		isDragActive,
 		isFull,
@@ -74,7 +80,12 @@ export function MessageInput({
 		handleFileSelected,
 		handlePaste,
 		removeAttachment,
-	} = useComposerAttachments({ setError });
+	} = useComposerAttachments({
+		setError,
+		selectedFile,
+		isDisabled: isDisabled || isSending || isVoiceActive,
+		onFileSelected: sendFile,
+	});
 	const clearDraft = useMessageDraft({
 		conversationId,
 		content,
@@ -86,7 +97,6 @@ export function MessageInput({
 			},
 			[onRestoreReply],
 		),
-		isPaused: isSending,
 	});
 	const mentionMatch = content.match(/(?:^|\s)@([a-z0-9_.-]*)$/iu);
 	const mentionQuery = mentionMatch?.[1]?.toLowerCase();
@@ -102,7 +112,7 @@ export function MessageInput({
 		: [];
 
 	// A message is allowed to be pictures with nothing written on them.
-	const hasSomethingToSend = Boolean(content.trim()) || attachments.length > 0 || selectedFile !== null;
+	const hasSomethingToSend = Boolean(content.trim()) || attachments.length > 0;
 
 	useEffect(() => {
 		if (!isDisabled) return;
@@ -115,7 +125,8 @@ export function MessageInput({
 	function handleChange(event: ChangeEvent<HTMLInputElement>) {
 		if (isDisabled) return;
 		setContent(event.target.value);
-		notifyTyping();
+		if (event.target.value.trim()) notifyTyping();
+		else stopTyping();
 	}
 
 	function insertMention(participant: ParticipantDTO) {
@@ -147,14 +158,14 @@ export function MessageInput({
 		stopTyping();
 		const target = replyTo;
 		void onSendSticker(stickerId, target).then(() => {
-			clearDraft();
+			// Sending a sticker consumes the reply, not the text still in the field.
 			onCancelReply();
 		});
 	}
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (isDisabled || !hasSomethingToSend) return;
+		if (isDisabled || isSending || !hasSomethingToSend) return;
 
 		// Retract before the request: a slow network must not leave "typing…" behind.
 		stopTyping();
@@ -171,24 +182,6 @@ export function MessageInput({
 			.map((participant) => participant.id);
 
 		// Empty text before the round trip; the optimistic bubble owns any failure.
-		if (selectedFile) {
-			setIsSending(true);
-			setUploadProgress(0);
-			try {
-				await onSendFile(selectedFile, draftContent, draftReplyTo, setUploadProgress);
-				setSelectedFile(null);
-				setContent("");
-				clearDraft();
-				onCancelReply();
-			} catch (caught) {
-				setError(caught instanceof Error ? caught.message : "The file could not be sent");
-			} finally {
-				setIsSending(false);
-			}
-
-			return;
-		}
-
 		if (attachments.length === 0) {
 			localStorage.setItem(
 				`chatty:draft:${conversationId}`,
@@ -243,11 +236,12 @@ export function MessageInput({
 					attachments={attachments}
 					previewUrls={previewUrls}
 					selectedFile={selectedFile}
+					isDisabled={isDisabled || isVoiceActive}
 					onRemoveImage={removeAttachment}
-					onRemoveFile={() => {
-						setSelectedFile(null);
-						setError("");
+					onRetryFile={() => {
+						if (selectedFile) void sendFile(selectedFile);
 					}}
+					onRemoveFile={removeFile}
 				/>
 
 				<ComposerMentionSuggestions participants={mentionSuggestions} onPick={insertMention} />

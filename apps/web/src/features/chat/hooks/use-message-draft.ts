@@ -1,8 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { announceDraftPreview } from "../utils/draft-preview";
 
 interface MessageDraft {
 	content: string;
 	replyToId: string | null;
+}
+
+interface DraftSession {
+	conversationId: string;
+	draft: MessageDraft;
+	timer?: ReturnType<typeof setTimeout>;
 }
 
 interface UseMessageDraftOptions {
@@ -13,6 +20,17 @@ interface UseMessageDraftOptions {
 	isPaused?: boolean;
 }
 
+function persistDraft(session: DraftSession) {
+	announceDraftPreview(session.conversationId, session.draft.content, session.draft.replyToId);
+	try {
+		const key = `chatty:draft:${session.conversationId}`;
+		if (session.draft.content || session.draft.replyToId) localStorage.setItem(key, JSON.stringify(session.draft));
+		else localStorage.removeItem(key);
+	} catch {
+		// Storage may be unavailable or full; keep the current composer usable.
+	}
+}
+
 /** Device-local by design: unsent words are not silently synchronized to another session. */
 export function useMessageDraft({
 	conversationId,
@@ -21,45 +39,68 @@ export function useMessageDraft({
 	onRestore,
 	isPaused = false,
 }: UseMessageDraftOptions) {
-	const isRestored = useRef(false);
+	const [restoredConversationId, setRestoredConversationId] = useState<string | null>(null);
 	const onRestoreRef = useRef(onRestore);
-	const latestDraftRef = useRef<MessageDraft>({ content, replyToId });
+	const sessionRef = useRef<DraftSession | null>(null);
 	onRestoreRef.current = onRestore;
-	latestDraftRef.current = { content, replyToId };
 
 	useEffect(() => {
-		isRestored.current = false;
-		const raw = localStorage.getItem(`chatty:draft:${conversationId}`);
-		if (raw) {
-			try {
-				onRestoreRef.current(JSON.parse(raw) as MessageDraft);
-			} catch {
-				localStorage.removeItem(`chatty:draft:${conversationId}`);
-			}
-		} else onRestoreRef.current({ content: "", replyToId: null });
-		isRestored.current = true;
+		let draft: MessageDraft = { content: "", replyToId: null };
+		try {
+			const raw = localStorage.getItem(`chatty:draft:${conversationId}`);
+			const parsed: unknown = raw ? JSON.parse(raw) : null;
+			if (
+				parsed &&
+				typeof parsed === "object" &&
+				"content" in parsed &&
+				typeof parsed.content === "string" &&
+				"replyToId" in parsed &&
+				(parsed.replyToId === null || typeof parsed.replyToId === "string")
+			)
+				draft = { content: parsed.content, replyToId: parsed.replyToId };
+		} catch {
+			// Malformed or unavailable storage is an empty draft, not a broken input.
+		}
+		// Each cleanup owns its conversation's committed draft. Never copy props
+		// into this ref during render: they may belong to the next conversation.
+		const session: DraftSession = { conversationId, draft };
+		sessionRef.current = session;
+		onRestoreRef.current(draft);
+		setRestoredConversationId(conversationId);
+		const flush = () => {
+			clearTimeout(session.timer);
+			persistDraft(session);
+		};
+		const handleVisibility = () => {
+			if (document.visibilityState === "hidden") flush();
+		};
+		window.addEventListener("pagehide", flush);
+		document.addEventListener("visibilitychange", handleVisibility);
 
 		return () => {
-			const latest = latestDraftRef.current;
-			const key = `chatty:draft:${conversationId}`;
-			if (latest.content || latest.replyToId) localStorage.setItem(key, JSON.stringify(latest));
-			else localStorage.removeItem(key);
+			window.removeEventListener("pagehide", flush);
+			document.removeEventListener("visibilitychange", handleVisibility);
+			flush();
 		};
 	}, [conversationId]);
 
 	useEffect(() => {
-		if (!isRestored.current || isPaused) return;
-		const key = `chatty:draft:${conversationId}`;
-		const timer = window.setTimeout(() => {
-			if (content || replyToId) localStorage.setItem(key, JSON.stringify({ content, replyToId }));
-			else localStorage.removeItem(key);
-		}, 250);
+		const session = sessionRef.current;
+		// Restoration schedules a render. The initial empty props must not be
+		// saved before that render, including StrictMode's setup/cleanup replay.
+		if (!session || restoredConversationId !== conversationId || isPaused) return;
+		session.draft = { content, replyToId };
+		announceDraftPreview(conversationId, content, replyToId);
+		session.timer = setTimeout(() => persistDraft(session), 250);
 
-		return () => window.clearTimeout(timer);
-	}, [conversationId, content, replyToId, isPaused]);
+		return () => clearTimeout(session.timer);
+	}, [conversationId, restoredConversationId, content, replyToId, isPaused]);
 
 	return () => {
-		latestDraftRef.current = { content: "", replyToId: null };
-		localStorage.removeItem(`chatty:draft:${conversationId}`);
+		const session = sessionRef.current;
+		if (!session || session.conversationId !== conversationId) return;
+		clearTimeout(session.timer);
+		session.draft = { content: "", replyToId: null };
+		persistDraft(session);
 	};
 }

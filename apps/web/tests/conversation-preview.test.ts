@@ -23,6 +23,18 @@ describe("getConversationPreview", () => {
 		expect(getConversationPreview(makeMessage("m1", "an", "look", [makeAttachment()]))).toBe("look");
 	});
 
+	it("identifies a voice message instead of calling it an image", () => {
+		const message = makeMessage("m1", "an", "", [makeAttachment({ kind: "audio" })]);
+
+		expect(getConversationPreview(message)).toBe("Voice message");
+	});
+
+	it("identifies a standalone file instead of calling it an image", () => {
+		const message = makeMessage("m1", "an", "", [makeAttachment({ kind: "file" })]);
+
+		expect(getConversationPreview(message)).toBe("Sent a file");
+	});
+
 	it("uses the thread's own sentence for a message that was unsent", () => {
 		// The server empties `content` on delete, so without this the sidebar
 		// would show a blank row for a conversation that still has history.

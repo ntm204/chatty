@@ -1,7 +1,6 @@
-import type { MessageDTO, ParticipantDTO, ReactionEmoji } from "@chatty/shared-types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/button";
-import type { ThreadMessage } from "../types/thread-message";
+import type { MessageListProps } from "../types/message-list";
 import { MAX_RETAINED_MESSAGES } from "../constants/pagination";
 import { useMessageEditing, useMessageScroll, useUnreadDivider } from "../hooks";
 import { getReadReceipt, scrollToMessage } from "../utils";
@@ -9,67 +8,7 @@ import { MessageEditHistory } from "./message-edit-history";
 import { MessageRows } from "./message-rows";
 import { ReactionDetailsPanel } from "./reaction-details-panel";
 import { ScrollToLatestButton } from "./scroll-to-latest-button";
-
-interface MessageListProps {
-	conversationId: string;
-	messages: ThreadMessage[];
-	unreadCount: number;
-	currentUserId: string;
-	participants: ParticipantDTO[];
-	/**
-	 * Whether to name the author above each incoming bubble.
-	 *
-	 * Passed in rather than derived from `participants.length`, which is what it
-	 * used to be: a three-person group that loses a member still needs the names
-	 * — the messages of the person who left are exactly the ones that become
-	 * unattributable without them.
-	 */
-	isGroup: boolean;
-	/**
-	 * Whether the viewer shares their own read receipts. False hides the "Seen"
-	 * marker entirely — the setting is symmetric, so somebody who has stopped
-	 * sending theirs stops seeing everyone else's.
-	 */
-	areReceiptsShared: boolean;
-	/**
-	 * True while the first page is in flight. Without it an unfinished load and
-	 * an empty conversation render identically, so a slow network shows "No
-	 * messages yet. Say hello." over a thread that has years in it.
-	 */
-	isLoadingThread: boolean;
-	hasMoreOlder: boolean;
-	isLoadingOlder: boolean;
-	onLoadOlder: () => void;
-	hasMoreNewer: boolean;
-	isLoadingNewer: boolean;
-	onLoadNewer: () => void;
-	/**
-	 * Both write over HTTP and return once the server has accepted. Neither
-	 * updates this list — the `message:updated` broadcast does, so the author
-	 * sees their own change through the same path everyone else does.
-	 */
-	onEditMessage: (messageId: string, content: string) => void;
-	onDeleteMessage: (messageId: string) => void;
-	onHideMessage: (messageId: string) => void;
-	/** Both act on a draft this tab failed to send, never on a stored message. */
-	onRetrySend: (draftId: string) => void;
-	onDiscardDraft: (draftId: string) => void;
-	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
-	/** Puts a message in the composer's reply slot. Owned by the page, which owns the composer. */
-	onReplyToMessage: (message: MessageDTO) => void;
-	onForwardMessage: (message: MessageDTO) => void;
-	onSaveMessage: (messageId: string) => void;
-	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
-	pinnedMessageIds: string[];
-	onJumpToMessage: (messageId: string) => void;
-	/** Drops the oldest page once the thread outgrows what it needs — see `MAX_RETAINED_MESSAGES`. */
-	onTrimHistory: () => void;
-	requestEditLast: number;
-	requestCancelEdit: number;
-	onEditingStateChange: (isEditing: boolean) => void;
-	targetMessageId?: string | null;
-	onReturnToLatest?: () => void;
-}
+import { ThreadTypingIndicator } from "./thread-typing-indicator";
 
 /**
  * The thread: day rules, system lines and message rows, in one scroll container.
@@ -85,7 +24,9 @@ export function MessageList({
 	unreadCount,
 	currentUserId,
 	participants,
+	typingMessage,
 	isGroup,
+	themeColor,
 	areReceiptsShared,
 	isLoadingThread,
 	hasMoreOlder,
@@ -102,7 +43,6 @@ export function MessageList({
 	onToggleReaction,
 	onReplyToMessage,
 	onForwardMessage,
-	onSaveMessage,
 	onTogglePinMessage,
 	pinnedMessageIds,
 	onJumpToMessage,
@@ -113,10 +53,27 @@ export function MessageList({
 	targetMessageId,
 	onReturnToLatest,
 }: MessageListProps) {
+	const isViewingHistory = Boolean(targetMessageId) || hasMoreNewer;
+	const canReturnToLatest = isViewingHistory && Boolean(onReturnToLatest);
+	const [returningConversationId, setReturningConversationId] = useState<string | null>(null);
+	const isReturningToLatest = returningConversationId === conversationId;
+	const hasObservedReturnLoadRef = useRef(false);
+	const lastScrollTargetRef = useRef<string | null>(null);
 	// The scroll container lives here rather than in the page, so everything that
 	// reads or writes scroll position sits in one component.
-	const { containerRef, handleScroll, isFarFromBottom, scrollToLatest, isPinnedToLatestRef } = useMessageScroll({
+	const {
+		containerRef,
+		contentRef,
+		handleScroll,
+		isFarFromBottom,
+		scrollToLatest,
+		isPinnedToLatestRef,
+		newMessageCount,
+	} = useMessageScroll({
+		conversationId,
+		currentUserId,
 		messages,
+		isViewingHistory,
 		hasMoreOlder,
 		isLoadingOlder,
 		onLoadOlder,
@@ -149,10 +106,35 @@ export function MessageList({
 	});
 
 	useEffect(() => {
-		if (!targetMessageId) return;
+		lastScrollTargetRef.current = null;
+	}, [conversationId, targetMessageId]);
 
-		scrollToMessage(targetMessageId, "auto");
-	}, [targetMessageId, messages]);
+	useEffect(() => {
+		if (!targetMessageId || lastScrollTargetRef.current === targetMessageId) return;
+		// Wait for the target to render, then leave the reader free to move. Socket
+		// edits and page loads must not repeatedly drag them back to the search hit.
+		const tryScroll = () => {
+			if (lastScrollTargetRef.current !== targetMessageId && scrollToMessage(targetMessageId, "auto")) {
+				lastScrollTargetRef.current = targetMessageId;
+			}
+		};
+		tryScroll();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(tryScroll);
+		if (containerRef.current) observer.observe(containerRef.current);
+
+		return () => observer.disconnect();
+	}, [conversationId, targetMessageId, messages, containerRef]);
+
+	useEffect(() => {
+		if (isReturningToLatest && isLoadingThread) hasObservedReturnLoadRef.current = true;
+		if (
+			returningConversationId !== conversationId ||
+			(!isLoadingThread && (!isViewingHistory || hasObservedReturnLoadRef.current))
+		) {
+			setReturningConversationId(null);
+		}
+	}, [conversationId, isLoadingThread, isReturningToLatest, isViewingHistory, returningConversationId]);
 
 	/*
 	 * Three conditions, and each one is a way the reader would notice:
@@ -185,26 +167,34 @@ export function MessageList({
 		[cancelEdit, onEditMessage],
 	);
 
+	function handleJumpToLatest() {
+		// The control disappears at the destination. Keep keyboard navigation in
+		// the thread without focusing the composer and opening a mobile keyboard.
+		containerRef.current?.focus({ preventScroll: true });
+		if (canReturnToLatest && onReturnToLatest) {
+			hasObservedReturnLoadRef.current = false;
+			setReturningConversationId(conversationId);
+			onReturnToLatest();
+		} else {
+			scrollToLatest();
+		}
+	}
+
 	return (
-		<div className="relative h-full">
-			<div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto bg-paper">
+		<div className="relative h-full @container">
+			<div
+				ref={containerRef}
+				onScroll={handleScroll}
+				role="region"
+				aria-label="Message history"
+				tabIndex={-1}
+				className="h-full overflow-y-auto bg-paper outline-none"
+			>
 				{/* `justify-end` on a wrapper that is at least as tall as the viewport is
 			    what makes a short conversation sit on the composer rather than
 			    hanging from the header with a screen of empty paper under it. It
 			    does nothing once the thread is long enough to scroll. */}
-				<div className="flex min-h-full flex-col justify-end">
-					{targetMessageId && onReturnToLatest && (
-						<div className="sticky top-3 z-10 flex justify-center">
-							<Button
-								variant="outline"
-								onClick={onReturnToLatest}
-								className="eyebrow bg-paper-raised px-3.5 py-2 text-ink-soft"
-							>
-								Return to latest messages
-							</Button>
-						</div>
-					)}
-
+				<div ref={contentRef} className="flex min-h-full flex-col justify-end">
 					{isLoadingOlder && (
 						<p className="eyebrow py-4 text-center text-ink-faint">Loading earlier messages…</p>
 					)}
@@ -226,6 +216,7 @@ export function MessageList({
 								currentUserId={currentUserId}
 								participants={participants}
 								isGroup={isGroup}
+								themeColor={themeColor}
 								readReceipt={readReceipt}
 								unreadDividerMessageId={unreadDividerMessageId}
 								unreadCount={initialUnreadCount}
@@ -244,13 +235,12 @@ export function MessageList({
 								onShowReactions={setReactionsMessageId}
 								onReplyToMessage={onReplyToMessage}
 								onForwardMessage={onForwardMessage}
-								onSaveMessage={onSaveMessage}
 								onTogglePinMessage={onTogglePinMessage}
 								onJumpToMessage={onJumpToMessage}
 							/>
 
 							{hasMoreNewer && (
-								<div className="mt-5 text-center">
+								<div className="mb-12 mt-5 text-center">
 									<Button
 										variant="outline"
 										onClick={onLoadNewer}
@@ -263,15 +253,24 @@ export function MessageList({
 							)}
 						</div>
 					)}
+					<ThreadTypingIndicator
+						isGroup={isGroup}
+						typingMessage={
+							!isViewingHistory && !isLoadingThread && !isReturningToLatest
+								? typingMessage?.trim() || null
+								: null
+						}
+					/>
 				</div>
 			</div>
 
-			{isFarFromBottom && (
-				<ScrollToLatestButton
-					unreadCount={unreadCount}
-					onClick={hasMoreNewer && onReturnToLatest ? onReturnToLatest : scrollToLatest}
-				/>
-			)}
+			<ScrollToLatestButton
+				isVisible={isFarFromBottom || canReturnToLatest || isReturningToLatest}
+				isLoading={isReturningToLatest}
+				newMessageCount={newMessageCount}
+				typingMessage={typingMessage ?? null}
+				onClick={handleJumpToLatest}
+			/>
 
 			{historyMessageId && messages[0] && (
 				<MessageEditHistory

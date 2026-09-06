@@ -1,9 +1,4 @@
-import type {
-	AttachmentWithMessageDTO,
-	ConversationVaultSummaryDTO,
-	MessageLinkDTO,
-	MessageSearchResultDTO,
-} from "@chatty/shared-types";
+import type { AttachmentWithMessageDTO, ConversationVaultSummaryDTO, MessageLinkDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { api } from "@/api/client";
@@ -15,14 +10,12 @@ interface ConversationVault {
 	summary: ConversationVaultSummaryDTO | null;
 	attachments: AttachmentWithMessageDTO[];
 	links: MessageLinkDTO[];
-	saved: MessageSearchResultDTO[];
 	isLoading: boolean;
 	error: string;
 	hasMore: boolean;
 	nextCursor: string | undefined;
 	loadMoreRef: RefObject<HTMLDivElement>;
 	loadPage: (before?: string, replace?: boolean) => Promise<void>;
-	removeSaved: (messageId: string) => Promise<void>;
 }
 
 const PAGE_SIZE = 40;
@@ -44,7 +37,6 @@ export function useConversationVault(conversationId: string, activeTab: VaultTab
 	const [summary, setSummary] = useState<ConversationVaultSummaryDTO | null>(null);
 	const [attachments, setAttachments] = useState<AttachmentWithMessageDTO[]>([]);
 	const [links, setLinks] = useState<MessageLinkDTO[]>([]);
-	const [saved, setSaved] = useState<MessageSearchResultDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
 	const [hasMore, setHasMore] = useState(false);
@@ -63,15 +55,6 @@ export function useConversationVault(conversationId: string, activeTab: VaultTab
 					if (sequence !== requestSequence.current) return;
 					setLinks((current) => (replace ? page.items : [...current, ...page.items]));
 					setNextCursor(page.items.at(-1)?.id);
-					setHasMore(page.hasMore);
-				} else if (activeTab === "saved") {
-					// Scoped by the server. Filtering an account-wide page here is what
-					// used to make this tab open empty for anybody who saves messages in
-					// more than one conversation.
-					const page = await api.listSavedMessages(PAGE_SIZE, before, conversationId);
-					if (sequence !== requestSequence.current) return;
-					setSaved((current) => (replace ? page.results : [...current, ...page.results]));
-					setNextCursor(page.results.at(-1)?.message.id);
 					setHasMore(page.hasMore);
 				} else {
 					const kind = activeTab === "media" ? "image" : activeTab === "files" ? "file" : "audio";
@@ -115,35 +98,20 @@ export function useConversationVault(conversationId: string, activeTab: VaultTab
 	useEffect(() => {
 		setAttachments([]);
 		setLinks([]);
-		setSaved([]);
 		setNextCursor(undefined);
 		setHasMore(false);
 		void loadPage(undefined, true);
 	}, [loadPage]);
 
-	const removeSaved = useCallback(
-		async (messageId: string) => {
-			await api.removeSavedMessage(conversationId, messageId);
-			setSaved((current) => current.filter((item) => item.message.id !== messageId));
-			// The count is on the category the reader is about to walk back to, so it
-			// has to move now. Re-fetching the summary for one decrement would be a
-			// round trip to learn something already known.
-			setSummary((current) => (current ? { ...current, saved: Math.max(0, current.saved - 1) } : current));
-		},
-		[conversationId],
-	);
-
 	return {
 		summary,
 		attachments,
 		links,
-		saved,
 		isLoading,
 		error,
 		hasMore,
 		nextCursor,
 		loadMoreRef,
 		loadPage,
-		removeSaved,
 	};
 }

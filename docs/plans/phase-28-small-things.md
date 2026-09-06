@@ -40,6 +40,11 @@ Restore on open, including the reply target if the message is still there.
 
 Two small things that belong together because both are about "where am I".
 
+This is the original plan. Roadmap phase 50 now uses a centered 32px down-arrow control inside a 44px
+touch target, appearing beyond 120px and hiding within 80px. Its animated pill tracks actual typing
+and new arrivals while reading above the live thread; the opening unread divider keeps its own semantics.
+Search return shares the action and exposes loading/failure. See phase 50 for interruption and race handling.
+
 - A floating "↓" button once the thread is scrolled more than a screen from the bottom, with the unread
   count on it when there is one. `useMessageScroll` already tracks the position it needs.
 - A "N new messages" rule drawn above the first unread message on open, from the read marker that is

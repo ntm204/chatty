@@ -117,7 +117,7 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 								variant="ghost"
 								onClick={() => pick(char)}
 								aria-label={`Insert ${char}`}
-								className="size-9 rounded-control p-0 text-[20px] leading-none"
+								className="size-9 rounded-full p-0 text-[20px] leading-none hover:bg-transparent"
 							>
 								{char}
 							</Button>
@@ -134,7 +134,7 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 						onClick={() => pick(entry.char)}
 						aria-label={`Insert ${entry.char}`}
 						title={entry.keywords.split(" ")[0]}
-						className="size-9 rounded-control p-0 text-[20px] leading-none"
+						className="size-9 rounded-full p-0 text-[20px] leading-none hover:bg-transparent"
 					>
 						{entry.char}
 					</Button>

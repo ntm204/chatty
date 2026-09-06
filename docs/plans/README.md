@@ -1,4 +1,16 @@
-# Plans — phases 24 to 28
+# Implementation plans
+
+## Active plan
+
+| Plan | Scope | Status |
+| --- | --- | --- |
+| [Experience polish](experience-polish.md) | 60 tasks in 12 batches for existing workflows, interface details and recovery from errors; includes acceptance criteria and implementation order | Planned; XP-01 and XP-11 are next |
+
+The active plan follows the current workflow in [CLAUDE.md](../../CLAUDE.md). Public launch and large
+feature additions are deferred. The specifications below are the historical record of phases 24–28;
+their exclusions describe that earlier scope, not the complete state of today's application.
+
+## Historical plans — phases 24 to 28
 
 Specifications written **before** the work, for the four gaps a real user named after phase 23:
 there is no way to browse what a conversation has accumulated, no way to send anything that is not a

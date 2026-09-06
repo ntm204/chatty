@@ -35,7 +35,10 @@ export function ConversationHeader({
 }: ConversationHeaderProps) {
 	// Typing wins over presence: someone typing is obviously online, and showing
 	// both would flicker the line between two facts that say the same thing.
-	const typingMessage = getTypingMessage(typingUserIds, conversation.participants);
+	const typingMessage = getTypingMessage(
+		typingUserIds.filter((userId) => userId !== currentUserId),
+		conversation.participants,
+	);
 	const { isPeerOnline, peerStatus, onlineCount } = getConversationPresence(
 		conversation,
 		currentUserId,
@@ -75,12 +78,9 @@ export function ConversationHeader({
 				<div className="flex h-[14px] items-center gap-2">
 					{typingMessage ? (
 						<>
-							<span aria-hidden="true" className="flex shrink-0 gap-0.5">
-								<span className="size-[3px] bg-signal" />
-								<span className="size-[3px] bg-signal opacity-50" />
-								<span className="size-[3px] bg-signal opacity-25" />
+							<span className="truncate text-[11px] text-ink-soft">
+								{typingMessage?.replace(/…$/, "")}
 							</span>
-							<span className="eyebrow truncate text-signal">{typingMessage}</span>
 						</>
 					) : conversation.isGroup ? (
 						<>
@@ -116,6 +116,8 @@ export function ConversationHeader({
 					variant="ghost"
 					onClick={onToggleGroupMembers}
 					aria-pressed={isManagingGroup}
+					aria-expanded={Boolean(isManagingGroup)}
+					aria-controls={isManagingGroup ? "conversation-details" : undefined}
 					aria-label={conversation.isGroup ? "Group members" : "Conversation storage and details"}
 					className={cn("size-8 shrink-0 p-0", isManagingGroup && "bg-ink/5 text-ink")}
 				>

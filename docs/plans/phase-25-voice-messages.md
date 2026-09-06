@@ -125,6 +125,11 @@ XHR progress path already in `api/client.ts`.
 
 ## Item 99 — playing
 
+This describes the original implementation. Phase 48 in [ROADMAP](../ROADMAP.md) adds native range
+semantics for pointer, touch and keyboard seeking, visible playback recovery, and a voice-specific
+layout. Phase 49 compacts it to a 240×56px player and a 44px recording/preview bar while retaining
+those controls. Progress now uses the message's ink colour; green remains a presence colour.
+
 `voice-player.tsx` + `constants/voice.ts`:
 
 - Play/pause, the waveform drawn as bars from `waveform`, elapsed/total in mono, a speed toggle

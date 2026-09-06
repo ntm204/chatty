@@ -42,7 +42,7 @@ describe("AttachmentLightbox", () => {
 		expect(screen.queryByRole("group", { name: "Image thumbnails" })).not.toBeInTheDocument();
 	});
 
-	it("closes on a press on the backdrop but not on a press on the picture", () => {
+	it("closes on a press on the backdrop but not on a press on the picture", async () => {
 		const onClose = vi.fn();
 		render(<AttachmentLightbox attachments={[makeAttachment()]} initialIndex={0} caption="" onClose={onClose} />);
 		const dialog = screen.getByRole("dialog");
@@ -51,7 +51,7 @@ describe("AttachmentLightbox", () => {
 		expect(onClose).not.toHaveBeenCalled();
 
 		fireEvent.click(dialog);
-		expect(onClose).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 	});
 
 	it("keeps a press on an arrow from closing the viewer underneath it", () => {
@@ -120,7 +120,7 @@ describe("AttachmentLightbox zoom and rotation", () => {
 	it("fits a wide photograph after a quarter turn without changing its form", () => {
 		render(<AttachmentLightbox attachments={[makeAttachment()]} initialIndex={0} caption="" onClose={vi.fn()} />);
 		const image = screen.getByAltText("Image");
-		const imageArea = image.parentElement?.parentElement;
+		const imageArea = image.closest("[data-lightbox-image-area]");
 		if (!(imageArea instanceof HTMLDivElement)) throw new Error("The image area is missing");
 
 		Object.defineProperties(image, {

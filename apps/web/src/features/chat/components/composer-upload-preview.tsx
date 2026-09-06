@@ -4,6 +4,7 @@ import { ComposerAttachments } from "./composer-attachments";
 
 interface ComposerUploadPreviewProps {
 	error: string;
+	isDisabled: boolean;
 	isSending: boolean;
 	uploadProgress: number;
 	attachments: File[];
@@ -11,10 +12,12 @@ interface ComposerUploadPreviewProps {
 	selectedFile: File | null;
 	onRemoveImage: (index: number) => void;
 	onRemoveFile: () => void;
+	onRetryFile: () => void;
 }
 
 export function ComposerUploadPreview({
 	error,
+	isDisabled,
 	isSending,
 	uploadProgress,
 	attachments,
@@ -22,6 +25,7 @@ export function ComposerUploadPreview({
 	selectedFile,
 	onRemoveImage,
 	onRemoveFile,
+	onRetryFile,
 }: ComposerUploadPreviewProps) {
 	return (
 		<>
@@ -53,9 +57,20 @@ export function ComposerUploadPreview({
 			{selectedFile && (
 				<div className="flex items-center gap-2 px-4 pt-3 text-sm text-ink-soft">
 					<span className="min-w-0 flex-1 truncate">{selectedFile.name}</span>
+					{!isSending && (
+						<Button
+							variant="ghost"
+							onClick={onRetryFile}
+							disabled={isDisabled}
+							aria-label="Retry file upload"
+						>
+							Retry
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						onClick={onRemoveFile}
+						disabled={isSending}
 						aria-label="Remove attached file"
 						className="size-6 p-0"
 					>

@@ -34,6 +34,12 @@ interface PendingUpload {
 	urls: string[];
 }
 
+interface LoadingMessageChanges {
+	arrivals: Map<string, MessageDTO>;
+	updates: Map<string, MessageDTO>;
+	hiddenIds: Set<string>;
+}
+
 /**
  * Hands back one draft's object URLs, and forgets its files.
  *
@@ -145,6 +151,18 @@ export function useConversationMessages(
 	const currentUserId = useAuth((state) => state.currentUser?.id);
 	const cacheScope = currentUserId && conversationId ? `${currentUserId}:${conversationId}` : null;
 	const deliverRef = useRef<(draft: ThreadMessage) => Promise<void>>(async () => undefined);
+	const navigationGenerationRef = useRef(0);
+	const activeCacheScopeRef = useRef<string | null>(null);
+	// A cached historical window cannot establish that a return reached latest.
+	// Keep requiring the server across retries until that navigation succeeds.
+	const requiresServerPageRef = useRef(false);
+	const loadingChangesRef = useRef<LoadingMessageChanges | null>(null);
+	const olderRequestRef = useRef<number | null>(null);
+	const newerRequestRef = useRef<number | null>(null);
+	const resyncRequestRef = useRef<number | null>(null);
+	// Live arrivals can sit beyond an unloaded gap after opening a search result.
+	// Only a fetched page may advance the cursor across that gap.
+	const newerCursorRef = useRef<string | null>(null);
 
 	// Anything still in flight when the tab navigates away or the hook unmounts
 	// has nobody left to settle it, and its URLs would outlive the component
@@ -167,9 +185,31 @@ export function useConversationMessages(
 	);
 
 	useEffect(() => {
+		const generation = ++navigationGenerationRef.current;
+		if (activeCacheScopeRef.current !== cacheScope) requiresServerPageRef.current = false;
+		activeCacheScopeRef.current = cacheScope;
+		if (requestedMessageId) requiresServerPageRef.current = true;
+		const requiresServerPage = requiresServerPageRef.current;
+		olderRequestRef.current = null;
+		newerRequestRef.current = null;
+		resyncRequestRef.current = null;
+		newerCursorRef.current = null;
+		const loadingChanges: LoadingMessageChanges = {
+			arrivals: new Map(),
+			updates: new Map(),
+			hiddenIds: new Set(),
+		};
+		loadingChangesRef.current = loadingChanges;
+		setHasMoreOlder(false);
+		setHasMoreNewer(false);
+		setIsLoadingOlder(false);
+		setIsLoadingNewer(false);
+		setTargetMessageId(null);
+
 		if (!conversationId || !currentUserId || !cacheScope) {
+			loadingChangesRef.current = null;
 			setMessages([]);
-			setHasMoreOlder(false);
+			setIsLoadingThread(false);
 			setLoadError("");
 			setLoadedCacheScope(null);
 			setRestoredDraftIds([]);
@@ -180,6 +220,20 @@ export function useConversationMessages(
 		let isCurrent = true;
 		let hasLocalMessages = false;
 		let hasServerPage = false;
+
+		const mergeLoadingPage = (page: MessageDTO[]): MessageDTO[] => {
+			const knownIds = new Set(page.map((message) => message.id));
+			const arrived = [...loadingChanges.arrivals.values()].filter((message) => !knownIds.has(message.id));
+
+			// Updates replace messages in the fetched window; an edit elsewhere in
+			// history must not append that message outside the page's cursors.
+			return [...page, ...arrived]
+				.filter((message) => !loadingChanges.hiddenIds.has(message.id))
+				.map(
+					(message) =>
+						loadingChanges.updates.get(message.id) ?? loadingChanges.arrivals.get(message.id) ?? message,
+				);
+		};
 
 		const request = requestedMessageId
 			? api.getMessageContext(conversationId, requestedMessageId, MESSAGE_PAGE_SIZE)
@@ -212,7 +266,14 @@ export function useConversationMessages(
 				hasLocalMessages = cached.length > 0 || restored.length > 0;
 				setMessages((current) => {
 					const drafts = restored.map((item) => item.draft);
-					if (!hasServerPage) return [...cached, ...drafts];
+					if (!hasServerPage) {
+						const knownIds = new Set([...cached, ...drafts].map((message) => message.id));
+						const currentDrafts = current.filter(
+							(message) => isDraftId(message.id) && !knownIds.has(message.id),
+						);
+
+						return [...mergeLoadingPage(cached), ...drafts, ...currentDrafts];
+					}
 					const known = new Set(current.map((message) => message.id));
 
 					return [...current, ...drafts.filter((draft) => !known.has(draft.id))];
@@ -234,12 +295,18 @@ export function useConversationMessages(
 				// Keep durable drafts beside the fresh page. The server history omits
 				// client ids, so the outbox replay is what resolves a send whose original
 				// response disappeared after commit.
-				setMessages((current) => [...page.messages, ...current.filter((message) => isDraftId(message.id))]);
+				setMessages((current) => {
+					// The page and cache may have been read before a socket event or send
+					// response arrived. Keep those arrivals while replacing the window.
+					return [...mergeLoadingPage(page.messages), ...current.filter((message) => isDraftId(message.id))];
+				});
 				// A full page probably means more exist. When the total is an exact
 				// multiple of the page size this costs one empty request at the end,
 				// which is cheaper than asking the server for a count every time.
 				setHasMoreOlder(page.hasMoreOlder);
 				setHasMoreNewer(page.hasMoreNewer);
+				newerCursorRef.current = getNewestStoredMessage(page.messages)?.id ?? null;
+				if (!requestedMessageId) requiresServerPageRef.current = false;
 				setTargetMessageId(requestedMessageId);
 			})
 			.catch(async (error: Error) => {
@@ -247,16 +314,19 @@ export function useConversationMessages(
 				// one thing a conversation with history is definitely not — and it
 				// offered nothing to try again with.
 				await localRequest;
-				if (!isCurrent || hasLocalMessages) return;
+				if (!isCurrent || (hasLocalMessages && !requiresServerPage)) return;
 				setLoadError(error.message);
 			});
 
 		void Promise.allSettled([localRequest, serverRequest]).then(() => {
-			if (isCurrent) setIsLoadingThread(false);
+			if (!isCurrent) return;
+			loadingChangesRef.current = null;
+			setIsLoadingThread(false);
 		});
 
 		return () => {
 			isCurrent = false;
+			if (navigationGenerationRef.current === generation) navigationGenerationRef.current += 1;
 		};
 	}, [cacheScope, conversationId, currentUserId, requestedMessageId, reloadCount]);
 
@@ -281,7 +351,7 @@ export function useConversationMessages(
 	 * pulling them to the live end would throw away the thing they went to find.
 	 */
 	const resync = useCallback(() => {
-		if (!conversationId) return;
+		if (!conversationId || isLoadingThread) return;
 		const failedDrafts = messages.filter((message) => message.deliveryState === "failed");
 		if (failedDrafts.length > 0) {
 			const failedIds = new Set(failedDrafts.map((message) => message.id));
@@ -294,61 +364,98 @@ export function useConversationMessages(
 				void deliverRef.current({ ...draft, deliveryState: "pending" }).catch(() => undefined);
 			}
 		}
-		if (hasMoreNewer) return;
+		if (hasMoreNewer || resyncRequestRef.current !== null) return;
+		const generation = navigationGenerationRef.current;
+		resyncRequestRef.current = generation;
 
 		void api
 			.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE })
 			.then((page) => {
+				if (navigationGenerationRef.current !== generation) return;
 				const reloaded = [...page].reverse();
-				const merged = mergeReloadedMessages(messages, reloaded);
-				setMessages(merged);
+				setMessages((current) => {
+					const merged = mergeReloadedMessages(current, reloaded);
 
-				// The oldest message on screen changing means the merge found no
-				// overlap and dropped the loaded history, so older messages are behind
-				// a cursor again rather than already fetched.
-				if (merged[0]?.id !== messages[0]?.id) setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
+					// No overlap means the disconnected interval exceeded one page.
+					if (merged[0]?.id !== current[0]?.id) setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
+
+					return merged;
+				});
 			})
 			.catch(() => {
 				// Leaves the screen exactly as it was, which is where it already was.
 				// The connection banner is still up and the next reconnect tries again.
+			})
+			.finally(() => {
+				if (navigationGenerationRef.current === generation) resyncRequestRef.current = null;
 			});
-	}, [conversationId, hasMoreNewer, messages]);
+	}, [conversationId, hasMoreNewer, isLoadingThread, messages]);
 
 	const loadOlder = useCallback(() => {
 		const oldestMessage = messages[0];
-		if (!conversationId || !oldestMessage || isLoadingOlder || !hasMoreOlder) return;
+		if (!conversationId || !oldestMessage || isLoadingThread || olderRequestRef.current !== null || !hasMoreOlder) {
+			return;
+		}
 
+		const generation = navigationGenerationRef.current;
+		olderRequestRef.current = generation;
 		setIsLoadingOlder(true);
 		void api
 			.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE, before: oldestMessage.id })
 			.then((page) => {
-				setMessages((current) => [...[...page].reverse(), ...current]);
+				if (navigationGenerationRef.current !== generation) return;
+				setMessages((current) => {
+					const knownIds = new Set(current.map((message) => message.id));
+
+					return [...[...page].reverse().filter((message) => !knownIds.has(message.id)), ...current];
+				});
 				setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
 			})
 			.catch(() => {
 				// The loaded snapshot remains usable; the connection banner owns retry.
 			})
-			.finally(() => setIsLoadingOlder(false));
-	}, [conversationId, messages, isLoadingOlder, hasMoreOlder]);
+			.finally(() => {
+				if (navigationGenerationRef.current !== generation) return;
+				olderRequestRef.current = null;
+				setIsLoadingOlder(false);
+			});
+	}, [conversationId, messages, isLoadingThread, hasMoreOlder]);
 
 	const loadNewer = useCallback(() => {
-		// The newest *stored* message, not the newest on screen: a draft's id names
-		// nothing on the server, so paging from one asks for messages after a
-		// cursor that does not exist.
-		const newestMessage = getNewestStoredMessage(messages);
-		if (!conversationId || !newestMessage || isLoadingNewer || !hasMoreNewer) return;
+		const cursor = newerCursorRef.current;
+		if (!conversationId || !cursor || isLoadingThread || newerRequestRef.current !== null || !hasMoreNewer) return;
+		const generation = navigationGenerationRef.current;
+		newerRequestRef.current = generation;
 		setIsLoadingNewer(true);
 		void api
-			.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE, after: newestMessage.id })
+			.listMessages(conversationId, { limit: MESSAGE_PAGE_SIZE, after: cursor })
 			.then((page) => {
-				setMessages((current) => [...current, ...page]);
+				if (navigationGenerationRef.current !== generation) return;
+				newerCursorRef.current = page[page.length - 1]?.id ?? cursor;
+				setMessages((current) => {
+					const knownIds = new Set(current.map((message) => message.id));
+					const stored = current.filter((message) => !isDraftId(message.id));
+					const added = page.filter((message) => !knownIds.has(message.id));
+					// A page belongs before any live arrivals beyond its end. Keep local
+					// drafts last regardless of the sender's wall clock.
+					const ordered = [...stored, ...added].sort(
+						(left, right) =>
+							left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
+					);
+
+					return [...ordered, ...current.filter((message) => isDraftId(message.id))];
+				});
 				setHasMoreNewer(page.length === MESSAGE_PAGE_SIZE);
 			})
 			.catch(() => {
 				// Same as older paging: preserve the window already on screen.
 			})
-			.finally(() => setIsLoadingNewer(false));
-	}, [conversationId, messages, isLoadingNewer, hasMoreNewer]);
+			.finally(() => {
+				if (navigationGenerationRef.current !== generation) return;
+				newerRequestRef.current = null;
+				setIsLoadingNewer(false);
+			});
+	}, [conversationId, isLoadingThread, hasMoreNewer]);
 
 	/**
 	 * Puts a draft on the wire and settles it, whichever way it goes.
@@ -384,6 +491,8 @@ export function useConversationMessages(
 
 			releaseUpload(pendingUploadsRef.current, draft.id);
 			void removeLocalMessage(draft.id).catch(() => undefined);
+			if (activeCacheScopeRef.current !== `${draft.author?.id}:${draft.conversationId}`) return;
+			loadingChangesRef.current?.arrivals.set(sent.id, sent);
 			setMessages((current) => {
 				const withoutDraft = current.filter((message) => message.id !== draft.id);
 
@@ -528,10 +637,23 @@ export function useConversationMessages(
 	}, []);
 
 	useSocketEvent(
+		"message:updated",
+		useCallback(
+			(message: MessageDTO) => {
+				if (message.conversationId === conversationId) {
+					loadingChangesRef.current?.updates.set(message.id, message);
+				}
+			},
+			[conversationId],
+		),
+	);
+
+	useSocketEvent(
 		"message:hidden",
 		useCallback(
 			(event: { conversationId: string; messageId: string }) => {
 				if (event.conversationId === conversationId) {
+					loadingChangesRef.current?.hiddenIds.add(event.messageId);
 					setMessages((current) => current.filter((message) => message.id !== event.messageId));
 				}
 				onConversationsChanged();
@@ -545,6 +667,7 @@ export function useConversationMessages(
 		useCallback(
 			(message: MessageDTO) => {
 				if (message.conversationId === conversationId) {
+					loadingChangesRef.current?.arrivals.set(message.id, message);
 					if (message.clientId && message.author?.id === currentUserId) {
 						releaseUpload(pendingUploadsRef.current, message.clientId);
 						void removeLocalMessage(message.clientId).catch(() => undefined);

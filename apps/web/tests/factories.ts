@@ -46,8 +46,9 @@ export function makeParticipant(
 	displayName: string,
 	lastReadMessageId: string | null = null,
 	role: ConversationRole = "member",
+	nickname: string | null = null,
 ): ParticipantDTO {
-	return { ...makeUser(id, displayName), role, lastReadMessageId };
+	return { ...makeUser(id, displayName), role, lastReadMessageId, nickname };
 }
 
 /**
@@ -157,6 +158,9 @@ export function makeConversation(overrides: Partial<ConversationDTO> = {}): Conv
 		isGroup: false,
 		name: null,
 		invitePolicy: "everyone",
+		avatarUrl: null,
+		themeColor: null,
+		quickReactionEmoji: null,
 		participants: [],
 		lastMessage: null,
 		unreadCount: 0,

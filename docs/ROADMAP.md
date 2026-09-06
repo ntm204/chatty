@@ -5,6 +5,18 @@ work it describes — a roadmap that lags behind the code is worse than none, be
 
 Status: `done` · `next` · `planned` · `blocked` · `dropped`
 
+## Current focus — everyday experience polish
+
+The next work follows the [experience polish plan](plans/experience-polish.md): 60 individually
+reviewable tasks across 12 batches, covering composition, drafts, message actions, reading,
+notifications, search, Saved, media, navigation and accessibility. Task status and acceptance criteria
+live in that plan; these entries are planned work, not additional completed phases.
+
+The owner's immediate interface and voice feedback is completed in phases 47–50 below. The remaining backlog
+starts with account-scoped drafts (`XP-01`) and retraction of edit history (`XP-11`), then multiline
+composition and IME-safe input. Public launch and large product additions are deferred by the current
+product choice. Record completed outcomes here as each implementation is verified.
+
 ---
 
 ## Phase 1 — Fix what is wrong — `done`
@@ -1134,7 +1146,8 @@ plus `MessageRow`, `SystemMessage` and `DaySeparator`, and what stayed in the co
 what a row cannot answer on its own: where the day changes, where a run begins, which single message
 the "Seen" marker sits on, and which one is open for editing.
 
-**A bubble's bottom corner is cut to 2px on the side the message came from.** That notch, not the
+**At this phase, a bubble's bottom corner was cut to 2px on the side the message came from.** Phase 47
+replaces that geometry with soft ends and compact joins. At the time, that notch, not the
 fill, is what says who spoke — it survives a glance, a screenshot, and anyone who cannot tell the ink
 block from the paper one by colour.
 
@@ -1274,6 +1287,9 @@ The paper lost about half its chroma at the same time. At the old value the back
 newsprint, which dirtied every photograph posted on it.
 
 ### Items 64 and 65: a run of messages is one object
+
+The sizes and tail treatment below describe phase 17. Phase 47 keeps grouping and replaces the
+geometry with 18px soft ends, 5px facing joins and separate 12px media corners.
 
 What shipped before put the same 2px notch on **every** bubble, so a burst of five messages showed
 five tails stuttering down one edge and the notch stopped meaning "the turn ends here" — it meant
@@ -2395,7 +2411,7 @@ with the panel's width.
 
 ### Why the tabs had to go
 
-The panel is 448px on a desktop and the width of a phone below that. Six tabs did not fit, so the
+The panel now docks at 280–400px on desktops at least 1280px wide and replaces the thread below that. Six tabs did not fit, so the
 strip carried `overflow-x-auto` — which is not a layout, it is an admission: half the categories sat
 behind a horizontal scroll gesture that nobody performs on a desktop, on the most valuable row of the
 panel, spending it on six words that say nothing about what is inside them.
@@ -2411,22 +2427,17 @@ included. A row that says 9 and opens onto 8 is worse than a row with no number,
 the list read the same rows to make that impossible. `COUNT(*)::int`, because `$queryRaw` returns a
 PostgreSQL bigint as a JavaScript BigInt and `res.json()` refuses to serialise one.
 
-### What stayed a sheet, and why that is the decision
+### Responsive conversation panels
 
-The shape this borrows from is KakaoTalk's, which puts storage in a modal with a conversation rail
-down the left. That rail is wrong **here**: this app's main sidebar already selects the conversation,
-so a second list of conversations inside a modal is a parallel navigation with its own selection
-state to disagree with.
+Details now occupy a separate right column on screens at least 1280px wide.
+Desktop panels have rounded frames and 8px gutters with pointer- and keyboard-operable dividers.
+Sidebar width is 260–400px; details width is 280–400px. Both default to 320px and persist locally. The sidebar selects
+conversations, the central thread remains usable, and details scroll independently. Below that
+breakpoint details replace the visible thread without unmounting it or clearing the composer.
+Opening a message from shared content closes details and returns to that message.
 
-More decisive: **tapping a photo jumps to the message it came from.** It works because the thread is
-right there behind the sheet. From a full-screen modal, that jump has to tear the modal down first —
-so the panel would have replaced the thing it exists to point at. A cross-conversation media browser
-is a genuinely different feature, and its left rail should be *filters* — kind, sender, date — rather
-than a copy of the sidebar. It is not built.
-
-A group still lands on its members, because the header button that opens the panel is labelled "Group
-members" for a group and has to show them. The categories are one Back away rather than one tap in
-front.
+Groups now land on the shared overview; Members opens the membership and settings page.
+The shared-content categories remain on the overview.
 
 ### The bug the counts uncovered
 
@@ -2460,7 +2471,7 @@ never re-examined, and the result was visible on screen.
 | # | Item | Status |
 | --- | --- | --- |
 | 107 | A captioned picture is one object again | Done |
-| 108 | The details panel closes on a press outside it | Done |
+| 108 | Details close explicitly; docked panels stay open while chatting | Done |
 | 109 | Every dismissible surface listens on the same gesture | Done |
 | 110 | A picture fits the screen it is on, and has an edge on pale ground | Done |
 | 111 | A photograph states its own time | Done |
@@ -2481,9 +2492,8 @@ caption appears only after opening the image — [phase 37](#phase-37--the-viewe
 settles where — while the time remains quiet in its own lower corner. It makes the text visibly belong
 to the picture without adding another dark object to the conversation.
 
-There are no attachment-radius tables. The media reads the ordinary bubble table once, so the run's
-grammar — the unbroken side, the seam and the single notch — continues around the picture even when
-the message also carries text.
+At this phase the media read the ordinary bubble table, so its joins followed the text. Phase 47
+gives media its own 12px corners; photographs retain their own shape instead of borrowing text joins.
 
 **Albums keep their fanned stack.** Their front cover carries no caption; opening the stack presents
 every image, direct thumbnail navigation, and the complete message text as one focused viewing
@@ -2535,25 +2545,12 @@ A captioned album stays a compact stack in the thread. Its cover stays text-free
 complete caption with the selected image and lets the reader move through the whole set without
 turning the conversation itself into a grid.
 
-### Item 108: the largest dismissible surface in the app was the one exception
+### Item 108: explicit dismissal for a docked panel
 
-The conversation details panel closed on its X or on Escape, and on nothing else — while the emoji
-picker, the sticker tray, the attachment menu, the row menu and the message menu all close on a press
-outside them. It is the biggest of them and it sits over the conversation, so it was the one most
-worth dismissing by pressing what you actually wanted.
-
-Three things make it correct rather than merely wired up:
-
-- **The panel is unmounted when closed**, so nothing has to ask whether it is open — and the press
-  that opened it landed before the listener existed, which is what stops the panel closing itself on
-  the way in.
-- **The confirmation dialogs and the image lightbox render inside the panel's own element**, so
-  `contains` already counts a press on either as inside. That is load-bearing: both cover the
-  viewport, and a panel that closed underneath its own "Block this person?" dialog would leave the
-  dialog standing over a conversation it no longer belonged to.
-- **Escape is deliberately not handled here.** `useKeyboardShortcuts` already closes this panel as
-  part of an ordered chain — help, then forwarding, then the panel — and a second listener would
-  close two surfaces with one key.
+The responsive panel supersedes the previous outside-press dismissal. Clicking the thread must keep
+information available alongside it. Close, the header toggle, and the existing ordered Escape shortcut
+close details. Keyboard focus enters the panel on opening and returns to its opener unless the user
+has moved focus elsewhere. Nested dialogs retain their existing Escape handling.
 
 ### Item 109: two of the five were listening for a mouse
 
@@ -2742,10 +2739,11 @@ exactly that:
   filters a direct conversation out of the room list a presence update broadcasts to, and
   `listRestrictorsAmong` does the same for the one-time snapshot a freshly connected socket asks for —
   the two moments presence reaches a client.
-- **The frontend** mirrors blocking's own — `useRestrictedUsers`, `useRestrictedUsersSync`, a
-  `ConversationRestrictControl` beside `ConversationBlockControl`, and a "Restricted people" row in
+- **The frontend** mirrors blocking's own — `useRestrictedUsers`, `useRestrictedUsersSync`,
+  a restrict control beside the block control, and a "Restricted people" row in
   account settings — because the shape (a session-cached status, resolved per person, a paged
-  settings list) is the same problem blocking already solved.
+  settings list) is the same problem blocking already solved. Phase 47 moves the conversation
+  control into the sidebar menu and removes it from conversation details.
 
 **One promise from the doc comment did not ship: a "Message requests" mailbox.** Moving a restricted
 sender's conversation into a separate inbox is a real feature — its own schema state, its own list
@@ -3065,7 +3063,271 @@ an occupied dev port instead of silently choosing another origin. Docker's built
 8080, and E2E uses isolated ports 5273/4100. The [getting-started guide](../README.md#getting-started)
 explains the modes, first-time setup and the API environment values.
 
+## Phase 47 — quieter message surfaces and direct actions — `done`
+
+This bounded iteration follows the owner's interface feedback. It completes the changes below,
+not the broader [60-item experience backlog](plans/experience-polish.md).
+
+| # | Item | Status |
+| --- | --- | --- |
+| 139 | Text clusters with soft ends and small facing joins; independent media/composer shapes | `done` |
+| 140 | Quiet hover on sidebar rows, composer controls, reactions and vault images | `done` |
+| 141 | Restrict/unrestrict in the direct conversation's sidebar menu | `done` |
+| 142 | Select, paste or drop an ordinary file to send it directly | `done` |
+| 143 | Show the return-to-latest control when leaving the bottom region | `done` |
+
+Text corners now use 18 px outer radii and 5 px facing joins without the old pointed final corner.
+Images and file cards use a 12 px media radius; voice initially shared it before phase 48's dedicated
+player. The composer uses 20 px. Incoming
+text has a soft surface instead of an outlined card. Nearby message action icons remain accessible
+on hover, focus and touch. Idle sidebar rows and composer/reaction controls avoid hover tiles;
+reaction scaling and vault image hover zoom are removed. Selected states and focus rings remain.
+
+Restrict/unrestrict appears only for direct conversations in the sidebar overflow menu, with pending
+and error handling. It no longer occupies conversation details. Account settings still lists
+restricted people; the server policy and group semantics are unchanged.
+
+An ordinary file selected, pasted or dropped starts uploading immediately, with empty text and no
+reply target. Existing text and reply drafts remain available. A failed file stays visible with
+Retry and Remove; an in-flight upload cannot be submitted twice from the composer. Images continue
+through their preview. Durable file retries and server idempotency are separate backlog work.
+The demo seeder also sends files without instructional captions. Previously seeded messages keep
+their stored content on replay; changing a seed definition does not silently rewrite existing messages.
+
+The previous scroll logic stopped following at 120 px but waited an entire viewport before showing
+the return control. This phase aligned both at 120 px; phase 50 later refined return to 80 px to avoid
+flicker while retaining the 120 px reveal distance. Historical context also offers a return
+to the live thread. Layout changes keep a reader at the bottom when already following, while incoming
+messages preserve the position of someone reading older content. Reduced motion uses an immediate jump.
+
+Verified on 2026-09-05 with `npm run verify` (204 related web tests across 19 files and all static/audit
+checks), `npm run test:e2e` (41 Chromium scenarios against the isolated real API), and
+`npm run build --workspace apps/web`. Browser checks include standalone file delivery with a preserved
+text draft, sidebar/settings restriction agreement, a scroll distance smaller than one viewport,
+incoming messages during history reading and resizing while pinned. Desktop and 375 px mobile
+screenshots were visually inspected; this is not a claim of physical-device or cross-browser coverage.
+
+## Phase 48 — voice playback and recording polish — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 144 | Dedicated incoming/outgoing voice player and waveform seeking | `done` |
+| 145 | Playback loading, retry and single-player lifecycle | `done` |
+| 146 | Live recording waveform, preview and guarded upload recovery | `done` |
+
+The original redesign used 18 px corners, a 44 px play/pause button, a wide waveform and a separate
+duration/speed row; phase 49 below reduces that footprint following owner feedback.
+Incoming and vault players use the paper surface; outgoing players use the sent-message fill.
+Forty visible bars summarize the real audio peaks, with a quiet baseline for silence or missing data.
+Played and remaining segments use the corresponding message ink; progress does not borrow green from
+presence. A native range input supplies pointer/touch dragging, arrow keys and Home/End, with a visible
+focus ring and spoken elapsed/total value. The thread uses supplied metadata without preloading every
+audio file; playback metadata refines the duration when it is available.
+Sidebar and composer reply previews also identify audio as "Voice message" and files as "Sent a file",
+instead of describing every attachment as an image.
+
+Media events drive play/pause, buffering and completion. Playback errors leave a Retry action; only
+one app voice player or recording preview can play at once, including pending play requests. Source
+changes and unmounts invalidate old requests. Playback still stops when its component leaves the
+screen; this does not introduce global background playback or persistent listening positions.
+
+The recorder replaces the level strip with sampled microphone amplitudes, then summarizes the whole
+recording for preview. Permission waiting has a cancel path; late permissions and unmounts release
+the stream. Microphone/recorder errors surface in the composer. Preview supports play/pause and seek.
+Starting capture stops active or pending voice playback, including playback started while waiting
+for microphone permission. This avoids feeding a playing message into the new recording.
+Discard and send use separate controls. Sending pauses the preview and prevents double submission
+or discard during upload. Failure keeps the same Blob for retry in-session. The five-minute limit,
+AAC server transcoding and current draft restrictions remain in force.
+
+Interaction references: [WhatsApp's waveform and draft preview](https://about.fb.com/news/2022/03/new-voice-message-features-on-whatsapp/)
+and [Telegram's voice player](https://telegram.org/blog/voice-2-secret-3). These inform familiar
+controls; the component uses Chatty's typography, palette and layout.
+
+Verified on 2026-09-05: `npm run verify` passed 236 related web tests across 23 files and the static/audit
+gate; the complete Chromium suite passed 43 scenarios. After adding playback interruption on record,
+both voice scenarios passed again. `npm run build --workspace apps/web` also passed. Browser coverage
+includes real transcoded playback, pointer and keyboard seeking, playback speed, switching players,
+and capture/preview/discard/send using Chromium's simulated microphone. Light/dark desktop and 375 px
+mobile screenshots were inspected. Physical microphones, Safari and built-web CSP preview compatibility
+remain separate verification work; no new durable voice outbox is claimed.
+
+## Phase 49 — compact messages and voice controls — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 147 | Fit wrapped text bubbles to visible content and retain full long links | `done` |
+| 148 | Compact voice playback and recording without removing controls | `done` |
+| 149 | Tighten message, speaker and system-notice spacing | `done` |
+
+The reported link fixture previously occupied 544 px while its longest visible line used about
+334 px. Ordinary multiline text now measures its rendered lines and fits the background around
+them, including padding. The fit rechecks after thread resizing and font loading, retaining the
+natural layout if fitting would add lines or clip text. Reply, forwarded, mention and media layouts
+keep their own intrinsic sizing. Long links wrap in full without changing their destinations;
+explicit user newlines remain intact. Text uses 12×6 px padding, a 28rem desktop cap and
+`text-wrap: pretty`; speaker gaps are 12 px and system-notice vertical padding is 8 px.
+The fitted bubble is also clamped to its flex container: adding read-receipt avatars can take
+space from that container without changing the width of the thread itself.
+
+Voice players are approximately 240×56 px with 32 px play and speed controls. A 20 px waveform sits
+inside a 32 px seek target, with elapsed/total time directly underneath. The recording and preview
+bar is 44 px tall in its normal state; upload progress and errors can add space when needed.
+Playback, speed, keyboard/touch seeking, real recording levels, preview, discard and guarded send
+remain available. Loading/error and focus states remain visible within the smaller layout.
+
+Verified on 2026-09-05: `npm run verify` passed 238 related web tests across 24 files and the static/audit
+gate; the web build also passed. Browser verification covered all 45 Chromium scenarios: 44 passed
+in the full run, and the history-scroll scenario passed separately after correcting its fixture to
+wait for conversation creation before querying the API.
+
+The compact-bubble regression includes the exact two reported texts, a short reply, explicit
+newlines, full long links, hover and desktop/mobile resizing. A separate regression verifies growing
+group read receipts at a 1024 px viewport. Voice checks enforce the compact dimensions and exercise
+playback, seeking, speed and touch-operated recording/preview/discard/send with Chromium's simulated
+microphone. Desktop and 375 px mobile screenshots were visually inspected. Physical-device and
+cross-browser checks retain the phase 48 limitations above.
+
+## Phase 50 — quiet activity while reading history — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 150 | Centered latest-message control with actual typing and compact new-arrival text | `done` |
+| 151 | Count new arrivals while reading above the live thread without moving the reader | `done` |
+
+The original centered dots were refined on 2026-09-06 following the owner's request to redesign the
+interaction freely. A down arrow now identifies the action on a 32 px surface inside a 44 px touch
+target. Entry and exit fade over 160 ms with a small vertical movement; the width settles over 220 ms
+as actual typing and new arrivals change the label. The idle arrow remains still. Actual typing has
+its own gently staggered bouncing dots; reduced motion removes looping and transitional motion. Names truncate
+within the pane width. New messages use quiet inline text, with 99+ visually capped and the exact count
+announced politely to assistive technology. Hover keeps the same surface, with a small arrow movement.
+
+The control appears beyond 120 px and hides within 80 px, avoiding flicker near the boundary. Historical
+search always offers the same action. Typing and new arrivals preserve reading position; so do older
+pages, changing media, edits and reactions above the visible anchor. A smooth jump follows its moving
+destination when content grows and yields to wheel, touch, scrollbar or navigation-key input. Keyboard
+activation transfers focus to the thread, so hiding the control does not lose the reader's place.
+
+Returning from historical search shows a disabled loading state until the new window settles. Failure
+uses the thread's existing error and retry action. Navigation generations discard stale page/reconnect
+responses; a separate historical cursor keeps live arrivals from skipping an unloaded gap. Arrivals
+during a latest-page fetch are retained. A selected search result is centered once when available,
+rather than again on every message update.
+
+The count follows newly appended incoming user messages while the live thread is scrolled away from
+the bottom. It is independent of the server's unread badge. Initial loads, prepended history, own
+messages, system events, deleted messages and repeated IDs do not inflate it. Hiding or deleting a
+counted message removes it. Conversation switches and historical navigation reset it. A historical
+search window shows the arrow and real typing without guessing a new-arrival count, since history paging
+and live events still appear in the same message array.
+
+The initial dots version was verified on 2026-09-05: `npm run verify` passed 249 related web tests across 25 files and all static/audit
+checks. The complete Chromium suite passed all 45 scenarios, and `npm run build --workspace apps/web`
+passed. Coverage includes real typing start/timeout, new-message counts, preserved scroll position,
+keyboard return, mobile touch and reduced motion. Light/dark desktop and mobile screenshots were
+inspected. These checks use Chromium and touch emulation, not physical-device or cross-browser coverage.
+
+The refined interaction was verified on 2026-09-06: `npm run verify` passed 290 related web tests in
+26 files, including new scroll/navigation race coverage, with all static/audit checks passing.
+`npm run build --workspace apps/web` passed. The 12 Chromium scenarios in `scroll-history`, `chat`
+and `reactions-and-replies` passed together. They cover an arrival during smooth scrolling, wheel
+interruption, search paging without a skipped gap, a delayed latest response receiving live messages,
+loading feedback, a failed return and retry. The historical load-newer footer reserves space so the
+floating control cannot intercept its button. Light/dark, mobile and loading screenshots were inspected.
+Touch was emulated at 375 px; physical devices, Safari and Firefox were not tested in this refinement.
+
+## Phase 51 — flatten group roles to admin/member — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 152 | Collapse owner/admin/member into a symmetric admin/member model | `done` — [ADR 0021](adr/0021-flatten-group-roles-to-admin-member.md) |
+| 153 | Fix the group "seen by" avatar stack rendering oversized and off-ring | `done` |
+| 154 | Sound and a per-browser toggle for arriving messages, alongside the existing desktop-popup setting | `done` |
+
+The three-tier owner/admin/member hierarchy from phases 18 and 42 had a real design history, but it
+was more than this product needs and more than comparable products (Messenger, WhatsApp) expose: a
+single owner who alone could change roles, invite policy or hand off their seat, and an admin who
+could moderate ordinary members but not another admin. `ConversationParticipant.role` is now `ADMIN`
+or `MEMBER`; any admin has equal standing over any other, including the group's original creator.
+A non-empty group still always keeps at least one admin — the same succession rule as before,
+unconditioned on a senior tier because there is only one left to promote into. The dedicated
+ownership-transfer endpoint is gone; `setParticipantRole` already covers a hand-off once no seat is
+exclusive. See ADR 0021 for the full permission table and the migration this required.
+
+While auditing the group panel against this change, two smaller gaps surfaced. The stacked "seen by"
+avatars in a group's read-receipt caption were rendering warped and oversized: a `className` meant to
+shrink them landed on `Avatar`'s outer wrapper rather than the sized image inside it, so the visible
+circle stayed at its full 20px size inside a mis-clipped 14px box. A new `"2xs"` avatar size closes
+the gap. Separately, an arriving message had no sound and no way to enable one — only the existing
+desktop-popup notification, itself gated on the browser tab being hidden. A synthesized two-note
+chime (no audio file to fetch or license) now plays for a message from someone else, unless the
+conversation is muted or the tab is already showing that exact conversation; a settings toggle
+defaults it on, independent of the popup permission since sound needs none.
+
+Verified 2026-09-06: `npm run verify` passed, including the full server (468 tests) and web (440
+tests) suites run directly rather than only the changed-file subset, given the schema migration and
+the number of files touched. The migration was applied and exercised against the live dev database —
+existing OWNER rows converted to ADMIN, the new deferred admin-invariant trigger enforced against a
+real Postgres instance, not just asserted in a unit test. The avatar fix and the sound toggle were
+verified live in a browser against the running dev server with a real multi-account group and real
+read receipts, not only by type-checking.
+
+## Phase 52 — Messenger-style Customize chat, and nicknames become real — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 155 | Reorganize conversation details into Messenger's sections (quick actions, Chat info, Customize chat, Group options, Members, Media/files/links, Privacy & support) | `done` — [ADR 0022](adr/0022-conversation-customize-and-shared-nicknames.md) |
+| 156 | Group photo, shared theme color, shared quick-reaction emoji — three features Chatty never had | `done` |
+| 157 | Nicknames become shared and per-member, replacing the private whole-conversation label | `done` |
+
+The panel's rename field, invite-policy dropdown and nickname editor were scattered across three
+different places, one of them — nickname editing inline in the name-display header — flagged
+directly as wrong placement. Matching Messenger's own layout meant more than moving things:
+Messenger's "Customize chat" has a group photo, a shared theme color and a shared quick-reaction
+emoji, none of which existed here, and its nicknames are per-member and visible to everyone, while
+this app's were a private label for the whole thread. Building the real features rather than
+reorganizing around their absence was the deliberate scope, confirmed before the rewrite: any
+participant may change theme, the quick reaction, or a nickname — cosmetic, not moderation — while
+rename and the photo stay admin-gated, matching the structural-vs-cosmetic line the group's other
+settings already drew.
+
+The nickname change is the one with no backward-compatible path. `ConversationParticipant.nickname`
+needed no schema migration — it was already keyed by participant, the right shape for a per-member
+label — but every reader of it changed meaning, from "the viewer's private relabeling" to "what
+everyone here calls this person." The private, whole-conversation version is gone; Messenger has no
+equivalent to it either. Every place a participant's name renders inside a conversation now checks
+the nickname first: message bylines, "seen by", member rows, the typing indicator, a 1-1's title and
+avatar. System messages are the one exception, since they are fixed text written at the time of the
+event and cannot retroactively adopt a nickname set afterward.
+
+The group photo reuses the exact user-avatar pipeline (`normalizeAvatarImage`, shared rather than
+duplicated) under its own storage key and an unauthenticated route, the same trust boundary user
+avatars already use. The theme is restricted to the eight avatar-tint design tokens already in the
+palette — no new colors — and recolors the "mine" surface (bubble, voice player, the reacted-by-me
+chip) for both people in a direct conversation or everyone in a group, since the theme is one value
+shared by the whole conversation rather than a per-viewer preference.
+
+Verified 2026-09-06: `npm run verify` passed (typecheck, lint, format, the full server and web
+suites, and the conventions audit). The migration adding `avatarUpdatedAt`/`themeColor`/
+`quickReactionEmoji` to `Conversation` was applied to the live dev database and exercised for real,
+not only asserted in a unit test. `e2e/group.spec.ts` — rewritten for the new section layout — and
+`e2e/compact-thread.spec.ts`/`e2e/compact-receipts.spec.ts` all passed against a real browser, a
+real server and a real database. The panel was verified live in a browser with two real accounts in
+a shared group: setting a theme recolored both accounts' own outgoing bubbles without a reload,
+and setting a nickname for a third participant showed up in the system log and the nicknames list
+immediately.
+
 ## Verification bar
+
+Typing follow-up, 2026-09-06: a live-thread bubble now sits below the last message, aligned with incoming
+bubbles. Three dots rise 2 px in a staggered 1.4-second cycle, shared with the sidebar and Jump control. The header uses quiet text alone. The row expands/collapses over 180 ms, follows the bottom only when already pinned and
+never appears below historical search results. Reduced motion keeps dots static. Input clearing,
+message arrival, offline peers and socket disconnect remove typing, with existing idle/expiry timers
+as fallback. Own identities are excluded and duplicate identities do not inflate group labels.
+`npm run verify` passed 299 related tests across 28 files; both Chromium scroll/history scenarios passed,
+including live-thread typing visibility, dot timing, input clearing, reading-position stability and
+reduced motion. The desktop typing screenshot was inspected; physical devices remain untested.
 
 Nothing is "done" here until this passes, **and** an end-to-end run against the real API exercises the
 actual behaviour — not just the types:
@@ -3082,3 +3344,49 @@ a test, it fails to start inside jsdom with an error that looks nothing like a v
 
 The second half of that sentence is not optional. Phase 2 shipped an avatar endpoint that returned
 500 for every request with all 75 server tests green — see CLAUDE.md, "Definition of done".
+
+Typing visual refinement: direct chats now use the dots bubble alone, while groups retain a compact
+identity label. Header typing uses muted sentence-case text without extra animated dots; sidebar and
+Jump place one animated ellipsis after the label, avoiding the former dots/text/dots repetition.
+Motion amplitude is 2 px. This adapts the distinction between graphic indicators for direct chats and
+named indicators for groups in [Visa's chat guidance](https://design.visa.com/patterns/chat/usage/),
+with [Stream's message-list indicators](https://getstream.io/chat/docs/sdk/react/components/utility-components/indicators/)
+as another reference. These are design references, not claims of identical behavior in every messenger.
+
+Sidebar draft follow-up: a muted one-line preview now follows a signal-colored `Draft:` label, for
+both selected and other loaded conversations. Precedence is draft, then another participant typing,
+then the last message. Reply-only drafts say `Reply`; whitespace-only content has no draft indicator.
+Unread/mention badges remain visible, while the old message's author and time are omitted for draft
+previews. Draft updates never reorder conversations or create server messages. Clearing/sending removes
+the indicator; restored text after failure brings it back. Ordinary files and stickers preserve
+unrelated text. Same-tab edits update immediately, reload reads stored drafts, and storage events refresh
+sidebar previews without overwriting an active input in another tab. Account-scoped draft migration
+and durable attachment drafts remain separate work (XP-01); this does not mark those complete.
+
+Validation includes restored, live, reply-only, whitespace, typing/unread precedence, malformed data,
+other-conversation events and storage clears. The Chromium draft scenario covers two conversations,
+reload, mobile Back, clearing and sending; the desktop sidebar screenshot was inspected.
+
+### Conversation details and pinned navigation — done
+
+Only conversation details retain enter/exit animation, using the shared `useMotionPresence` hook.
+Reopening cancels pending removal; reduced motion skips animation and the exit delay.
+Images and settings open and close immediately. Existing modal focus handling remains.
+
+Both direct and group details open on an overview with conversation tools and shared content.
+Direct-chat privacy controls are collapsible. Groups expose a members page with collapsible
+settings, a custom invite-policy dropdown, member search for larger groups, and per-member
+actions; removing someone asks for confirmation. Existing server role restrictions remain — see
+phase 51 for the role model these actions now reflect.
+Pinned messages support previous/next with wraparound, a selectable list, and a details entry.
+The active pin falls back safely when it is removed. The panel's section layout, and nicknames'
+real (shared, per-member) shape, are phase 52's — see that entry.
+
+### Pinned-message navigation polish — done
+
+The pin list now opens in an independent dialog instead of changing the thread height.
+Navigation clamps scroll position within Message history; hidden mobile threads retry after resize.
+Pinned DTOs include message details for signed attachment previews and sender identity. Captions
+are secondary to media type; text edits update the pin preview and deleted messages leave the list.
+Original messages have a small Pinned marker; list rows include unpin with pending/error feedback.
+The existing three-pin limit is unchanged.

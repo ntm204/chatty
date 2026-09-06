@@ -19,6 +19,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions): void {
 
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
+			if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
 			const currentOptions = optionsRef.current;
 			const target = event.target as HTMLElement | null;
 			const isTextField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;

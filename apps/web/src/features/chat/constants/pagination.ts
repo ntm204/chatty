@@ -9,6 +9,12 @@ export const MESSAGE_PAGE_SIZE = 50;
  */
 export const LOAD_OLDER_THRESHOLD_PX = 120;
 
+/** Leaving the live edge stops automatic following and exposes the same way back. */
+export const LATEST_MESSAGE_THRESHOLD_PX = 120;
+
+/** Return a little closer than the exit distance so the control does not flicker. */
+export const RETURN_TO_LATEST_THRESHOLD_PX = 80;
+
 /**
  * How many messages the thread keeps in memory before dropping the oldest.
  *

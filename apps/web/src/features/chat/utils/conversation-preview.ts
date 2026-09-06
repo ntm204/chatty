@@ -14,7 +14,7 @@ export function getConversationPreview(lastMessage: MessageDTO | null): string {
 	if (!lastMessage) return EMPTY_CONVERSATION_TEXT;
 	if (lastMessage.deletedAt) return DELETED_MESSAGE_TEXT;
 	if (lastMessage.content) return lastMessage.content;
-	if (lastMessage.attachments.length > 0) return getAttachmentPreviewText(lastMessage.attachments.length);
+	if (lastMessage.attachments.length > 0) return getAttachmentPreviewText(lastMessage.attachments);
 
 	return EMPTY_CONVERSATION_TEXT;
 }

@@ -1,4 +1,4 @@
-import type { AttachmentWithMessageDTO, MessageLinkDTO, MessageSearchResultDTO } from "@chatty/shared-types";
+import type { AttachmentWithMessageDTO, MessageLinkDTO } from "@chatty/shared-types";
 import type { RefObject } from "react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
@@ -14,14 +14,12 @@ interface VaultTabContentProps {
 	activeTab: Exclude<VaultTab, "members">;
 	attachments: AttachmentWithMessageDTO[];
 	links: MessageLinkDTO[];
-	saved: MessageSearchResultDTO[];
 	isLoading: boolean;
 	error: string;
 	hasMore: boolean;
 	nextCursor: string | undefined;
 	loadMoreRef: RefObject<HTMLDivElement>;
 	onLoadPage: (before?: string, replace?: boolean) => Promise<void>;
-	onRemoveSaved: (messageId: string) => Promise<void>;
 	onOpenMessage: (messageId: string) => void;
 }
 
@@ -29,14 +27,12 @@ export function VaultTabContent({
 	activeTab,
 	attachments,
 	links,
-	saved,
 	isLoading,
 	error,
 	hasMore,
 	nextCursor,
 	loadMoreRef,
 	onLoadPage,
-	onRemoveSaved,
 	onOpenMessage,
 }: VaultTabContentProps) {
 	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -48,13 +44,7 @@ export function VaultTabContent({
 		[attachments],
 	);
 	const linkGroups = useMemo(() => groupVaultByMonth(links, (link) => link.createdAt), [links]);
-	const savedGroups = useMemo(() => groupVaultByMonth(saved, (item) => item.message.createdAt), [saved]);
-	const isEmpty =
-		activeTab === "links"
-			? links.length === 0
-			: activeTab === "saved"
-				? saved.length === 0
-				: attachments.length === 0;
+	const isEmpty = activeTab === "links" ? links.length === 0 : attachments.length === 0;
 
 	return (
 		<>
@@ -89,7 +79,7 @@ export function VaultTabContent({
 										<img
 											src={getAttachmentPreviewUrl(attachment)}
 											alt={`Shared by ${attachment.authorName ?? "Deleted account"}`}
-											className="size-full object-cover transition duration-200 hover:scale-[1.02]"
+											className="size-full object-cover"
 										/>
 									</Button>
 								))}
@@ -145,36 +135,6 @@ export function VaultTabContent({
 											{link.authorName ?? "Deleted account"} · {formatVaultDate(link.createdAt)}
 										</span>
 									</Button>
-								))}
-							</div>
-						</section>
-					))}
-				</div>
-			)}
-
-			{activeTab === "saved" && (
-				<div className="flex flex-col gap-5">
-					{savedGroups.map(([month, items]) => (
-						<section key={month}>
-							<h3 className={MONTH_HEADING_CLASS}>{month}</h3>
-							<div className="flex flex-col gap-2">
-								{items.map((item) => (
-									<div key={item.message.id} className="flex items-center gap-1">
-										<Button
-											variant="ghost"
-											onClick={() => onOpenMessage(item.message.id)}
-											className="min-w-0 flex-1 justify-start truncate text-left text-sm"
-										>
-											{item.message.content || "Attachment"}
-										</Button>
-										<Button
-											variant="ghost"
-											onClick={() => void onRemoveSaved(item.message.id)}
-											className="shrink-0 px-2 text-xs text-ink-faint"
-										>
-											Remove
-										</Button>
-									</div>
 								))}
 							</div>
 						</section>

@@ -1,13 +1,12 @@
 import type { ConversationDTO, ConversationRole, UserDTO } from "@chatty/shared-types";
-import { useEffect, useState } from "react";
-import { LogOut, X } from "lucide-react";
+import { useState } from "react";
+import { LogOut, UserPlus, X } from "lucide-react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TextField } from "@/components/text-field";
 import { cn } from "@/utils/cn";
-import { GroupInvitePolicyControl } from "./group-invite-policy-control";
-import { GroupMemberSearch } from "./group-member-search";
+import { AddGroupMembersDialog } from "./add-group-members-dialog";
 import { GroupMemberRow } from "./group-member-row";
 
 interface GroupMembersPanelProps {
@@ -18,13 +17,9 @@ interface GroupMembersPanelProps {
 }
 
 /**
- * Rename, member list, and add/remove — everything item 8 needs, in one
- * inline panel rather than a modal. The app has no modal/dialog primitive
- * declared anywhere in its conventions, and `NewConversationPanel` already
- * establishes the pattern this follows: render inline, don't invent one.
- *
- * Owners and admins moderate day-to-day activity; only the owner can delegate
- * roles and choose who may invite. Every member can always leave. See ADR 0018.
+ * The member list and moderation controls. Any admin has equal standing over
+ * any other — see ADR 0021. Renaming, invite policy and the rest of
+ * "Customize chat" live in their own sections above this one — see ADR 0022.
  */
 export function GroupMembersPanel({
 	conversation,
@@ -32,11 +27,8 @@ export function GroupMembersPanel({
 	onClose,
 	isEmbedded = false,
 }: GroupMembersPanelProps) {
-	const [nameDraft, setNameDraft] = useState(conversation.name ?? "");
-	const [isSavingName, setIsSavingName] = useState(false);
-	const [nameError, setNameError] = useState("");
+	const [memberQuery, setMemberQuery] = useState("");
 	const [removingUserId, setRemovingUserId] = useState<string | null>(null);
-	const [promotingUserId, setPromotingUserId] = useState<string | null>(null);
 	const [changingRoleUserId, setChangingRoleUserId] = useState<string | null>(null);
 	const [isLeaving, setIsLeaving] = useState(false);
 	const [actionError, setActionError] = useState("");
@@ -45,34 +37,11 @@ export function GroupMembersPanel({
 	// which is the whole point of asking.
 	const [memberPendingRemoval, setMemberPendingRemoval] = useState<UserDTO | null>(null);
 	const [isConfirmingLeave, setIsConfirmingLeave] = useState(false);
+	const [isAddOpen, setIsAddOpen] = useState(false);
 
 	const currentRole = conversation.participants.find((participant) => participant.id === currentUserId)?.role;
-	const isOwner = currentRole === "owner";
 	const isAdmin = currentRole === "admin";
-	const canModerate = isOwner || isAdmin;
-	const canInvite = conversation.invitePolicy === "everyone" || canModerate;
-
-	// Someone else can rename the group while this panel is open — `conversation`
-	// is a prop fed by the live `conversation:updated` event, so the draft
-	// follows it rather than freezing at whatever the name was on open.
-	useEffect(() => {
-		setNameDraft(conversation.name ?? "");
-	}, [conversation.name]);
-
-	async function handleSaveName() {
-		const trimmed = nameDraft.trim();
-		if (!trimmed || trimmed === conversation.name) return;
-
-		setIsSavingName(true);
-		setNameError("");
-		try {
-			await api.renameConversation(conversation.id, trimmed);
-		} catch (renameError) {
-			setNameError((renameError as Error).message);
-		} finally {
-			setIsSavingName(false);
-		}
-	}
+	const canInvite = conversation.invitePolicy === "everyone" || isAdmin;
 
 	async function handleRemoveMember(userId: string) {
 		setMemberPendingRemoval(null);
@@ -84,21 +53,6 @@ export function GroupMembersPanel({
 			setActionError((removeError as Error).message);
 		} finally {
 			setRemovingUserId(null);
-		}
-	}
-
-	async function handleMakeOwner(userId: string) {
-		setPromotingUserId(userId);
-		setActionError("");
-		try {
-			await api.transferOwnership(conversation.id, userId);
-			// Nothing local to update: `conversation:updated` carries the new roles
-			// back to everyone including this tab, so the crown moves through the
-			// same path for the person who pressed the button as for everyone else.
-		} catch (transferError) {
-			setActionError((transferError as Error).message);
-		} finally {
-			setPromotingUserId(null);
 		}
 	}
 
@@ -141,41 +95,6 @@ export function GroupMembersPanel({
 				</div>
 			)}
 
-			<div className="mt-3 flex items-end gap-2">
-				{/* Wrapped rather than passed a className: TextField forwards
-				    className to the <input> it renders, not to its own wrapping
-				    <div>, so this is what actually makes the field stretch. */}
-				<div className="flex-1">
-					<TextField
-						label="Group name"
-						value={nameDraft}
-						onChange={(event) => setNameDraft(event.target.value)}
-						disabled={!canModerate}
-						error={nameError}
-					/>
-				</div>
-				<Button
-					onClick={() => void handleSaveName()}
-					disabled={
-						!canModerate || isSavingName || !nameDraft.trim() || nameDraft.trim() === conversation.name
-					}
-				>
-					Save
-				</Button>
-			</div>
-
-			{/* Said out loud rather than left as a field that silently does
-			    nothing: a disabled control with no explanation reads as a bug. */}
-			{!canModerate && (
-				<p className="eyebrow mt-2 text-ink-faint">Only group owners and admins can rename this group.</p>
-			)}
-
-			<GroupInvitePolicyControl
-				conversationId={conversation.id}
-				policy={conversation.invitePolicy}
-				isOwner={isOwner}
-			/>
-
 			{actionError && (
 				<p role="alert" className="eyebrow mt-3 text-signal">
 					{actionError}
@@ -186,36 +105,62 @@ export function GroupMembersPanel({
 			    add someone, and only then the way out. Leaving used to sit between the
 			    member list and the search box, so the most destructive control on the
 			    panel was also the one the eye reached first on the way to the least. */}
-			<section className="mt-5">
-				<h3 className="eyebrow text-ink-faint">Members · {conversation.participants.length}</h3>
-				<ul className="mt-2 flex max-h-56 flex-col gap-0.5 overflow-y-auto">
-					{conversation.participants.map((participant) => (
-						<GroupMemberRow
-							key={participant.id}
-							participant={participant}
-							isSelf={participant.id === currentUserId}
-							canTransferOwnership={isOwner && participant.id !== currentUserId}
-							canChangeAdmin={isOwner && participant.id !== currentUserId && participant.role !== "owner"}
-							canRemove={
-								participant.id !== currentUserId &&
-								(isOwner || (isAdmin && participant.role === "member"))
-							}
-							isPromoting={promotingUserId === participant.id}
-							isChangingRole={changingRoleUserId === participant.id}
-							isRemoving={removingUserId === participant.id}
-							onMakeOwner={() => void handleMakeOwner(participant.id)}
-							onToggleAdmin={() => void handleToggleAdmin(participant.id, participant.role)}
-							onRemove={() => setMemberPendingRemoval(participant)}
+			<section className="mt-1">
+				{!isEmbedded && (
+					<h3 className="text-xs font-medium text-ink-faint">Members · {conversation.participants.length}</h3>
+				)}
+				{conversation.participants.length > 6 && (
+					<div className="mt-3">
+						<TextField
+							label="Find a member"
+							value={memberQuery}
+							onChange={(event) => setMemberQuery(event.target.value)}
 						/>
-					))}
+					</div>
+				)}
+				<ul className="mt-2 flex flex-col gap-0.5 overflow-y-auto">
+					{conversation.participants
+						.filter((participant) =>
+							`${participant.displayName} ${participant.handle}`
+								.toLocaleLowerCase()
+								.includes(memberQuery.trim().toLocaleLowerCase()),
+						)
+						.map((participant) => (
+							<GroupMemberRow
+								key={participant.id}
+								participant={participant}
+								isSelf={participant.id === currentUserId}
+								canChangeAdmin={isAdmin && participant.id !== currentUserId}
+								canRemove={isAdmin && participant.id !== currentUserId}
+								isChangingRole={changingRoleUserId === participant.id}
+								isRemoving={removingUserId === participant.id}
+								onToggleAdmin={() => void handleToggleAdmin(participant.id, participant.role)}
+								onRemove={() => setMemberPendingRemoval(participant)}
+							/>
+						))}
 				</ul>
 			</section>
 
-			<GroupMemberSearch
-				conversationId={conversation.id}
-				participantIds={conversation.participants.map((participant) => participant.id)}
-				canInvite={canInvite}
-			/>
+			<div className="mt-5">
+				<Button
+					variant="ghost"
+					onClick={() => setIsAddOpen(true)}
+					disabled={!canInvite}
+					className="w-full justify-start gap-2.5 px-1 py-2 text-left font-normal"
+				>
+					<UserPlus className="size-4 text-ink-soft" />
+					<span className="text-[13px]">Add people</span>
+				</Button>
+				{!canInvite && <p className="mt-1 text-sm text-ink-soft">This group lets only admins add people.</p>}
+			</div>
+
+			{isAddOpen && (
+				<AddGroupMembersDialog
+					conversationId={conversation.id}
+					participantIds={conversation.participants.map((participant) => participant.id)}
+					onClose={() => setIsAddOpen(false)}
+				/>
+			)}
 
 			{/* Ruled off rather than merely spaced: the two sections above are things
 			    you do to the group, and this is the one you do to your own membership. */}

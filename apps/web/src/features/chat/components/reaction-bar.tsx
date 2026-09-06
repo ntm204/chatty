@@ -66,11 +66,8 @@ export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 						aria-pressed={isPicked}
 						aria-label={isPicked ? `Remove ${emoji}` : `React with ${emoji}`}
 						className={cn(
-							// Scale on hover rather than a background swap: at 22px the
-							// emoji *is* the button, and a grey pill behind it is chrome
-							// around content that reads perfectly well without any.
-							"size-9 rounded-full p-0 text-[22px] leading-none transition-transform",
-							"hover:scale-110 hover:bg-transparent",
+							"size-9 rounded-full p-0 text-[22px] leading-none transition-transform duration-150 ease-out",
+							"hover:-translate-y-1.5 hover:scale-125 hover:bg-transparent",
 							isPicked && "bg-paper-sunken ring-1 ring-ink/20 hover:bg-paper-sunken",
 						)}
 					>

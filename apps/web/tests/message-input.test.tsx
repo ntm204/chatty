@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageInput } from "@/features/chat/components/message-input";
-import { makeParticipant } from "./factories";
+import { makeMessage, makeParticipant } from "./factories";
 
 /**
  * The composer no longer calls the API. A text message is put on screen before
@@ -60,6 +60,7 @@ function sendButton(): HTMLElement {
 }
 
 const image = new File(["pretend-bytes"], "photo.png", { type: "image/png" });
+const documentFile = new File(["document-bytes"], "notes.pdf", { type: "application/pdf" });
 
 describe("MessageInput", () => {
 	it("shows voice instead of an inactive send button when the composer is empty", () => {
@@ -164,6 +165,122 @@ describe("MessageInput", () => {
 		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [image] } });
 
 		expect(screen.getByAltText("Attached image preview 1")).toBeInTheDocument();
+	});
+
+	it("sends a picked file immediately without consuming the text or reply draft", async () => {
+		const typist = userEvent.setup();
+		const onSendFile = vi.fn().mockResolvedValue(undefined);
+		const onCancelReply = vi.fn();
+		const replyTo = makeMessage("reply-target", "an", "A question");
+		const { container } = renderInput({ onSendFile, onCancelReply, replyTo });
+		await typist.type(screen.getByLabelText("Message"), "Keep this reply");
+
+		await typist.upload(container.querySelector('input[type="file"]:not([multiple])')!, documentFile);
+
+		expect(onSendFile).toHaveBeenCalledExactlyOnceWith(documentFile, "", null, expect.any(Function));
+		expect(onSend).not.toHaveBeenCalled();
+		expect(onCancelReply).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Message")).toHaveValue("Keep this reply");
+		expect(screen.queryByRole("button", { name: "Retry file upload" })).not.toBeInTheDocument();
+
+		await typist.type(screen.getByLabelText("Message"), "{Enter}");
+		expect(onSend).toHaveBeenCalledWith("Keep this reply", [], replyTo, []);
+	});
+
+	it.each(["paste", "drop"])("sends a file immediately from %s", async (source) => {
+		const onSendFile = vi.fn().mockResolvedValue(undefined);
+		renderInput({ onSendFile });
+
+		if (source === "paste") {
+			fireEvent.paste(screen.getByLabelText("Message"), { clipboardData: { files: [documentFile] } });
+		} else {
+			fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		}
+
+		await waitFor(() =>
+			expect(onSendFile).toHaveBeenCalledExactlyOnceWith(documentFile, "", null, expect.any(Function)),
+		);
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
+	it("keeps a failed file for retry without attaching the current text", async () => {
+		const typist = userEvent.setup();
+		const onSendFile = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Connection interrupted"))
+			.mockResolvedValue(undefined);
+		const { container } = renderInput({ onSendFile });
+		await typist.type(screen.getByLabelText("Message"), "Still drafting");
+		await typist.upload(container.querySelector('input[type="file"]:not([multiple])')!, documentFile);
+
+		expect(await screen.findByRole("alert")).toHaveTextContent("Connection interrupted");
+		expect(screen.getByText("notes.pdf")).toBeInTheDocument();
+		expect(screen.getByLabelText("Message")).toHaveValue("Still drafting");
+		await typist.click(screen.getByRole("button", { name: "Retry file upload" }));
+
+		expect(onSendFile).toHaveBeenCalledTimes(2);
+		expect(onSendFile).toHaveBeenLastCalledWith(documentFile, "", null, expect.any(Function));
+		expect(screen.queryByText("notes.pdf")).not.toBeInTheDocument();
+		expect(screen.getByLabelText("Message")).toHaveValue("Still drafting");
+	});
+
+	it("keeps one upload in flight and preserves text typed while it sends", async () => {
+		let releaseUpload: (() => void) | undefined;
+		const onSendFile = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					releaseUpload = resolve;
+				}),
+		);
+		const typist = userEvent.setup();
+		const { container } = renderInput({ onSendFile });
+		await typist.upload(container.querySelector('input[type="file"]:not([multiple])')!, documentFile);
+
+		expect(screen.getByRole("status", { name: "Uploading attachment 0%" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "Remove attached file" })).toBeDisabled();
+		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		await typist.type(screen.getByLabelText("Message"), "A separate message{Enter}");
+		expect(onSendFile).toHaveBeenCalledTimes(1);
+		expect(onSend).not.toHaveBeenCalled();
+
+		releaseUpload?.();
+		await waitFor(() => expect(screen.queryByText("notes.pdf")).not.toBeInTheDocument());
+		expect(screen.getByLabelText("Message")).toHaveValue("A separate message");
+	});
+
+	it("allows a failed file to be removed while keeping the text draft", async () => {
+		const typist = userEvent.setup();
+		const onSendFile = vi.fn().mockRejectedValue(new Error("Connection interrupted"));
+		const { container } = renderInput({ onSendFile });
+		await typist.type(screen.getByLabelText("Message"), "Keep this text");
+		await typist.upload(container.querySelector('input[type="file"]:not([multiple])')!, documentFile);
+		await typist.click(await screen.findByRole("button", { name: "Remove attached file" }));
+
+		expect(screen.queryByText("notes.pdf")).not.toBeInTheDocument();
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+		expect(screen.getByLabelText("Message")).toHaveValue("Keep this text");
+		expect(onSendFile).toHaveBeenCalledTimes(1);
+	});
+
+	it("refuses invalid files before starting their upload", () => {
+		const onSendFile = vi.fn();
+		renderInput({ onSendFile });
+		const executable = new File(["bytes"], "installer.exe", { type: "application/octet-stream" });
+
+		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [executable] } });
+
+		expect(screen.getByRole("alert")).toHaveTextContent("Executable files cannot be sent");
+		expect(onSendFile).not.toHaveBeenCalled();
+	});
+
+	it("does not upload dropped or pasted files while the composer is disabled", () => {
+		const onSendFile = vi.fn();
+		renderInput({ onSendFile, isDisabled: true });
+
+		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		fireEvent.paste(screen.getByLabelText("Message"), { clipboardData: { files: [documentFile] } });
+
+		expect(onSendFile).not.toHaveBeenCalled();
 	});
 
 	it("autocompletes a group mention and sends the participant id", async () => {

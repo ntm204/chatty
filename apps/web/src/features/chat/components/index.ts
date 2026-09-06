@@ -26,6 +26,8 @@ export { MessageList } from "./message-list";
 export { PinnedMessagesBanner } from "./pinned-messages-banner";
 export { MessageTimeSeparator } from "./message-time-separator";
 export { MessageMeta } from "./message-meta";
+export { TypingDots } from "./typing-dots";
+export { ThreadTypingIndicator } from "./thread-typing-indicator";
 export { MessageReactions } from "./message-reactions";
 export { MessageReplyQuote } from "./message-reply-quote";
 export { MessageRow } from "./message-row";
@@ -39,3 +41,8 @@ export { ComposerMentionSuggestions } from "./composer-mention-suggestions";
 export { MessageBubble } from "./message-bubble";
 export { StickerTray } from "./sticker-tray";
 export { ComposerControls } from "./composer-controls";
+
+export { PanelResizeHandle } from "./panel-resize-handle";
+
+export { PinnedMessagesDialog } from "./pinned-messages-dialog";
+export { PinnedMessagesList } from "./pinned-messages-list";

@@ -25,10 +25,16 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 	const dialogRef = useRef<T>(null);
 
 	useEffect(() => {
-		dialogRef.current?.focus();
+		const opener = document.activeElement;
+		const dialog = dialogRef.current;
+		dialog?.focus();
 
 		function handleKeyDown(event: KeyboardEvent) {
+			const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+			if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
 			if (event.key === "Escape") {
+				event.preventDefault();
+				event.stopPropagation();
 				onClose();
 
 				return;
@@ -41,7 +47,7 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 			const last = focusable[focusable.length - 1];
 			if (!first || !last) return;
 
-			if (event.shiftKey && document.activeElement === first) {
+			if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
 				event.preventDefault();
 				last.focus();
 			} else if (!event.shiftKey && document.activeElement === last) {
@@ -52,7 +58,16 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 
 		document.addEventListener("keydown", handleKeyDown);
 
-		return () => document.removeEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("keydown", handleKeyDown);
+			if (
+				opener instanceof HTMLElement &&
+				opener.isConnected &&
+				(dialog?.contains(document.activeElement) || document.activeElement === document.body)
+			) {
+				opener.focus({ preventScroll: true });
+			}
+		};
 	}, [onClose]);
 
 	return dialogRef;

@@ -1,19 +1,19 @@
-import type { ParticipantDTO } from "@chatty/shared-types";
+import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
 import { Ban } from "lucide-react";
 import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/utils/cn";
 import { DELETED_AUTHOR_NAME, DELETED_MESSAGE_TEXT } from "../constants/message";
-import { DEFAULT_REACTION } from "../constants/reactions";
 import type { ClusterPosition } from "../types/message-cluster";
 import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
-import { bindMessageRowActions, countJumboEmoji, findMyReaction } from "../utils";
+import { bindMessageRowActions, countJumboEmoji, findMyReaction, resolveDisplayName } from "../utils";
 import { MessageActions } from "./message-actions";
 import { MessageBubble } from "./message-bubble";
 import { MessageEditor } from "./message-editor";
 import { MessageMeta } from "./message-meta";
+import { MessageSentCaption } from "./message-sent-caption";
 import { MessageReactions } from "./message-reactions";
 
 interface MessageRowProps extends MessageRowActions {
@@ -22,8 +22,8 @@ interface MessageRowProps extends MessageRowActions {
 	isGroup: boolean;
 	/** First of a run from the same author — the one that carries the avatar and the byline. */
 	isFirstOfRun: boolean;
-	/** Last message in a shared activity burst, regardless of who spoke. */
-	isTimeAnchor: boolean;
+	/** The newest message currently loaded — the one that carries a persistent "Sent"/"Seen" caption. */
+	isLastMessage: boolean;
 	/**
 	 * Where this message sits in its run, which decides its corners: see the
 	 * tables in `constants/message-cluster`.
@@ -37,31 +37,32 @@ interface MessageRowProps extends MessageRowActions {
 	/** Whose view this is — the reaction chips need it to know which are theirs. */
 	currentUserId: string;
 	participants: ParticipantDTO[];
+	themeColor: ConversationTheme | null;
 	isPinned: boolean;
 }
 
 /**
  * One message somebody wrote.
  *
- * The bubble's bottom corner is cut to 2px on the side the message came from,
- * so authorship remains legible without relying on colour alone.
+ * Consecutive messages share small facing corners while each run keeps soft ends.
  *
  * Metadata and actions share a fixed gutter on the bubble's centreline. Keeping
  * that space in the layout while fading secondary information prevents hover
- * from moving the thread and lets message runs retain their compact 3px rhythm.
+ * from moving the thread and lets message runs retain their compact rhythm.
  */
 export const MessageRow = memo(function MessageRow({
 	message,
 	isMine,
 	isGroup,
 	isFirstOfRun,
-	isTimeAnchor,
+	isLastMessage,
 	clusterPosition,
 	isTargeted,
 	isEditing,
 	receipt,
 	currentUserId,
 	participants,
+	themeColor,
 	isPinned,
 	...actions
 }: MessageRowProps) {
@@ -79,7 +80,6 @@ export const MessageRow = memo(function MessageRow({
 		onShowReactions,
 		onReply,
 		onForward,
-		onSave,
 		onTogglePin,
 		onJumpToReplyOriginal,
 	} = bindMessageRowActions(message, isPinned, actions);
@@ -93,10 +93,6 @@ export const MessageRow = memo(function MessageRow({
 	// A tombstone has no content and no image left to change, so the author's
 	// two actions have nothing to act on — the row stays only to hold its place.
 	const canModify = isMine && !isDeleted && !deliveryState;
-	// Speaker changes shape the bubbles, but they do not restart the clock. The
-	// list supplies one shared time anchor for the whole activity burst; a receipt
-	// keeps its message's time beside the delivery state as useful context.
-	const isTimeAlwaysVisible = isTimeAnchor || Boolean(receipt);
 	// A picture states its own time, in a chip on the image. Only a picture: a
 	// file card and a voice player are rows of ink on paper like any other
 	// bubble, and the gutter is level with them.
@@ -118,16 +114,6 @@ export const MessageRow = memo(function MessageRow({
 	// One per person, so this is an emoji and not a list — see `MessageReaction`.
 	const myReaction = findMyReaction(message.reactions, currentUserId);
 
-	// Double-click is the fastest way to leave a heart and the gesture every
-	// messenger binds to it. It also selects the word underneath, which would
-	// leave a highlight sitting on the message it just reacted to, so the
-	// selection is dropped in the same breath.
-	function reactWithDefault() {
-		if (isDeleted || isEditing || deliveryState) return;
-		window.getSelection()?.removeAllRanges();
-		onToggleReaction(DEFAULT_REACTION);
-	}
-
 	function revealTouchActions(event: ReactPointerEvent<HTMLDivElement>) {
 		if (event.pointerType === "mouse") return;
 		if ((event.target as HTMLElement).closest("a, button, input, textarea, [role='button']")) return;
@@ -142,11 +128,10 @@ export const MessageRow = memo(function MessageRow({
 		<div
 			id={`message-${message.id}`}
 			className={cn(
-				"flex flex-col rounded-bubble transition",
-				// The gap between two people is four times the gap inside one
-				// person's burst. That ratio is the only thing telling the eye where
-				// one turn ends, now that the timestamps have left the vertical.
-				isFirstOfRun ? "mt-4 first:mt-0" : "mt-[3px]",
+				"flex flex-col rounded-message transition-colors",
+				// A larger gap between speakers separates turns without a timestamp
+				// between every message in the same person's burst.
+				isFirstOfRun ? "mt-3 first:mt-0" : "mt-0.5",
 				isTargeted && "bg-signal-soft ring-4 ring-signal-soft",
 				isMine ? "items-end" : "items-start",
 				// Held back from full ink until the server has it. The words are the
@@ -161,11 +146,11 @@ export const MessageRow = memo(function MessageRow({
 			    over the bubble rather than over the face. Groups only: in a 1-1 the
 			    header already names the one person it could possibly be. */}
 			{!isMine && isFirstOfRun && isGroup && (
-				<span className="eyebrow mb-1.5 ml-12 text-ink-soft sm:ml-13">
+				<span className="eyebrow mb-1 ml-12 text-ink-soft sm:ml-13">
 					{/* A USER message with no author is one whose writer deleted their
 					    account — still theirs to have said, no longer theirs to be
 					    named for. */}
-					{author ? author.displayName : DELETED_AUTHOR_NAME}
+					{author ? resolveDisplayName(participants, author) : DELETED_AUTHOR_NAME}
 				</span>
 			)}
 
@@ -183,7 +168,7 @@ export const MessageRow = memo(function MessageRow({
 					// reserving — 10px of a 20px pill, plus 6px so the next message does
 					// not touch it. It moved with the pill when that shrank from 22px.
 					hasReactions && "mb-4",
-					!hasReactions && (isTimeAlwaysVisible || isEdited) && "max-sm:mb-4",
+					!hasReactions && isEdited && "max-sm:mb-4",
 				)}
 			>
 				{/* The spacer keeps a run's later bubbles aligned with its first one;
@@ -202,17 +187,15 @@ export const MessageRow = memo(function MessageRow({
 				    returning to the left edge. On the bubble rather than on the row,
 				    so the gutter beside it is not paid for out of the text's width. */}
 				<div
-					onDoubleClick={reactWithDefault}
-					className="relative min-w-0 max-w-[76vw] sm:max-w-[min(62vw,34rem)]"
+					className={cn(
+						"relative min-w-0 max-w-[76vw]",
+						hasImages || isEditing ? "sm:max-w-[min(62vw,34rem)]" : "sm:max-w-[min(62vw,28rem)]",
+					)}
 				>
 					{isDeleted ? (
 						<div
 							className={cn(
-								// Round on all four corners, with no notch on either side. The
-								// notch says "this is where a turn ends", and a tombstone is not
-								// a turn — nothing was said. It is also why the list treats a
-								// deleted message as belonging to no run at all.
-								"flex items-center gap-2.5 rounded-bubble border border-dashed border-rule px-4 py-2.5 text-ink-faint",
+								"flex items-center gap-2.5 rounded-message border border-dashed border-rule px-4 py-2.5 text-ink-faint",
 							)}
 						>
 							<Ban aria-hidden="true" className="size-3.5 shrink-0" />
@@ -230,10 +213,10 @@ export const MessageRow = memo(function MessageRow({
 							message={message}
 							isMine={isMine}
 							clusterPosition={clusterPosition}
-							isTimeAlwaysVisible={isTimeAlwaysVisible}
 							jumboCount={jumboCount}
 							onJumpToReplyOriginal={onJumpToReplyOriginal}
 							participants={participants}
+							themeColor={themeColor}
 							// The same condition the row's own menu is drawn under: a
 							// tombstone has nothing left to forward, and a message this
 							// tab is still sending has no id to forward.
@@ -247,6 +230,7 @@ export const MessageRow = memo(function MessageRow({
 							currentUserId={currentUserId}
 							users={participants}
 							isMine={isMine}
+							themeColor={themeColor}
 							onToggle={onToggleReaction}
 							onShowDetails={onShowReactions}
 						/>
@@ -259,7 +243,7 @@ export const MessageRow = memo(function MessageRow({
 						onDeleteForMe={onDeleteForMe}
 						// Both omitted on a tombstone: there is nothing left to answer or to
 						// mark, and the server refuses either write anyway.
-						{...(!isDeleted && { onReply, onToggleReaction, onForward, onSave, onTogglePin })}
+						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin })}
 						{...(hasReactions && { onShowReactions })}
 						isPinned={isPinned}
 						myReaction={myReaction}
@@ -272,17 +256,25 @@ export const MessageRow = memo(function MessageRow({
 					createdAt={message.createdAt}
 					hasTimeOnMedia={hasTimeOnMedia}
 					isMine={isMine}
-					isGroup={isGroup}
 					isEdited={isEdited}
-					isTimeAlwaysVisible={isTimeAlwaysVisible}
 					receipt={receipt}
-					participants={participants}
 					deliveryState={deliveryState}
 					onShowHistory={onShowHistory}
 					onRetrySend={onRetrySend}
 					onDiscardDraft={onDiscardDraft}
 				/>
 			</div>
+
+			<MessageSentCaption
+				createdAt={message.createdAt}
+				isMine={isMine}
+				isLastMessage={isLastMessage}
+				isGroup={isGroup}
+				isDeleted={isDeleted}
+				hasDeliveryState={Boolean(deliveryState)}
+				receipt={receipt}
+				participants={participants}
+			/>
 		</div>
 	);
 });

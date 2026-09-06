@@ -13,6 +13,7 @@ import {
 	useKeyboardShortcuts,
 	useMessageListHandlers,
 	useMessageNotifications,
+	useMessageSound,
 	usePresence,
 	useRestrictedUsersSync,
 	useSocketConnection,
@@ -62,6 +63,7 @@ export function ChatPage() {
 
 	useDocumentTitle(conversations);
 	useMessageNotifications(currentUser?.id ?? "", conversations);
+	useMessageSound(currentUser?.id ?? "", conversations, selectedConversationId);
 
 	const {
 		messages,
@@ -140,7 +142,7 @@ export function ChatPage() {
 
 	// Stable identities, which is what keeps the memo on `MessageRows` working
 	// while this component re-renders on every typing and presence event.
-	const { pinnedMessageIds, onSaveMessage, onTogglePinMessage } = useMessageListHandlers(
+	const { pinnedMessageIds, onTogglePinMessage } = useMessageListHandlers(
 		selectedConversationId,
 		selectedConversation?.pinnedMessages,
 	);
@@ -187,7 +189,7 @@ export function ChatPage() {
 			{isShortcutHelpOpen && <KeyboardShortcutsPanel onClose={() => setIsShortcutHelpOpen(false)} />}
 			{isConnectionLost && <ConnectionBanner />}
 
-			<div className="flex min-h-0 flex-1">
+			<div className="flex min-h-0 flex-1 lg:gap-2 lg:p-2">
 				<ConversationSidebar
 					currentUser={currentUser}
 					conversations={conversations}
@@ -220,7 +222,6 @@ export function ChatPage() {
 							}}
 							isSearchOpen={isConversationSearchOpen}
 							onOpenSearch={() => {
-								setIsManagingGroup(false);
 								setRequestedMessageId(null);
 								setIsConversationSearchOpen(true);
 							}}
@@ -243,6 +244,7 @@ export function ChatPage() {
 								currentUserId: currentUser.id,
 								participants: selectedConversation.participants,
 								isGroup: selectedConversation.isGroup,
+								themeColor: selectedConversation.themeColor,
 								areReceiptsShared: currentUser.readReceiptsEnabled,
 								isLoadingThread,
 								hasMoreOlder,
@@ -259,7 +261,6 @@ export function ChatPage() {
 								onToggleReaction: toggleReaction,
 								onReplyToMessage: setReplyTo,
 								onForwardMessage: setForwardingMessage,
-								onSaveMessage,
 								onTogglePinMessage,
 								pinnedMessageIds,
 								onJumpToMessage: jumpToMessage,

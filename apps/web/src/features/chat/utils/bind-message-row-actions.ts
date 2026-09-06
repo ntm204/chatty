@@ -18,7 +18,6 @@ export function bindMessageRowActions(message: ThreadMessage, isPinned: boolean,
 		onShowReactions: () => actions.onShowReactions(message.id),
 		onReply: () => actions.onReplyToMessage(message),
 		onForward: () => actions.onForwardMessage(message),
-		onSave: () => actions.onSaveMessage(message.id),
 		onTogglePin: () => actions.onTogglePinMessage(message.id, isPinned),
 		onJumpToReplyOriginal: () => {
 			const originalId = message.replyTo?.id;

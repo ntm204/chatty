@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { SettingsModal } from "../components";
 
@@ -15,11 +15,12 @@ import { SettingsModal } from "../components";
  * browser's Back button close the dialog for free.
  */
 export function SettingsPage() {
+	const location = useLocation();
 	const currentUser = useAuth((state) => state.currentUser);
 	const navigate = useNavigate();
 	const handleClose = useCallback(() => navigate("/chat"), [navigate]);
 
-	if (!currentUser) return null;
+	if (!currentUser || location.pathname !== "/profile") return null;
 
 	return <SettingsModal user={currentUser} onClose={handleClose} />;
 }

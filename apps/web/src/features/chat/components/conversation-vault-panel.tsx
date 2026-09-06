@@ -1,13 +1,19 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pin, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
 import { Button } from "@/components/button";
-import { VAULT_TABS, type VaultTab } from "../constants/vault";
+import { Disclosure } from "@/components/disclosure";
+import { VAULT_CATEGORY_TABS, VAULT_TABS, type VaultTab } from "../constants/vault";
 import { useConversationVault } from "../hooks/use-conversation-vault";
 import { getDirectPeer } from "../utils";
 import { ConversationBlockControl } from "./conversation-block-control";
+import { ConversationCustomizePanel } from "./conversation-customize-panel";
 import { ConversationDetailsIdentity } from "./conversation-details-identity";
-import { ConversationRestrictControl } from "./conversation-restrict-control";
+import { ConversationQuickActions } from "./conversation-quick-actions";
+import { GroupInvitePolicyControl } from "./group-invite-policy-control";
+import { PinnedMessagesDialog } from "./pinned-messages-dialog";
+import { PanelResizeHandle } from "./panel-resize-handle";
 import { GroupMembersPanel } from "./group-members-panel";
 import { VaultCategoryList } from "./vault-category-list";
 import { VaultTabContent } from "./vault-tab-content";
@@ -15,156 +21,229 @@ import { VaultTabContent } from "./vault-tab-content";
 interface ConversationVaultPanelProps {
 	conversation: ConversationDTO;
 	currentUserId: string;
-	/** Presence for the identity block at the top — the same set the header reads. */
 	onlineUserIds: Set<string>;
 	onClose: () => void;
+	onOpenSearch: () => void;
 	onOpenMessage: (messageId: string) => void;
 }
 
-/**
- * What a conversation holds, in two levels rather than six tabs.
- *
- * The panel opens on **who this is** and **what is in here** — identity, then a
- * list of categories with their counts — and a category opens into its own
- * full-height view with a way back. That is the shape KakaoTalk, WhatsApp and
- * Telegram all converge on, and the reason is width: six tabs in a 448px column
- * had to scroll sideways, which hid half of them behind a gesture nobody
- * performs and still could not say how many files were in there.
- *
- * It stays a sheet beside the thread rather than becoming a modal over it, and
- * that is the load-bearing decision. Tapping a photo jumps to the message it
- * came from, in the conversation *behind* this panel — from a modal with its own
- * navigation, that jump would have to tear down the modal first, and the panel
- * would have replaced the thing it exists to point at.
- */
+/** Conversation details dock beside the thread, or replace it on narrow screens. */
 export function ConversationVaultPanel({
 	conversation,
 	currentUserId,
 	onlineUserIds,
 	onClose,
+	onOpenSearch,
 	onOpenMessage,
 }: ConversationVaultPanelProps) {
-	// A group opens on its members, because the header button that opens this
-	// panel is labelled "Group members" for a group and that is what it must then
-	// show. Back reveals the categories underneath it. A direct conversation's
-	// button says "Conversation storage and details", and lands there.
 	const panelRef = useRef<HTMLElement>(null);
-	const [activeTab, setActiveTab] = useState<VaultTab | null>(conversation.isGroup ? "members" : null);
+	const [activeTab, setActiveTab] = useState<VaultTab | null>(null);
+	const [isPinsDialogOpen, setIsPinsDialogOpen] = useState(false);
+	// Lifted rather than left to Disclosure's own state: selecting a category
+	// unmounts this overview, and an uncontrolled Disclosure would reset to
+	// collapsed every time "Back" remounts it.
+	const [isVaultSectionOpen, setIsVaultSectionOpen] = useState(false);
 	const vault = useConversationVault(conversation.id, activeTab);
 	const blockablePeer = conversation.isGroup ? null : getDirectPeer(conversation, currentUserId);
 	const activeLabel = VAULT_TABS.find((tab) => tab.id === activeTab)?.label ?? "";
+	const isAdmin = conversation.participants.find((participant) => participant.id === currentUserId)?.role === "admin";
 
 	useEffect(() => {
-		// `pointerdown` rather than `click`, which is the event every other
-		// dismissible surface in this feature already listens on: a click fires
-		// after the press has moved focus, and on touch after a delay long enough
-		// that the panel reads as having ignored the tap.
-		//
-		// Nothing guards "is it open", because this panel is unmounted when it is
-		// closed — and the press that opened it landed before this listener
-		// existed, which is what stops the panel closing itself on the way in.
-		//
-		// The confirmation dialogs and the image lightbox are rendered inside this
-		// element, so `contains` already treats a press on either as inside. That
-		// is load-bearing: they cover the viewport, and a panel that closed
-		// underneath its own "Block this person?" dialog would leave the dialog
-		// standing over a conversation it no longer belongs to.
-		function dismissFromOutside(event: PointerEvent): void {
-			if (!panelRef.current?.contains(event.target as Node)) onClose();
-		}
-
-		document.addEventListener("pointerdown", dismissFromOutside);
+		const panel = panelRef.current;
+		// Narrow layouts hide the opener before this effect can read activeElement.
+		const previousFocus =
+			panel?.parentElement?.querySelector<HTMLElement>('[aria-controls="conversation-details"]') ??
+			document.activeElement;
+		panel?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
 
 		return () => {
-			document.removeEventListener("pointerdown", dismissFromOutside);
+			// Restore the opener only when focus has not moved into another panel.
+			if (
+				previousFocus instanceof HTMLElement &&
+				previousFocus.isConnected &&
+				(panel?.contains(document.activeElement) || document.activeElement === document.body)
+			) {
+				previousFocus.focus({ preventScroll: true });
+			}
 		};
-		// Escape is deliberately absent: `useKeyboardShortcuts` already closes this
-		// panel, and it does so as part of an ordered chain — help, then forwarding,
-		// then this. A second listener here would close two surfaces with one key.
-	}, [onClose]);
+	}, []);
 
 	return (
 		<aside
 			ref={panelRef}
-			// Named on the landmark rather than left to the heading inside it: the
-			// heading becomes the open category's label, and a region whose name
-			// changes as you navigate inside it cannot be addressed by name at all.
 			aria-label="Conversation details"
-			className="absolute inset-y-0 right-0 z-20 flex w-full max-w-md flex-col border-l border-rule bg-paper-raised shadow-lift"
+			id="conversation-details"
+			className="conversation-details-panel relative flex min-h-0 w-full shrink-0 flex-col bg-paper-raised lg:rounded-xl lg:border lg:border-rule xl:w-[var(--panel-width,320px)]"
 		>
-			{/* The title takes the centre and the controls keep the corners — the
-			    arrangement every sheet in a messenger uses, and the one that stops a
-			    two-word title reading as the start of a toolbar. Back is on the left
-			    because it is the same gesture as the mobile thread's own back. */}
-			<div className="relative flex h-12 shrink-0 items-center justify-center border-b border-rule px-2">
+			<PanelResizeHandle
+				panelId="conversation-details"
+				label="Resize conversation details"
+				edge="left"
+				defaultWidth={320}
+				minWidth={280}
+				maxWidth={400}
+				className="hidden xl:block"
+			/>
+			<div className="relative flex h-[70px] shrink-0 items-center border-b border-rule px-5">
 				{activeTab && (
 					<Button
 						variant="ghost"
 						onClick={() => setActiveTab(null)}
 						aria-label="Back to conversation details"
-						className="absolute left-2 size-8 p-0"
+						className="absolute left-3 size-8 p-0"
 					>
 						<ChevronLeft className="size-4" />
 					</Button>
 				)}
-				<h2 className="eyebrow text-ink-soft">{activeTab ? activeLabel : "Conversation details"}</h2>
+				<h2 className={cn("pr-10 text-sm font-semibold text-ink", activeTab && "pl-9")}>
+					{activeTab ? activeLabel : "Conversation details"}
+				</h2>
 				<Button
 					variant="ghost"
 					onClick={onClose}
 					aria-label="Close conversation storage"
-					className="absolute right-2 size-8 p-0"
+					className="absolute right-3 size-8 p-0"
 				>
 					<X className="size-4" />
 				</Button>
 			</div>
 
 			{!activeTab && (
-				<>
+				<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
 					<ConversationDetailsIdentity
 						conversation={conversation}
 						currentUserId={currentUserId}
 						onlineUserIds={onlineUserIds}
 					/>
-					<div className="min-h-0 flex-1 overflow-y-auto py-2">
-						<VaultCategoryList
-							summary={vault.summary}
-							memberCount={conversation.isGroup ? conversation.participants.length : null}
-							onSelect={setActiveTab}
-						/>
+					<ConversationQuickActions conversation={conversation} onOpenSearch={onOpenSearch} />
+
+					<div className="px-3 pt-4">
+						<h3 className="mb-2 px-3 text-xs font-medium text-ink-faint">Chat info</h3>
+						<Button
+							variant="ghost"
+							onClick={() => setIsPinsDialogOpen(true)}
+							className="min-h-12 w-full justify-start gap-3 px-3 text-left font-normal"
+						>
+							<Pin className="size-4 text-ink-soft" />
+							<span className="flex-1 text-sm">Pinned messages</span>
+							<span className="meta text-ink-faint">{conversation.pinnedMessages.length}</span>
+							<ChevronRight className="size-4 text-ink-faint" />
+						</Button>
 					</div>
+
+					{/* Content → people → settings → safety: what this chat holds, who is
+					    in it, how it is configured, and only then the rare, sensitive
+					    controls — rather than interleaving settings between content. */}
+					<div className="mx-3 mt-3 border-t border-rule-soft py-1">
+						<Disclosure label="Customize chat" defaultOpen>
+							<ConversationCustomizePanel
+								conversation={conversation}
+								currentUserId={currentUserId}
+								onlineUserIds={onlineUserIds}
+								isAdmin={isAdmin}
+							/>
+						</Disclosure>
+					</div>
+
+					<div className="mx-3 mt-1 border-t border-rule-soft py-1">
+						<Disclosure
+							label="Media, files and links"
+							isOpen={isVaultSectionOpen}
+							onOpenChange={setIsVaultSectionOpen}
+						>
+							<VaultCategoryList summary={vault.summary} memberCount={null} onSelect={setActiveTab} />
+						</Disclosure>
+					</div>
+
+					{conversation.isGroup && (
+						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
+							<Disclosure label="Members">
+								<GroupMembersPanel
+									conversation={conversation}
+									currentUserId={currentUserId}
+									onClose={onClose}
+									isEmbedded
+								/>
+							</Disclosure>
+						</div>
+					)}
+
+					{conversation.isGroup && (
+						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
+							<Disclosure label="Group options">
+								<div className="px-3 py-2">
+									<GroupInvitePolicyControl
+										conversationId={conversation.id}
+										policy={conversation.invitePolicy}
+										isAdmin={isAdmin}
+									/>
+								</div>
+							</Disclosure>
+						</div>
+					)}
+
 					{/* Last, not first. Direct conversations only: a block is between two
 					    people and deliberately does not reach into a group they share. */}
-					{blockablePeer && <ConversationRestrictControl peer={blockablePeer} />}
-					{blockablePeer && <ConversationBlockControl peer={blockablePeer} />}
-				</>
+					{blockablePeer && (
+						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
+							<Disclosure label="Privacy & support">
+								<ConversationBlockControl peer={blockablePeer} />
+							</Disclosure>
+						</div>
+					)}
+				</div>
 			)}
 
-			{activeTab && (
-				<div className="min-h-0 flex-1 overflow-y-auto p-4">
-					{activeTab === "members" ? (
-						<GroupMembersPanel
-							conversation={conversation}
-							currentUserId={currentUserId}
-							onClose={onClose}
-							isEmbedded
-						/>
-					) : (
+			{activeTab && activeTab !== "members" && (
+				<div className="flex min-h-0 flex-1 flex-col">
+					<div
+						role="tablist"
+						aria-label="Shared content"
+						className="flex shrink-0 gap-1 border-b border-rule px-3 py-2"
+					>
+						{VAULT_CATEGORY_TABS.map((tab) => (
+							<Button
+								key={tab.id}
+								variant="ghost"
+								role="tab"
+								aria-selected={activeTab === tab.id}
+								onClick={() => setActiveTab(tab.id)}
+								className={cn(
+									"px-2.5 py-1.5 text-[13px] font-medium",
+									activeTab === tab.id ? "bg-paper-sunken text-ink" : "text-ink-faint",
+								)}
+							>
+								{tab.label}
+							</Button>
+						))}
+					</div>
+					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
 						<VaultTabContent
 							activeTab={activeTab}
 							attachments={vault.attachments}
 							links={vault.links}
-							saved={vault.saved}
 							isLoading={vault.isLoading}
 							error={vault.error}
 							hasMore={vault.hasMore}
 							nextCursor={vault.nextCursor}
 							loadMoreRef={vault.loadMoreRef}
 							onLoadPage={vault.loadPage}
-							onRemoveSaved={vault.removeSaved}
 							onOpenMessage={onOpenMessage}
 						/>
-					)}
+					</div>
 				</div>
+			)}
+
+			{isPinsDialogOpen && (
+				<PinnedMessagesDialog
+					pinnedMessages={conversation.pinnedMessages}
+					currentUserId={currentUserId}
+					onClose={() => setIsPinsDialogOpen(false)}
+					onOpenMessage={(messageId) => {
+						setIsPinsDialogOpen(false);
+						onOpenMessage(messageId);
+					}}
+				/>
 			)}
 		</aside>
 	);

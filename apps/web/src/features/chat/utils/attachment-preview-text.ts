@@ -1,7 +1,8 @@
+import type { AttachmentDTO } from "@chatty/shared-types";
 import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
 
 /**
- * What a message made only of pictures says where its text would go — the
+ * What an attachment-only message says where its text would go — the
  * sidebar preview, and the composer's reply slot.
  *
  * It counts, because "Sent an image" under a conversation somebody just sent
@@ -9,6 +10,9 @@ import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
  * preview exists precisely so the reader knows what is waiting without opening
  * the thread.
  */
-export function getAttachmentPreviewText(count: number): string {
-	return count > 1 ? `Sent ${count} images` : ATTACHMENT_PREVIEW_TEXT;
+export function getAttachmentPreviewText(attachments: AttachmentDTO[]): string {
+	if (attachments.some((attachment) => attachment.kind === "audio")) return "Voice message";
+	if (attachments.some((attachment) => attachment.kind === "file")) return "Sent a file";
+
+	return attachments.length > 1 ? `Sent ${attachments.length} images` : ATTACHMENT_PREVIEW_TEXT;
 }

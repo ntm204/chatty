@@ -1,23 +1,26 @@
 import type { LucideIcon } from "lucide-react";
-import { Bookmark, FileText, Image, Link2, Mic, Users } from "lucide-react";
+import { FileText, Image, Link2, Mic, Users } from "lucide-react";
 
-export type VaultTab = "media" | "files" | "voice" | "links" | "saved" | "members";
+export type VaultTab = "media" | "files" | "voice" | "links" | "members";
 
 export const VAULT_TABS: { id: VaultTab; label: string }[] = [
 	{ id: "media", label: "Media" },
 	{ id: "files", label: "Files" },
 	{ id: "voice", label: "Voice" },
 	{ id: "links", label: "Links" },
-	{ id: "saved", label: "Saved" },
 	{ id: "members", label: "Members" },
 ];
+
+/** The four content categories, without the standalone "Members" row — the tab row shown once one is open. */
+export const VAULT_CATEGORY_TABS = VAULT_TABS.filter(
+	(tab): tab is { id: Exclude<VaultTab, "members">; label: string } => tab.id !== "members",
+);
 
 export const EMPTY_VAULT_TAB_COPY: Record<Exclude<VaultTab, "members">, string> = {
 	media: "Photos shared in this conversation will appear here.",
 	files: "Files shared in this conversation will appear here.",
 	voice: "Voice messages shared in this conversation will appear here.",
 	links: "Links shared in this conversation will appear here.",
-	saved: "Messages you save in this conversation will appear here.",
 };
 
 /**
@@ -37,7 +40,6 @@ export const VAULT_TAB_ICONS: Record<VaultTab, LucideIcon> = {
 	files: FileText,
 	voice: Mic,
 	links: Link2,
-	saved: Bookmark,
 	members: Users,
 };
 

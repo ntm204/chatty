@@ -101,7 +101,7 @@ export function ComposerAttachmentMenu({
 				aria-haspopup="menu"
 				aria-expanded={isOpen}
 				className={cn(
-					"size-9 rounded-bubble p-0 text-ink-faint hover:text-ink",
+					"size-9 rounded-full p-0 text-ink-faint hover:bg-transparent hover:text-ink",
 					isOpen && "bg-paper-sunken text-ink",
 				)}
 			>

@@ -1,4 +1,4 @@
-import type { ParticipantDTO } from "@chatty/shared-types";
+import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
 import { Fragment, memo } from "react";
 import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
@@ -15,6 +15,7 @@ interface MessageRowsProps extends MessageRowActions {
 	currentUserId: string;
 	participants: ParticipantDTO[];
 	isGroup: boolean;
+	themeColor: ConversationTheme | null;
 	readReceipt: ReadReceipt | null;
 	unreadDividerMessageId: string | null;
 	unreadCount: number;
@@ -33,6 +34,7 @@ export const MessageRows = memo(function MessageRows({
 	currentUserId,
 	participants,
 	isGroup,
+	themeColor,
 	readReceipt,
 	unreadDividerMessageId,
 	unreadCount,
@@ -71,13 +73,9 @@ export const MessageRows = memo(function MessageRows({
 			previous?.author?.id !== author.id;
 		const next = messages[index + 1];
 		const isWithinNextBurst = next ? isWithinMessageBurst(next.createdAt, message.createdAt) : false;
-		// Time belongs to the conversation's rhythm, not to its speaker turns.
-		// In a lively group every alternating author is a separate visual run; if
-		// run boundaries also printed time, a single minute became a wall of the
-		// same timestamp. Keep one visible anchor at the end of the shared activity
-		// burst and leave each individual time available on hover or keyboard focus.
-		const isTimeAnchor =
-			!next || next.kind === "system" || !isWithinNextBurst || isNewDay(next.createdAt, message.createdAt);
+		// Only the newest loaded message keeps a persistent "Sent"/"Seen" caption;
+		// every other message shows its exact time on hover or keyboard focus only.
+		const isLastMessage = !next;
 		const isLastOfRun =
 			!author ||
 			isDeleted ||
@@ -100,13 +98,14 @@ export const MessageRows = memo(function MessageRows({
 					isMine={author?.id === currentUserId}
 					isGroup={isGroup}
 					isFirstOfRun={isFirstOfRun}
-					isTimeAnchor={isTimeAnchor}
+					isLastMessage={isLastMessage}
 					clusterPosition={getClusterPosition(isFirstOfRun, isLastOfRun)}
 					isTargeted={message.id === targetMessageId}
 					isEditing={editingMessageId === message.id}
 					receipt={readReceipt?.messageId === message.id ? readReceipt : null}
 					currentUserId={currentUserId}
 					participants={participants}
+					themeColor={themeColor}
 					isPinned={isPinned}
 					{...actions}
 				/>

@@ -1,6 +1,7 @@
-import type { ReactionDTO, ReactionEmoji, UserDTO } from "@chatty/shared-types";
+import type { ConversationTheme, ReactionDTO, ReactionEmoji, UserDTO } from "@chatty/shared-types";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
+import { getConversationThemeClasses } from "../constants/conversation-theme";
 import { REACTION_CHIP_LIMIT } from "../constants/reactions";
 import { getReactionSummary } from "../utils";
 
@@ -10,6 +11,8 @@ interface MessageReactionsProps {
 	users: UserDTO[];
 	/** Which side the bubble sits on — the pill hangs off its inner corner. */
 	isMine: boolean;
+	/** The conversation's shared accent, replacing the fixed default for a "mine" chip — see ADR 0022. */
+	themeColor: ConversationTheme | null;
 	onToggle: (emoji: ReactionEmoji) => void;
 	/** Opens the reactor list. Reached from the overflow count and from the actions menu. */
 	onShowDetails: () => void;
@@ -54,9 +57,11 @@ export function MessageReactions({
 	currentUserId,
 	users,
 	isMine,
+	themeColor,
 	onToggle,
 	onShowDetails,
 }: MessageReactionsProps) {
+	const theme = getConversationThemeClasses(themeColor);
 	const visible = reactions.slice(0, REACTION_CHIP_LIMIT);
 	const hiddenCount = reactions.length - visible.length;
 
@@ -81,7 +86,7 @@ export function MessageReactions({
 						onClick={() => onToggle(reaction.emoji)}
 						aria-pressed={isReacted}
 						aria-label={`${reaction.emoji}, ${count}`}
-						title={getReactionSummary(reaction, users, currentUserId)}
+						aria-description={getReactionSummary(reaction, users, currentUserId)}
 						className={cn(
 							"h-4 rounded-full py-0 transition",
 							count > 1 ? "gap-0.5 px-1" : "w-4 p-0",
@@ -90,7 +95,7 @@ export function MessageReactions({
 							// undo, and a reaction is neither — so "mine" is said with the
 							// ink block the app already uses for a message you sent, at the
 							// smallest size that still reads as deliberate.
-							isReacted ? "bg-block text-block-ink hover:bg-block" : "hover:bg-ink/5",
+							isReacted ? theme.reacted : "hover:bg-transparent",
 						)}
 					>
 						<span aria-hidden="true" className="text-[12px] leading-none">
@@ -106,7 +111,7 @@ export function MessageReactions({
 					variant="ghost"
 					onClick={onShowDetails}
 					aria-label={`${hiddenCount} more reactions. Show everyone who reacted`}
-					className="h-4 rounded-full px-1 py-0 text-ink-soft transition hover:bg-ink/5 hover:text-ink"
+					className="h-4 rounded-full px-1 py-0 text-ink-soft transition hover:bg-transparent hover:text-ink"
 				>
 					<span className="meta">+{hiddenCount}</span>
 				</Button>

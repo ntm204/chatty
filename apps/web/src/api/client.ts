@@ -10,6 +10,7 @@ import type {
 	ConversationPageDTO,
 	ConversationSelfUpdatedEvent,
 	ConversationReadEvent,
+	ConversationTheme,
 	CurrentUserDTO,
 	DeleteAccountRequest,
 	EditMessageRequest,
@@ -29,12 +30,11 @@ import type {
 	RequestPasswordResetRequest,
 	ResetPasswordRequest,
 	StickerDTO,
-	SavedMessagePageDTO,
 	SetGroupInvitePolicyRequest,
 	SetParticipantRoleRequest,
+	SetThemeRequest,
 	ConversationVaultSummaryDTO,
 	ToggleReactionRequest,
-	TransferOwnershipRequest,
 	UpdateProfileRequest,
 	BlockStatusDTO,
 	BlockedUsersPageDTO,
@@ -484,6 +484,35 @@ export const api = {
 		});
 	},
 
+	/** Shared with everyone in the conversation, not just the caller — see ADR 0022. */
+	setConversationNickname(conversationId: string, userId: string, nickname: string | null): Promise<ConversationDTO> {
+		return request<ConversationDTO>(`/conversations/${conversationId}/members/${userId}/nickname`, {
+			method: "PUT",
+			body: JSON.stringify({ nickname }),
+		});
+	},
+
+	setConversationTheme(conversationId: string, theme: ConversationTheme | null): Promise<ConversationDTO> {
+		const body: SetThemeRequest = { theme };
+
+		return request<ConversationDTO>(`/conversations/${conversationId}/theme`, {
+			method: "PUT",
+			body: JSON.stringify(body),
+		});
+	},
+
+	/** Group-only; admin-gated. Returns the refreshed conversation, whose `avatarUrl` carries a new version. */
+	uploadConversationAvatar(conversationId: string, file: File): Promise<ConversationDTO> {
+		const body = new FormData();
+		body.append(AVATAR_FIELD, file);
+
+		return request<ConversationDTO>(`/conversations/${conversationId}/avatar`, { method: "POST", body });
+	},
+
+	deleteConversationAvatar(conversationId: string): Promise<ConversationDTO> {
+		return request<ConversationDTO>(`/conversations/${conversationId}/avatar`, { method: "DELETE" });
+	},
+
 	createConversation(participantIds: string[], name?: string): Promise<ConversationDTO> {
 		return post<ConversationDTO>("/conversations", name ? { participantIds, name } : { participantIds });
 	},
@@ -634,32 +663,9 @@ export const api = {
 		return get<MessageLinkPageDTO>(`/conversations/${conversationId}/links?${params.toString()}`);
 	},
 
-	/**
-	 * Saved messages, account-wide or scoped to one conversation.
-	 *
-	 * The scope is a query parameter rather than a filter applied to the response:
-	 * the cursor pages the scoped set, so a conversation's saved messages arrive on
-	 * the first page instead of being scrolled out of an account-wide list.
-	 */
-	listSavedMessages(limit = 40, before?: string, conversationId?: string): Promise<SavedMessagePageDTO> {
-		const params = new URLSearchParams({ limit: String(limit) });
-		if (before) params.set("before", before);
-		if (conversationId) params.set("conversationId", conversationId);
-
-		return get<SavedMessagePageDTO>(`/me/saved?${params.toString()}`);
-	},
-
 	/** What each category in the details panel holds, before any of them is opened. */
 	getConversationVaultSummary(conversationId: string): Promise<ConversationVaultSummaryDTO> {
 		return get<ConversationVaultSummaryDTO>(`/conversations/${conversationId}/vault-summary`);
-	},
-
-	saveMessage(conversationId: string, messageId: string): Promise<void> {
-		return request<void>(`/conversations/${conversationId}/messages/${messageId}/star`, { method: "PUT" });
-	},
-
-	removeSavedMessage(conversationId: string, messageId: string): Promise<void> {
-		return request<void>(`/conversations/${conversationId}/messages/${messageId}/star`, { method: "DELETE" });
 	},
 
 	pinMessage(conversationId: string, messageId: string): Promise<PinnedMessageDTO[]> {
@@ -793,22 +799,6 @@ export const api = {
 	 */
 	removeParticipant(conversationId: string, userId: string): Promise<void> {
 		return request<void>(`/conversations/${conversationId}/members/${userId}`, { method: "DELETE" });
-	},
-
-	/**
-	 * Hands a group to another member. Owner only, and the caller stops being the
-	 * owner in the same request — there is exactly one.
-	 *
-	 * Returns the conversation as the (now former) owner sees it; everyone else
-	 * learns about it from `conversation:updated` and the system line.
-	 */
-	transferOwnership(conversationId: string, userId: string): Promise<ConversationDTO> {
-		const body: TransferOwnershipRequest = { userId };
-
-		return request<ConversationDTO>(`/conversations/${conversationId}/owner`, {
-			method: "PUT",
-			body: JSON.stringify(body),
-		});
 	},
 
 	setParticipantRole(

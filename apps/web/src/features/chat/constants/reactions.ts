@@ -5,22 +5,13 @@ import type { ReactionEmoji } from "@chatty/shared-types";
  *
  * These six rather than any six: they are what Messenger, Instagram and Telegram
  * all put in the same bar, so the row is recognised before it is read. The heart
- * is first because it is what the overwhelming majority of reactions are, and
- * because it is the one a double-click leaves without opening anything.
+ * is first because it is what the overwhelming majority of reactions are.
  *
  * It is a *shortcut*, not the set — `+` opens the full picker and any emoji the
  * server accepts is a reaction. That is the difference from the five-name enum
  * this replaced, and the reason the row can be this short.
  */
 export const QUICK_REACTIONS: ReactionEmoji[] = ["❤️", "😂", "😮", "😢", "😡", "👍"];
-
-/**
- * What a double-click on a bubble leaves.
- *
- * One gesture, no menu, no aim — the fastest thing in the feature, and the same
- * emoji every other messenger binds to a double-tap.
- */
-export const DEFAULT_REACTION: ReactionEmoji = "❤️";
 
 /**
  * How many distinct emoji a message shows before the rest collapse into one

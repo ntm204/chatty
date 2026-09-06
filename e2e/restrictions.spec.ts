@@ -6,13 +6,13 @@ import { makeUser, messages, openConversationWith, register, sendMessage, startD
  *
  * The service tests already prove the rules — one-directional, groups exempt,
  * unread/read-receipt/presence effects — so this covers only what a browser
- * can say: that the control is reachable from the conversation panel, that it
+ * can say: that the control is reachable from the sidebar row menu, that it
  * is a quiet toggle rather than blocking's confirm-then-act, that it does not
  * touch message delivery the way a block does, and that account settings and
- * the conversation panel agree about the same fact in real time.
+ * the sidebar menu agree about the same fact in real time.
  */
 test.describe("restricting", () => {
-	test("toggles quietly from the panel, and never stops a message arriving", async ({ browser }) => {
+	test("toggles quietly from the sidebar, and never stops a message arriving", async ({ browser }) => {
 		const mai = makeUser("Mai");
 		const linh = makeUser("Linh");
 		const maiContext = await browser.newContext();
@@ -25,16 +25,22 @@ test.describe("restricting", () => {
 		await startDirectChat(maiPage, linh);
 
 		await maiPage.getByRole("button", { name: "Conversation storage and details" }).click();
-		await expect(maiPage.getByRole("button", { name: `Restrict ${linh.displayName}` })).toBeVisible({
-			timeout: 15_000,
-		});
+		await expect(maiPage.getByRole("complementary", { name: "Conversation details" })).toBeVisible();
+		await expect(maiPage.getByRole("button", { name: /restrict/iu })).toHaveCount(0);
+		await maiPage.getByRole("button", { name: "Close conversation storage" }).click();
+		await maiPage.getByRole("listitem").first().hover();
+		await maiPage.getByRole("button", { name: "Conversation actions" }).first().click();
 
 		// No confirm dialog — unlike Block, restricting changes nothing the other
 		// person can observe, so there is nothing here worth a second click to undo.
-		await maiPage.getByRole("button", { name: `Restrict ${linh.displayName}` }).click();
-		await expect(maiPage.getByRole("button", { name: `Stop restricting ${linh.displayName}` })).toBeVisible({
+		await maiPage.getByRole("menuitem", { name: "Restrict", exact: true }).click();
+		await expect(maiPage.getByRole("menu")).toHaveCount(0, { timeout: 15_000 });
+		await expect(maiPage.getByRole("dialog")).toHaveCount(0);
+		await maiPage.getByRole("button", { name: "Conversation actions" }).first().click();
+		await expect(maiPage.getByRole("menuitem", { name: "Unrestrict", exact: true })).toBeVisible({
 			timeout: 15_000,
 		});
+		await maiPage.keyboard.press("Escape");
 
 		// The point of the feature: a restricted person's message still arrives.
 		// Linh's page has not opened the conversation yet — it exists only on
@@ -46,7 +52,7 @@ test.describe("restricting", () => {
 		});
 	});
 
-	test("account settings and the conversation panel agree about the same restriction", async ({ browser }) => {
+	test("account settings and the sidebar menu agree about the same restriction", async ({ browser }) => {
 		const mai = makeUser("Mai");
 		const linh = makeUser("Linh");
 		const maiContext = await browser.newContext();
@@ -58,11 +64,10 @@ test.describe("restricting", () => {
 		await register(maiPage, mai);
 		await startDirectChat(maiPage, linh);
 
-		await maiPage.getByRole("button", { name: "Conversation storage and details" }).click();
-		await maiPage.getByRole("button", { name: `Restrict ${linh.displayName}` }).click();
-		await expect(maiPage.getByRole("button", { name: `Stop restricting ${linh.displayName}` })).toBeVisible({
-			timeout: 15_000,
-		});
+		await maiPage.getByRole("listitem").first().hover();
+		await maiPage.getByRole("button", { name: "Conversation actions" }).first().click();
+		await maiPage.getByRole("menuitem", { name: "Restrict", exact: true }).click();
+		await expect(maiPage.getByRole("menu")).toHaveCount(0, { timeout: 15_000 });
 
 		await maiPage.getByLabel("Account settings").click();
 		await maiPage.getByRole("button", { name: "Restricted people" }).click();
@@ -75,11 +80,12 @@ test.describe("restricting", () => {
 		await expect(settingsDialog.getByText("You have not restricted anyone.")).toBeVisible({ timeout: 15_000 });
 		await maiPage.getByRole("button", { name: "Close settings" }).click();
 
-		// The panel is a second surface over the same store: unrestricting in
+		// The sidebar is a second surface over the same store: unrestricting in
 		// settings has to be reflected here too, or it would invite restricting
 		// someone who settings already says is not restricted.
-		await maiPage.getByRole("button", { name: "Conversation storage and details" }).click();
-		await expect(maiPage.getByRole("button", { name: `Restrict ${linh.displayName}` })).toBeVisible({
+		await maiPage.getByRole("listitem").first().hover();
+		await maiPage.getByRole("button", { name: "Conversation actions" }).first().click();
+		await expect(maiPage.getByRole("menuitem", { name: "Restrict", exact: true })).toBeVisible({
 			timeout: 15_000,
 		});
 	});

@@ -1,14 +1,16 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Archive, ArrowLeft, Ban, BellOff, Check, Clock, MoreHorizontal, Pin } from "lucide-react";
+import { BellOff, MoreHorizontal } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
+import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { cn } from "@/utils/cn";
-import { CONVERSATION_MUTE_OPTIONS } from "../constants/conversation-actions";
-import { getDirectPeer } from "../utils";
+import { getDirectPeer, isConversationMuted } from "../utils";
+import { ConversationActionsMenu } from "./conversation-actions-menu";
+import { ConversationMuteMenu } from "./conversation-mute-menu";
 
 interface ConversationActionsProps {
 	conversation: ConversationDTO;
@@ -17,12 +19,16 @@ interface ConversationActionsProps {
 }
 
 export function ConversationActions({ conversation, currentUserId }: ConversationActionsProps) {
-	// Blocking is between two people, so it is offered on direct rows only.
+	// Blocking and restricting apply to a person, so they are offered on direct rows only.
 	const peer = conversation.isGroup ? null : getDirectPeer(conversation, currentUserId);
 	const isBlocked = useBlockedUsers((state) => Boolean(peer && state.blockedIds.has(peer.id)));
 	const loadBlocked = useBlockedUsers((state) => state.load);
 	const blockUser = useBlockedUsers((state) => state.block);
 	const unblockUser = useBlockedUsers((state) => state.unblock);
+	const isRestricted = useRestrictedUsers((state) => Boolean(peer && state.restrictedIds.has(peer.id)));
+	const loadRestricted = useRestrictedUsers((state) => state.load);
+	const restrictUser = useRestrictedUsers((state) => state.restrict);
+	const unrestrictUser = useRestrictedUsers((state) => state.unrestrict);
 	const [isOpen, setIsOpen] = useState(false);
 	const [isChoosingMute, setIsChoosingMute] = useState(false);
 	const [isConfirmingBlock, setIsConfirmingBlock] = useState(false);
@@ -31,13 +37,15 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	const rootRef = useRef<HTMLDivElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [menuPosition, setMenuPosition] = useState({ left: 8, top: 8 });
-	const isMuted = Boolean(conversation.mutedUntil && Date.parse(conversation.mutedUntil) > Date.now());
+	const isMuted = isConversationMuted(conversation);
 
 	useEffect(() => {
 		// On open rather than on mount: the sidebar renders one of these per row
 		// and only ever opens one, so mounting is the wrong moment to ask.
-		if (isOpen && peer) void loadBlocked(peer.id);
-	}, [isOpen, loadBlocked, peer]);
+		if (!isOpen || !peer) return;
+		void loadBlocked(peer.id);
+		void loadRestricted(peer.id);
+	}, [isOpen, loadBlocked, loadRestricted, peer]);
 
 	useEffect(() => {
 		if (!isOpen) return;
@@ -103,6 +111,7 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	}
 
 	async function update(action: () => Promise<unknown>): Promise<void> {
+		if (isSaving) return;
 		setIsSaving(true);
 		setError("");
 		try {
@@ -137,7 +146,7 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	}
 
 	return (
-		<div ref={rootRef} className="absolute right-3 top-1/2 z-20 -translate-y-1/2">
+		<div ref={rootRef} className="absolute right-2 top-1/2 z-20 flex -translate-y-1/2 items-center gap-1">
 			<Button
 				variant="ghost"
 				onClick={() => {
@@ -149,13 +158,14 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 				aria-haspopup="menu"
 				aria-expanded={isOpen}
 				className={cn(
-					"size-7 rounded-full p-0 text-ink-faint opacity-0 transition-opacity",
+					"size-7 rounded-full p-0 text-ink-faint opacity-0 transition-opacity hover:bg-transparent hover:text-ink",
 					"group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-70",
 					isOpen && "bg-paper-raised text-ink opacity-100 shadow-sm",
 				)}
 			>
 				<MoreHorizontal className="size-4" />
 			</Button>
+			{isMuted && <BellOff role="img" aria-label="Muted" className="size-3.5 shrink-0 text-ink-faint" />}
 
 			{isOpen &&
 				createPortal(
@@ -163,110 +173,53 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 						ref={menuRef}
 						role="menu"
 						aria-label="Conversation actions"
+						aria-busy={isSaving}
 						style={menuPosition}
 						className="fixed z-50 w-52 overflow-hidden rounded-panel border border-rule bg-paper-raised p-1.5 shadow-lift"
 					>
 						{isChoosingMute ? (
-							<>
-								<Button
-									variant="ghost"
-									role="menuitem"
-									onClick={() => setIsChoosingMute(false)}
-									className="w-full justify-start px-2.5 py-2 text-ink-faint"
-								>
-									<ArrowLeft className="size-4" />
-									Mute duration
-								</Button>
-								{isMuted && (
-									<Button
-										variant="ghost"
-										role="menuitem"
-										disabled={isSaving}
-										onClick={() =>
-											void update(() => api.setConversationMuted(conversation.id, null))
-										}
-										className="w-full justify-start px-2.5 py-2 text-ink"
-									>
-										<Check className="size-4 text-live" />
-										Unmute
-									</Button>
-								)}
-								{CONVERSATION_MUTE_OPTIONS.map((option) => (
-									<Button
-										key={option.label}
-										variant="ghost"
-										role="menuitem"
-										disabled={isSaving}
-										onClick={() => muteFor(option.milliseconds)}
-										className="w-full justify-start px-2.5 py-2 text-ink"
-									>
-										<Clock className="size-4 text-ink-faint" />
-										{option.label}
-									</Button>
-								))}
-							</>
+							<ConversationMuteMenu
+								isMuted={isMuted}
+								isSaving={isSaving}
+								onBack={() => setIsChoosingMute(false)}
+								onUnmute={() => void update(() => api.setConversationMuted(conversation.id, null))}
+								onMuteFor={muteFor}
+							/>
 						) : (
-							<>
-								<Button
-									variant="ghost"
-									role="menuitem"
-									disabled={isSaving}
-									onClick={() =>
-										void update(() =>
-											api.setConversationPinned(conversation.id, !conversation.isPinned),
-										)
-									}
-									className="w-full justify-start px-2.5 py-2 text-ink"
-								>
-									<Pin
-										className={cn("size-4", conversation.isPinned && "fill-current text-signal")}
-									/>
-									{conversation.isPinned ? "Unpin" : "Pin conversation"}
-								</Button>
-								<Button
-									variant="ghost"
-									role="menuitem"
-									disabled={isSaving}
-									onClick={() =>
-										void update(() =>
-											api.setConversationArchived(conversation.id, !conversation.isArchived),
-										)
-									}
-									className="w-full justify-start px-2.5 py-2 text-ink"
-								>
-									<Archive className="size-4 text-ink-faint" />
-									{conversation.isArchived ? "Unarchive" : "Archive"}
-								</Button>
-								<Button
-									variant="ghost"
-									role="menuitem"
-									onClick={() => setIsChoosingMute(true)}
-									className="w-full justify-start px-2.5 py-2 text-ink"
-								>
-									<BellOff className={cn("size-4", isMuted ? "text-signal" : "text-ink-faint")} />
-									{isMuted ? "Muted" : "Mute"}
-								</Button>
-								{peer && (
-									<Button
-										variant="ghost"
-										role="menuitem"
-										disabled={isSaving}
-										// Blocking asks; unblocking does not.
-										onClick={() => {
-											if (isBlocked) void update(() => unblockUser(peer.id));
-											else {
-												setIsOpen(false);
-												setIsConfirmingBlock(true);
-											}
-										}}
-										// Kept apart from reversible housekeeping actions.
-										className="w-full justify-start border-t border-rule-soft px-2.5 py-2 text-signal"
-									>
-										<Ban className="size-4" />
-										{isBlocked ? "Unblock" : "Block"}
-									</Button>
-								)}
-							</>
+							<ConversationActionsMenu
+								isPinned={conversation.isPinned}
+								isArchived={conversation.isArchived}
+								isMuted={isMuted}
+								peer={peer}
+								isRestricted={isRestricted}
+								isBlocked={isBlocked}
+								isSaving={isSaving}
+								onTogglePin={() =>
+									void update(() =>
+										api.setConversationPinned(conversation.id, !conversation.isPinned),
+									)
+								}
+								onToggleArchive={() =>
+									void update(() =>
+										api.setConversationArchived(conversation.id, !conversation.isArchived),
+									)
+								}
+								onChooseMute={() => setIsChoosingMute(true)}
+								onToggleRestrict={() =>
+									void update(() =>
+										peer
+											? isRestricted
+												? unrestrictUser(peer.id)
+												: restrictUser(peer.id)
+											: Promise.resolve(),
+									)
+								}
+								onUnblock={() => void update(() => (peer ? unblockUser(peer.id) : Promise.resolve()))}
+								onRequestBlock={() => {
+									setIsOpen(false);
+									setIsConfirmingBlock(true);
+								}}
+							/>
 						)}
 						{error && (
 							<p role="alert" className="border-t border-rule-soft px-2.5 py-2 text-xs text-signal">

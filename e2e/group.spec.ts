@@ -47,6 +47,7 @@ test.describe("a group with an owner", () => {
 		await expect(messages(owner.page).getByText("see you all")).toBeVisible({ timeout: 15_000 });
 
 		await leaver.page.getByRole("button", { name: "Group members" }).click();
+		await leaver.page.getByRole("button", { name: "Members", exact: true }).click();
 		await leaver.page.getByRole("button", { name: "Leave group" }).click();
 		// Leaving is irreversible from here, so it asks first (phase 19). This
 		// spec is why the confirmation could not ship unnoticed: every unit test
@@ -83,8 +84,11 @@ test.describe("a group with an owner", () => {
 		await openConversationNamed(memberA.page, GROUP_NAME);
 
 		await owner.page.getByRole("button", { name: "Group members" }).click();
-		await owner.page.getByLabel("Group name").fill("Sunday football");
-		await owner.page.getByRole("button", { name: "Save", exact: true }).click();
+		// "Customize chat" is open by default — the rename row is right there.
+		await owner.page.getByRole("button", { name: /Rename/ }).click();
+		const renameDialog = owner.page.getByRole("dialog", { name: "Rename group" });
+		await renameDialog.getByLabel("Group name").fill("Sunday football");
+		await renameDialog.getByRole("button", { name: "Save", exact: true }).click();
 
 		// The rename reaches the other member over the socket, as a heading and as
 		// a line in the log.
@@ -110,14 +114,17 @@ test.describe("a group with an owner", () => {
 
 		await member.page.getByRole("button", { name: "Group members" }).click();
 
-		await expect(member.page.getByLabel("Group name")).toBeDisabled();
-		await expect(member.page.getByText(/only group owners and admins can rename/i)).toBeVisible();
+		// "Customize chat" is open by default — the rename row is right there.
+		await expect(member.page.getByRole("button", { name: /Rename/ })).toBeDisabled();
+		await expect(member.page.getByText(/only group admins can rename/i)).toBeVisible();
+
+		await member.page.getByRole("button", { name: "Members", exact: true }).click();
 		await expect(
-			member.page.getByRole("button", { name: `Remove ${third.user.displayName} from the group` }),
+			member.page.getByRole("menuitem", { name: `Remove ${third.user.displayName} from the group` }),
 		).toBeHidden();
 		// What they can still do: leave, and invite.
 		await expect(member.page.getByRole("button", { name: "Leave group" })).toBeEnabled();
-		await expect(member.page.getByLabel("Add a member")).toBeEnabled();
+		await expect(member.page.getByRole("button", { name: "Add people" })).toBeEnabled();
 
 		await Promise.all([owner.page.context().close(), member.page.context().close(), third.page.context().close()]);
 	});
@@ -132,17 +139,24 @@ test.describe("a group with an owner", () => {
 		await openConversationNamed(member.page, GROUP_NAME);
 
 		await owner.page.getByRole("button", { name: "Group members" }).click();
-		await owner.page.getByRole("button", { name: `Make ${admin.user.displayName} an admin` }).click();
-		await owner.page.getByLabel("Who can add people").selectOption("managers");
+		await owner.page.getByRole("button", { name: "Members", exact: true }).click();
+		await owner.page.getByRole("button", { name: `Actions for ${admin.user.displayName}` }).click();
+		await owner.page.getByRole("menuitem", { name: `Make ${admin.user.displayName} an admin` }).click();
+		await owner.page.getByRole("button", { name: "Group options" }).click();
+		await owner.page.getByRole("switch", { name: "Only admins can add people" }).click();
 
 		await admin.page.getByRole("button", { name: "Group members" }).click();
-		await expect(admin.page.getByText("Admin", { exact: true })).toBeVisible({ timeout: 15_000 });
-		await expect(admin.page.getByLabel("Group name")).toBeEnabled();
-		await expect(admin.page.getByLabel("Add a member")).toBeEnabled();
+		await admin.page.getByRole("button", { name: "Members", exact: true }).click();
+		// Two "Admin" badges now — the owner is symmetric with any other admin, see ADR 0021.
+		await expect(admin.page.getByText("Admin", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+		// "Customize chat" is open by default — the rename row is right there.
+		await expect(admin.page.getByRole("button", { name: /Rename/ })).toBeEnabled();
+		await expect(admin.page.getByRole("button", { name: "Add people" })).toBeEnabled();
 
 		await member.page.getByRole("button", { name: "Group members" }).click();
-		await expect(member.page.getByLabel("Add a member")).toBeHidden({ timeout: 15_000 });
-		await expect(member.page.getByText(/only owners and admins add people/i)).toBeVisible();
+		await member.page.getByRole("button", { name: "Members", exact: true }).click();
+		await expect(member.page.getByRole("button", { name: "Add people" })).toBeDisabled({ timeout: 15_000 });
+		await expect(member.page.getByText(/only admins add people/i)).toBeVisible();
 
 		await Promise.all([owner.page.context().close(), admin.page.context().close(), member.page.context().close()]);
 	});

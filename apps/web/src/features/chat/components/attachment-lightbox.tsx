@@ -1,6 +1,7 @@
 import type { AttachmentDTO } from "@chatty/shared-types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useDialog } from "@/hooks/use-dialog";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { LIGHTBOX_CONTROL_CLASS } from "../constants/attachment";
@@ -64,6 +65,8 @@ export function AttachmentLightbox({
 	onOpenMessage,
 	onForward,
 }: AttachmentLightboxProps) {
+	const close = useCallback(() => onClose(), [onClose]);
+	const dialogRef = useDialog<HTMLDivElement>(close);
 	const [index, setIndex] = useState(initialIndex);
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState("");
@@ -93,7 +96,6 @@ export function AttachmentLightbox({
 
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") onClose();
 			if (event.key === "ArrowRight") step(1);
 			if (event.key === "ArrowLeft") step(-1);
 			if (event.key === "+" || event.key === "=") zoomIn();
@@ -105,7 +107,7 @@ export function AttachmentLightbox({
 		window.addEventListener("keydown", handleKeyDown);
 
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [onClose, resetZoom, rotate, step, zoomIn, zoomOut]);
+	}, [resetZoom, rotate, step, zoomIn, zoomOut]);
 
 	// Both neighbours are fetched while this one is being looked at, so an arrow
 	// key swaps the picture instead of blanking the frame for as long as a
@@ -136,10 +138,12 @@ export function AttachmentLightbox({
 
 	return (
 		<div
+			ref={dialogRef}
+			tabIndex={-1}
 			role="dialog"
 			aria-modal="true"
 			aria-label={total > 1 ? `Image ${index + 1} of ${total}` : "Image preview"}
-			onClick={onClose}
+			onClick={close}
 			className="fixed inset-0 z-50 flex flex-col gap-3 bg-scrim/90 p-3 dark:bg-scrim/95 sm:p-5"
 		>
 			{caption && (
@@ -193,31 +197,30 @@ export function AttachmentLightbox({
 					    zoom, pan and rotation — one element animating one CSS property
 					    from two places at once is how a transition starts fighting a
 					    drag instead of yielding to it. */}
-					<div
-						key={current.id}
-						className="media-enter flex max-h-full max-w-full items-center justify-center"
-					>
-						<img
-							ref={imageRef}
-							src={current.url}
-							alt={caption || "Image"}
-							draggable={false}
-							onLoad={handleImageLoad}
-							onClick={(event) => event.stopPropagation()}
-							onDoubleClick={handleDoubleClick}
-							onPointerDown={handlePointerDown}
-							onPointerMove={handlePointerMove}
-							onPointerUp={handlePointerUp}
-							onPointerCancel={handlePointerUp}
-							style={{
-								transform: `translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom * fitScale})`,
-							}}
-							className={cn(
-								"max-h-full max-w-full touch-none select-none rounded-control object-contain",
-								!isDragging && "transition-transform duration-200 ease-out",
-								zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in",
-							)}
-						/>
+					<div className="flex max-h-full max-w-full items-center justify-center">
+						<div key={current.id} className="flex max-h-full max-w-full items-center justify-center">
+							<img
+								ref={imageRef}
+								src={current.url}
+								alt={caption || "Image"}
+								draggable={false}
+								onLoad={handleImageLoad}
+								onClick={(event) => event.stopPropagation()}
+								onDoubleClick={handleDoubleClick}
+								onPointerDown={handlePointerDown}
+								onPointerMove={handlePointerMove}
+								onPointerUp={handlePointerUp}
+								onPointerCancel={handlePointerUp}
+								style={{
+									transform: `translate(${pan.x}px, ${pan.y}px) rotate(${rotation}deg) scale(${zoom * fitScale})`,
+								}}
+								className={cn(
+									"max-h-full max-w-full touch-none select-none rounded-control object-contain",
+									!isDragging && "transition-transform duration-200 ease-out",
+									zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in",
+								)}
+							/>
+						</div>
 					</div>
 				</div>
 
@@ -248,7 +251,7 @@ export function AttachmentLightbox({
 					onRotateClockwise={() => rotate(1)}
 					onSave={() => void saveCurrentImage(current)}
 					isSaving={isSaving}
-					onClose={onClose}
+					onClose={close}
 					{...(onOpenMessage ? { onOpenMessage: () => onOpenMessage(current) } : {})}
 					{...(onForward ? { onForward } : {})}
 				/>

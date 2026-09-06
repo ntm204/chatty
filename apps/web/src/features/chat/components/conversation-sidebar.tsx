@@ -5,6 +5,7 @@ import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import type { ConversationPaging } from "../types/conversation-paging";
+import { PanelResizeHandle } from "./panel-resize-handle";
 import { ConversationList } from "./conversation-list";
 import { NewConversationPanel } from "./new-conversation-panel";
 
@@ -47,9 +48,22 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
 	return (
 		<aside
-			className={cn("flex w-full shrink-0 flex-col border-r border-rule bg-paper-raised lg:w-[360px]", className)}
+			id="conversation-sidebar"
+			className={cn(
+				"relative flex w-full shrink-0 flex-col bg-paper-raised lg:w-[var(--panel-width,320px)] lg:rounded-xl lg:border lg:border-rule",
+				className,
+			)}
 		>
-			<div className="flex items-center justify-between px-4 pb-3 pt-4">
+			<PanelResizeHandle
+				panelId="conversation-sidebar"
+				label="Resize conversation sidebar"
+				edge="right"
+				defaultWidth={320}
+				minWidth={260}
+				maxWidth={400}
+				className="hidden lg:block"
+			/>
+			<div className="flex h-[70px] shrink-0 items-center justify-between px-4">
 				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">Chats</h1>
 				<Button
 					variant="ghost"

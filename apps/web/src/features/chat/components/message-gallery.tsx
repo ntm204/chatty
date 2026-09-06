@@ -12,8 +12,6 @@ import {
 	ALBUM_SIZE,
 	MEDIA_TIME_CHIP_CLASS,
 } from "../constants/attachment";
-import { INCOMING_BUBBLE_RADIUS, OUTGOING_BUBBLE_RADIUS } from "../constants/message-cluster";
-import type { ClusterPosition } from "../types/message-cluster";
 import { getAttachmentDisplaySize, getAttachmentPreviewUrl } from "../utils";
 import { AttachmentLightbox } from "./attachment-lightbox";
 
@@ -21,9 +19,6 @@ interface MessageGalleryProps {
 	attachments: AttachmentDTO[];
 	/** The message's own text, kept for the viewer instead of the conversation preview. */
 	caption: string;
-	isMine: boolean;
-	/** Which bubble corners this block has to follow. */
-	clusterPosition: ClusterPosition;
 	/** The send time, drawn on the picture itself. */
 	timeLabel?: string;
 	/** The last image in an activity burst keeps its time visible. */
@@ -44,8 +39,6 @@ interface MessageGalleryProps {
 export function MessageGallery({
 	attachments,
 	caption,
-	isMine,
-	clusterPosition,
 	timeLabel,
 	isTimeAlwaysVisible = false,
 	onForward,
@@ -56,7 +49,6 @@ export function MessageGallery({
 
 	const size = getAttachmentDisplaySize(first.width, first.height);
 	const isAlbum = attachments.length > 1;
-	const radiusClasses = (isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition];
 	const behind = attachments.slice(1, 1 + ALBUM_CARDS_BEHIND);
 
 	return (
@@ -76,7 +68,7 @@ export function MessageGallery({
 							<span
 								key={attachment.id}
 								aria-hidden="true"
-								className="absolute overflow-hidden rounded-control border border-rule bg-paper-raised shadow-sm"
+								className="absolute overflow-hidden rounded-media border border-rule bg-paper-raised shadow-sm"
 								style={{
 									width: ALBUM_SIZE,
 									height: ALBUM_SIZE,
@@ -100,7 +92,7 @@ export function MessageGallery({
 						onClick={() => setOpenIndex(0)}
 						aria-label={`Open album of ${attachments.length} images${caption ? " and its caption" : ""}`}
 						className={cn(
-							"absolute block cursor-zoom-in overflow-hidden rounded-control p-0",
+							"absolute block cursor-zoom-in overflow-hidden rounded-media p-0 hover:bg-transparent",
 							"border border-rule shadow-sm focus-visible:ring-3 focus-visible:ring-ink/25",
 						)}
 						style={{
@@ -135,17 +127,16 @@ export function MessageGallery({
 					</Button>
 				</div>
 			) : (
-				<div className={cn("relative max-w-full overflow-hidden", radiusClasses)} style={{ width: size.width }}>
+				<div className="relative max-w-full overflow-hidden rounded-media" style={{ width: size.width }}>
 					<Button
 						variant="ghost"
 						onClick={() => setOpenIndex(0)}
 						aria-label={caption ? `Open image and caption: ${caption}` : "Open image"}
 						className={cn(
-							"relative block max-w-full cursor-zoom-in overflow-hidden p-0",
+							"relative block max-w-full cursor-zoom-in overflow-hidden rounded-media p-0 hover:bg-transparent",
 							"focus-visible:ring-3 focus-visible:ring-ink/25",
 							"after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit]",
 							"after:ring-1 after:ring-inset after:ring-ink/10",
-							radiusClasses,
 						)}
 					>
 						<img
@@ -154,7 +145,7 @@ export function MessageGallery({
 							width={size.width}
 							height={size.height}
 							loading="lazy"
-							className={cn("h-auto max-w-full object-cover", radiusClasses)}
+							className="h-auto max-w-full rounded-media object-cover"
 						/>
 						{timeLabel && (
 							<span

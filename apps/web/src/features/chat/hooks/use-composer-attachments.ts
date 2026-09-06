@@ -9,11 +9,18 @@ import {
 
 interface UseComposerAttachmentsOptions {
 	setError: Dispatch<SetStateAction<string>>;
+	isDisabled: boolean;
+	selectedFile: File | null;
+	onFileSelected: (file: File) => Promise<void>;
 }
 
-export function useComposerAttachments({ setError }: UseComposerAttachmentsOptions) {
+export function useComposerAttachments({
+	setError,
+	isDisabled,
+	selectedFile,
+	onFileSelected,
+}: UseComposerAttachmentsOptions) {
 	const [attachments, setAttachments] = useState<File[]>([]);
-	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 	const [isDragActive, setIsDragActive] = useState(false);
 	const isFull = attachments.length >= MAX_ATTACHMENTS_PER_MESSAGE || selectedFile !== null;
@@ -27,7 +34,7 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 
 	const addImages = useCallback(
 		(picked: File[]) => {
-			if (picked.length === 0) return;
+			if (isDisabled || picked.length === 0) return;
 			if (selectedFile) {
 				setError("Send images or one file, not both");
 
@@ -52,11 +59,17 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 					: "",
 			);
 		},
-		[attachments.length, selectedFile, setError],
+		[attachments.length, isDisabled, selectedFile, setError],
 	);
 
 	const selectDocument = useCallback(
 		(file: File) => {
+			if (isDisabled) return;
+			if (selectedFile) {
+				setError("Retry or remove the current file first");
+
+				return;
+			}
 			if (attachments.length > 0) {
 				setError("Send images or one file, not both");
 
@@ -73,10 +86,10 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 
 				return;
 			}
-			setSelectedFile(file);
 			setError("");
+			void onFileSelected(file);
 		},
-		[attachments.length, setError],
+		[attachments.length, isDisabled, onFileSelected, selectedFile, setError],
 	);
 
 	useEffect(() => {
@@ -87,6 +100,7 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 		function handleDragOver(event: DragEvent) {
 			if (!hasFiles(event)) return;
 			event.preventDefault();
+			if (isDisabled) return;
 			setIsDragActive(true);
 		}
 
@@ -113,7 +127,7 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 			window.removeEventListener("dragleave", handleDragLeave);
 			window.removeEventListener("drop", handleDrop);
 		};
-	}, [addImages, selectDocument, setError]);
+	}, [addImages, isDisabled, selectDocument, setError]);
 
 	function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
 		const picked = [...(event.target.files ?? [])];
@@ -124,14 +138,18 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 	function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
 		const file = event.target.files?.[0];
 		event.target.value = "";
-		if (file) selectDocument(file);
+		if (!file) return;
+		if (file.type.startsWith("image/")) addImages([file]);
+		else selectDocument(file);
 	}
 
 	function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
-		const images = [...event.clipboardData.files].filter((file) => file.type.startsWith("image/"));
-		if (images.length === 0) return;
+		const files = [...event.clipboardData.files];
+		if (files.length === 0) return;
 		event.preventDefault();
-		addImages(images);
+		if (files.every((file) => file.type.startsWith("image/"))) addImages(files);
+		else if (files.length === 1 && files[0]) selectDocument(files[0]);
+		else setError("Paste images together, or one other file at a time");
 	}
 
 	function removeAttachment(index: number) {
@@ -142,8 +160,6 @@ export function useComposerAttachments({ setError }: UseComposerAttachmentsOptio
 	return {
 		attachments,
 		setAttachments,
-		selectedFile,
-		setSelectedFile,
 		previewUrls,
 		isDragActive,
 		isFull,

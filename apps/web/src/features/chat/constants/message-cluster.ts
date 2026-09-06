@@ -9,47 +9,23 @@ export const MESSAGE_TIME_GAP_MS = 60 * 60 * 1_000;
 /**
  * The corner grammar for a run of messages.
  *
- * One rule, stated as a table because the relationships between the four rows
- * are the design: **the side away from the tail never changes.** It stays at the
- * full bubble radius for the whole height of the run, and that unbroken edge is
- * what makes five messages read as one turn. Only the tail side moves — a seam
- * where a bubble meets its neighbour, and the 2px notch on the very last one.
- *
- * What shipped before this put `rounded-br-notch` on *every* outgoing bubble, so
- * a burst of five showed five tails stuttering down the right edge and the notch
- * stopped meaning "the turn ends here" — it meant nothing, because it was
- * everywhere. One notch per run is the entire point of having one.
+ * The outside edge keeps a continuous curve. On the sender's side, only corners
+ * facing another message tighten, so a run has soft ends without a pointed tail.
  *
  * The all-corners class comes first in every string on purpose: tailwind-merge
  * lets a later single-corner utility override it, but not the reverse.
  */
 export const OUTGOING_BUBBLE_RADIUS: Record<ClusterPosition, string> = {
-	solo: "rounded-bubble rounded-br-notch",
-	first: "rounded-bubble rounded-br-seam",
-	middle: "rounded-bubble rounded-tr-seam rounded-br-seam",
-	last: "rounded-bubble rounded-tr-seam rounded-br-notch",
+	solo: "rounded-message",
+	first: "rounded-message rounded-br-message-join",
+	middle: "rounded-message rounded-tr-message-join rounded-br-message-join",
+	last: "rounded-message rounded-tr-message-join",
 };
 
-/** The same table mirrored: an incoming run's tail is on the left. */
+/** The same joins mirrored for received messages. */
 export const INCOMING_BUBBLE_RADIUS: Record<ClusterPosition, string> = {
-	solo: "rounded-bubble rounded-bl-notch",
-	first: "rounded-bubble rounded-bl-seam",
-	middle: "rounded-bubble rounded-tl-seam rounded-bl-seam",
-	last: "rounded-bubble rounded-tl-seam rounded-bl-notch",
+	solo: "rounded-message",
+	first: "rounded-message rounded-bl-message-join",
+	middle: "rounded-message rounded-tl-message-join rounded-bl-message-join",
+	last: "rounded-message rounded-tl-message-join",
 };
-
-/**
- * A picture is the bubble now, so it reads the same table a sentence does.
- *
- * The pair of tables that used to live here described a picture *inside* a
- * bubble: 5px, the bubble's 10 minus the 5px of padding around it. Phase 29
- * took that padding away — a photograph is already a rectangle of somebody
- * else's content and a fill around it is a second frame — and the 5px stayed
- * behind, so a bare picture sat at half the radius of every bubble beside it,
- * with one corner squared against a caption that had moved out of its box.
- *
- * A caption remains a low-contrast overlay on the picture itself, not a second
- * bubble underneath it. The media keeps this table unchanged, so the run's
- * grammar — the unbroken side, the seam and the one notch — stays legible even
- * when the message also carries text.
- */

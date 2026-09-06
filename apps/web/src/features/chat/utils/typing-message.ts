@@ -1,4 +1,4 @@
-import type { UserDTO } from "@chatty/shared-types";
+import type { ParticipantDTO } from "@chatty/shared-types";
 import { MAX_NAMED_TYPERS } from "../constants/typing";
 
 /**
@@ -13,9 +13,13 @@ import { MAX_NAMED_TYPERS } from "../constants/typing";
  * It means someone joined the conversation after this list was fetched — a
  * transient gap that resolves on the next refresh, and not worth a placeholder.
  */
-export function getTypingMessage(typingUserIds: string[], participants: UserDTO[]): string | null {
-	const names = typingUserIds
-		.map((userId) => participants.find((participant) => participant.id === userId)?.displayName)
+export function getTypingMessage(typingUserIds: string[], participants: ParticipantDTO[]): string | null {
+	const names = [...new Set(typingUserIds)]
+		.map((userId) => {
+			const participant = participants.find((candidate) => candidate.id === userId);
+
+			return participant?.nickname ?? participant?.displayName;
+		})
 		.filter((displayName): displayName is string => Boolean(displayName));
 
 	if (names.length === 0) return null;

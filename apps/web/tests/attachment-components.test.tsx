@@ -1,8 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MessageFileCard } from "@/features/chat/components/message-file-card";
 import { VoicePlayer } from "@/features/chat/components/voice-player";
 import { makeAttachment } from "./factories";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("attachment components", () => {
 	it("renders a downloadable file card with its name and size", () => {
@@ -25,6 +27,7 @@ describe("attachment components", () => {
 	});
 
 	it("renders server-derived voice duration without loading audio", () => {
+		vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
 		render(
 			<VoicePlayer
 				attachment={makeAttachment({
@@ -39,6 +42,11 @@ describe("attachment components", () => {
 		);
 
 		expect(screen.getByText("1:05")).toBeInTheDocument();
-		expect(screen.getAllByRole("button")).toHaveLength(3);
+		expect(screen.getByRole("button", { name: "Play voice message" })).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Change playback speed" })).toHaveTextContent("1×");
+		expect(screen.getByRole("slider", { name: "Seek voice message" })).toHaveAttribute(
+			"aria-valuetext",
+			"0:00 of 1:05",
+		);
 	});
 });

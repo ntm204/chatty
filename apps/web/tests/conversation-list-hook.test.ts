@@ -117,6 +117,9 @@ describe("useConversationList event reducer", () => {
 			conversationId: "first",
 			name: "Renamed",
 			invitePolicy: "managers",
+			avatarUrl: null,
+			themeColor: null,
+			quickReactionEmoji: null,
 			participants: first.participants,
 		});
 

@@ -1,11 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MAX_RETAINED_MESSAGES } from "@/features/chat/constants/pagination";
 import { MessageList } from "@/features/chat/components/message-list";
 import { formatMessageTime } from "@/features/chat/utils";
 import { makeAttachment, makeMessage, makeOrphanedMessage, makeParticipant, makeSystemMessage } from "./factories";
+
+// jsdom has no scroll API; geometry tests below model the viewport separately.
+Element.prototype.scrollTo ??= function scrollTo() {};
 
 const messages = [makeMessage("m1", "minh", "first"), makeMessage("m2", "an", "second")];
 
@@ -27,6 +30,7 @@ function renderList(overrides: Partial<React.ComponentProps<typeof MessageList>>
 		currentUserId: "minh",
 		participants: [makeParticipant("minh", "Minh"), makeParticipant("an", "An")],
 		isGroup: false,
+		themeColor: null,
 		areReceiptsShared: true,
 		isLoadingThread: false,
 		hasMoreOlder: false,
@@ -43,7 +47,6 @@ function renderList(overrides: Partial<React.ComponentProps<typeof MessageList>>
 		onToggleReaction: vi.fn(),
 		onReplyToMessage: vi.fn(),
 		onForwardMessage: vi.fn(),
-		onSaveMessage: vi.fn(),
 		onTogglePinMessage: vi.fn(),
 		pinnedMessageIds: [],
 		onJumpToMessage: vi.fn(),
@@ -54,9 +57,13 @@ function renderList(overrides: Partial<React.ComponentProps<typeof MessageList>>
 		...overrides,
 	};
 
-	render(<MessageList {...props} />);
+	const view = render(<MessageList {...props} />);
 
-	return props;
+	return {
+		...props,
+		rerenderList: (updates: Partial<React.ComponentProps<typeof MessageList>>) =>
+			view.rerender(<MessageList {...props} {...updates} />),
+	};
 }
 
 /**
@@ -80,14 +87,27 @@ describe("MessageList", () => {
 		expect(screen.getByText("second")).toBeInTheDocument();
 	});
 
-	it("keeps one visible time anchor for a burst even when its speakers alternate", () => {
+	it("hides every message's time behind hover, with no persistent caption when the newest message isn't mine", () => {
 		renderList();
 
 		const timeLabel = formatMessageTime(messages[0]!.createdAt);
-		const renderedTimes = screen.getAllByText(timeLabel);
-		expect(renderedTimes).toHaveLength(2);
-		expect(renderedTimes[0]).toHaveClass("opacity-0");
-		expect(renderedTimes[1]).not.toHaveClass("opacity-0");
+		for (const time of screen.getAllByText(timeLabel)) expect(time).toHaveClass("opacity-0");
+		expect(screen.queryByText(/^Sent /)).not.toBeInTheDocument();
+	});
+
+	it("gives only my own newest message a persistent below-bubble caption", () => {
+		const firstCreatedAt = "2026-08-23T09:55:00.000Z";
+		// Within the caption's one-hour window regardless of when this test runs.
+		const secondCreatedAt = new Date(Date.now() - 60_000).toISOString();
+		renderList({
+			messages: [
+				makeMessage("m1", "an", "first", [], { createdAt: firstCreatedAt }),
+				makeMessage("m2", "minh", "second", [], { createdAt: secondCreatedAt }),
+			],
+		});
+
+		expect(screen.getByText(formatMessageTime(firstCreatedAt))).toHaveClass("opacity-0");
+		expect(screen.getByText(/^Sent /)).toBeInTheDocument();
 	});
 
 	it("keeps a reaction inside the author's message run", () => {
@@ -132,15 +152,6 @@ describe("MessageList", () => {
 		await userEvent.click(screen.getByRole("button", { name: /2 more reactions/ }));
 
 		expect(screen.getByRole("dialog", { name: "Reactions" })).toBeInTheDocument();
-	});
-
-	it("leaves the default reaction on a double-click, and takes it off on a second", async () => {
-		const onToggleReaction = vi.fn();
-		renderList({ messages: [makeMessage("m1", "an", "first")], onToggleReaction });
-
-		await userEvent.dblClick(screen.getByText("first"));
-
-		expect(onToggleReaction).toHaveBeenCalledWith("m1", "❤️");
 	});
 
 	it("drops the oldest page only once the thread outgrows the cap", () => {
@@ -234,8 +245,9 @@ describe("MessageList", () => {
 	it("renders a group event as a line of its own", () => {
 		renderList({ messages: [makeSystemMessage("s1", "An added Binh")], isGroup: true });
 
-		expect(screen.getByText("An added Binh")).toBeInTheDocument();
-		expect(screen.getByText(formatMessageTime("2026-08-23T10:00:00.000Z"))).toHaveClass("opacity-0");
+		const systemMessage = screen.getByText("An added Binh");
+		expect(systemMessage).toBeInTheDocument();
+		expect(systemMessage).toHaveAttribute("title", formatMessageTime("2026-08-23T10:00:00.000Z"));
 		// Nobody wrote it, so there is nothing to edit, unsend or hide — and so no
 		// actions menu, which is what tells it apart from a message in the DOM.
 		expect(screen.queryByRole("button", { name: "Message actions" })).not.toBeInTheDocument();
@@ -365,12 +377,11 @@ describe("MessageList editing and deleting", () => {
 		expect(screen.getByRole("menuitem", { name: "Delete message" })).toBeInTheDocument();
 	});
 
-	it("offers the reusable forward, save, and pin actions", () => {
+	it("offers the reusable forward and pin actions", () => {
 		renderList({ messages: [mine] });
 		openMessageActions();
 
 		expect(screen.getByRole("menuitem", { name: "Forward" })).toBeInTheDocument();
-		expect(screen.getByRole("menuitem", { name: "Save message" })).toBeInTheDocument();
 		expect(screen.getByRole("menuitem", { name: "Pin message" })).toBeInTheDocument();
 	});
 
@@ -556,5 +567,255 @@ describe("MessageList editing and deleting", () => {
 		});
 
 		expect(screen.queryByText(/edited/)).not.toBeInTheDocument();
+	});
+});
+
+describe("returning to the live edge", () => {
+	let contentHeight: number;
+	let viewportHeight: number;
+	let scrollPosition: number;
+	const resizeCallbacks = new Set<() => void>();
+
+	beforeEach(() => {
+		contentHeight = 1_200;
+		viewportHeight = 700;
+		scrollPosition = 0;
+		resizeCallbacks.clear();
+		// jsdom has no layout. Model its dimensions and clamping while exercising
+		// the actual list, scroll handler and resize observer together.
+		vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(() => contentHeight);
+		vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(() => viewportHeight);
+		vi.spyOn(Element.prototype, "scrollTop", "get").mockImplementation(() =>
+			Math.min(scrollPosition, Math.max(0, contentHeight - viewportHeight)),
+		);
+		vi.spyOn(Element.prototype, "scrollTop", "set").mockImplementation((position: number) => {
+			scrollPosition = Math.max(0, Math.min(position, contentHeight - viewportHeight));
+		});
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				constructor(private callback: () => void) {
+					resizeCallbacks.add(callback);
+				}
+				observe() {}
+				unobserve() {}
+				disconnect() {
+					resizeCallbacks.delete(this.callback);
+				}
+			},
+		);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
+
+	function resize() {
+		act(() => resizeCallbacks.forEach((callback) => callback()));
+	}
+
+	it("offers the activity control after a modest scroll, even when history is less than two viewports", () => {
+		renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+
+		fireEvent.scroll(viewport, { target: { scrollTop: 300 } });
+
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+		fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+		fireEvent.scroll(viewport, { target: { scrollTop: 380 } });
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+		fireEvent.scroll(viewport, { target: { scrollTop: 420 } });
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("scrolls back to the latest message without retaining the activity control", async () => {
+		renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		const scrollTo = vi.fn((options: ScrollToOptions) => {
+			viewport.scrollTop = options.top ?? 0;
+			fireEvent.scroll(viewport);
+		});
+		Object.defineProperty(viewport, "scrollTo", { value: scrollTo });
+
+		await userEvent.click(screen.getByRole("button", { name: "Jump to latest messages" }));
+
+		expect(scrollTo).toHaveBeenCalledWith({ top: 1_200, behavior: "smooth" });
+		expect(viewport.scrollTop).toBe(500);
+		expect(viewport).toHaveFocus();
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("keeps a reader in history when a message arrives", () => {
+		const { rerenderList } = renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		contentHeight = 1_350;
+
+		rerenderList({ messages: [...messages, makeMessage("incoming", "an", "just arrived")] });
+		resize();
+
+		expect(viewport.scrollTop).toBe(200);
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toHaveTextContent("1 new message");
+	});
+
+	it("shows actual typing in the activity control without moving the reader", () => {
+		const { rerenderList } = renderList({ unreadCount: 9 });
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		const activity = screen.getByRole("button", { name: "Jump to latest messages" });
+		expect(activity).toHaveTextContent(/^$/);
+		expect(activity).toHaveAccessibleDescription("You are viewing earlier messages");
+
+		rerenderList({ typingMessage: "An is typing…" });
+
+		expect(activity).toHaveTextContent("An is typing");
+		expect(activity).toHaveAccessibleDescription("An is typing…");
+		expect(viewport.scrollTop).toBe(200);
+		rerenderList({ typingMessage: null });
+		expect(activity).toHaveTextContent(/^$/);
+		expect(viewport.scrollTop).toBe(200);
+	});
+
+	it("follows late media and composer resizing only while already at the latest messages", () => {
+		renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		contentHeight = 1_400;
+		viewportHeight = 500;
+
+		resize();
+
+		expect(viewport.scrollTop).toBe(900);
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+		fireEvent.scroll(viewport, { target: { scrollTop: 600 } });
+		contentHeight = 1_500;
+		resize();
+		expect(viewport.scrollTop).toBe(600);
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+	});
+
+	it("removes the activity control when resizing brings the newest message into view", () => {
+		renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+		viewportHeight = 1_100;
+
+		resize();
+
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("resets the live edge when switching conversations", () => {
+		const { rerenderList } = renderList();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		contentHeight = 1_600;
+
+		rerenderList({ conversationId: "conversation-2", messages: [makeMessage("other", "an", "another thread")] });
+
+		expect(viewport.scrollTop).toBe(900);
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("keeps a search window in place and offers one activity control to request the live history", async () => {
+		const onReturnToLatest = vi.fn();
+		const { rerenderList } = renderList({ targetMessageId: "m1", hasMoreNewer: true, onReturnToLatest });
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		resize();
+		expect(viewport.scrollTop).toBe(0);
+		expect(screen.getAllByRole("button", { name: "Jump to latest messages" })).toHaveLength(1);
+		expect(screen.queryByRole("button", { name: "Return to latest messages" })).not.toBeInTheDocument();
+
+		await userEvent.click(screen.getByRole("button", { name: "Jump to latest messages" }));
+
+		expect(onReturnToLatest).toHaveBeenCalledOnce();
+		rerenderList({ targetMessageId: null, hasMoreNewer: false });
+		expect(viewport.scrollTop).toBe(500);
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("preserves the visible history while older messages are prepended", () => {
+		const { rerenderList } = renderList({ hasMoreOlder: true });
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 100 } });
+		contentHeight = 1_700;
+
+		rerenderList({ messages: [makeMessage("older", "an", "earlier"), ...messages] });
+		resize();
+
+		expect(viewport.scrollTop).toBe(600);
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeVisible();
+	});
+
+	it("waits for the latest page with one disabled action and keeps keyboard focus in the thread", async () => {
+		const onReturnToLatest = vi.fn();
+		const { rerenderList } = renderList({ targetMessageId: "m1", hasMoreNewer: true, onReturnToLatest });
+		const jump = screen.getByRole("button", { name: "Jump to latest messages" });
+		jump.focus();
+		await userEvent.keyboard("{Enter}");
+		expect(onReturnToLatest).toHaveBeenCalledOnce();
+		expect(screen.getByRole("region", { name: "Message history" })).toHaveFocus();
+		expect(jump).toBeDisabled();
+		expect(jump).toHaveAccessibleDescription("Loading latest messages");
+
+		rerenderList({ messages: [], targetMessageId: null, hasMoreNewer: false, isLoadingThread: true });
+		expect(jump).toBeVisible();
+		expect(jump).toHaveTextContent("Loading latest…");
+		await userEvent.click(jump);
+		expect(onReturnToLatest).toHaveBeenCalledOnce();
+
+		rerenderList({ targetMessageId: null, hasMoreNewer: false, isLoadingThread: false });
+		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
+	});
+
+	it("releases the pending return when another historical target supersedes it", async () => {
+		const { rerenderList } = renderList({ targetMessageId: "m1", hasMoreNewer: true, onReturnToLatest: vi.fn() });
+		await userEvent.click(screen.getByRole("button", { name: "Jump to latest messages" }));
+		rerenderList({ targetMessageId: null, hasMoreNewer: false, isLoadingThread: true });
+		rerenderList({ targetMessageId: "m2", hasMoreNewer: true, isLoadingThread: false });
+
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).toBeEnabled();
+		expect(screen.getByRole("button", { name: "Jump to latest messages" })).not.toHaveTextContent("Loading");
+	});
+
+	it("announces actual new arrivals with an exact count while capping the visual label", () => {
+		const { rerenderList } = renderList({ unreadCount: 25 });
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		const incoming = Array.from({ length: 101 }, (_, index) => makeMessage(`new-${index}`, "an", "New reply"));
+		rerenderList({ messages: [...messages, ...incoming], typingMessage: "An is typing…" });
+		const jump = screen.getByRole("button", { name: "Jump to latest messages" });
+		expect(jump).toHaveTextContent("99+ new");
+		expect(jump).toHaveAccessibleDescription("An is typing…. 101 new messages");
+		expect(screen.getByRole("status", { name: "" })).toHaveTextContent("101 new messages");
+		expect(viewport.scrollTop).toBe(200);
+	});
+
+	it("centers a search result once, without dragging the reader back on edits or page arrivals", () => {
+		const scrollTo = vi.spyOn(Element.prototype, "scrollTo");
+		const { rerenderList } = renderList({ targetMessageId: "m1", hasMoreNewer: true });
+		expect(scrollTo).toHaveBeenCalledOnce();
+		const viewport = screen.getByRole("region", { name: "Message history" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 200 } });
+		rerenderList({ messages: [...messages, makeMessage("new", "an", "Just arrived")] });
+		rerenderList({ messages: [{ ...messages[0]!, content: "Edited" }, messages[1]!] });
+		expect(scrollTo).toHaveBeenCalledOnce();
+		expect(viewport.scrollTop).toBe(200);
+
+		rerenderList({ targetMessageId: "m2" });
+		expect(scrollTo).toHaveBeenCalledTimes(2);
+	});
+
+	it("waits for a search target that has not rendered yet", () => {
+		const scrollTo = vi.spyOn(Element.prototype, "scrollTo");
+		const { rerenderList } = renderList({ targetMessageId: "later", hasMoreNewer: true });
+		expect(scrollTo).not.toHaveBeenCalled();
+		rerenderList({ messages: [...messages, makeMessage("later", "an", "Search result")] });
+		expect(scrollTo).toHaveBeenCalledOnce();
 	});
 });

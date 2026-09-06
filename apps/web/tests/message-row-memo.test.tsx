@@ -26,6 +26,7 @@ function makeProps(): ComponentProps<typeof MessageRows> {
 		currentUserId: "minh",
 		participants: [makeParticipant("minh", "Minh"), makeParticipant("an", "An")],
 		isGroup: false,
+		themeColor: null,
 		readReceipt: null,
 		unreadDividerMessageId: null,
 		unreadCount: 0,
@@ -43,7 +44,6 @@ function makeProps(): ComponentProps<typeof MessageRows> {
 		onShowReactions: vi.fn(),
 		onReplyToMessage: vi.fn(),
 		onForwardMessage: vi.fn(),
-		onSaveMessage: vi.fn(),
 		onTogglePinMessage: vi.fn(),
 		onJumpToMessage: vi.fn(),
 	};

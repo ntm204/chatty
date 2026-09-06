@@ -16,7 +16,6 @@ export interface MessageRowActions {
 	onShowReactions: (messageId: string) => void;
 	onReplyToMessage: (message: ThreadMessage) => void;
 	onForwardMessage: (message: ThreadMessage) => void;
-	onSaveMessage: (messageId: string) => void;
 	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
 	onJumpToMessage: (messageId: string) => void;
 }

@@ -4,8 +4,9 @@ export { getAttachmentPreviewUrl } from "./attachment-preview-url";
 export { getAttachmentDisplaySize } from "./attachment-size";
 export { getClusterPosition } from "./cluster-position";
 export { getConversationPreview } from "./conversation-preview";
-export { formatConversationTime } from "./conversation-time";
+export { formatRelativeTime } from "./relative-time";
 export { getConversationTitle } from "./conversation-title";
+export { isConversationMuted } from "./conversation-mute";
 export { getDirectPeer } from "./direct-peer";
 export { buildDocumentTitle } from "./document-title";
 export { formatDayLabel, isNewDay } from "./format-day";
@@ -28,3 +29,8 @@ export { getReactionSummary } from "./reaction-summary";
 export { getSearchResultTitle } from "./search-result-title";
 export { getTypingMessage } from "./typing-message";
 export { getConversationPresence } from "./conversation-presence";
+export { resolveDisplayName } from "./resolve-display-name";
+
+export { getDraftPreview, announceDraftPreview } from "./draft-preview";
+
+export { getPinnedMessagePreview } from "./pinned-message-preview";

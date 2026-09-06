@@ -9,7 +9,7 @@ import { getConversationTitle, getDirectPeer } from "../utils";
 interface ConversationAvatarProps {
 	conversation: ConversationDTO;
 	currentUserId: string;
-	/** Ids currently online. A group shows no mark, so this only affects 1-1 rows. */
+	/** Unused — kept so callers that still track presence don't need a special case. */
 	onlineUserIds: Set<string>;
 	size?: AvatarSize;
 }
@@ -17,7 +17,7 @@ interface ConversationAvatarProps {
 /**
  * The picture for a conversation row.
  *
- * A 1-1 is the other person's avatar, with their presence mark. A group is an
+ * A 1-1 is the other person's avatar. A group is an
  * ink-filled circle carrying the group's own initials — not one member's face,
  * because picking a member would be arbitrary and their presence would read as
  * the group's, and not a generic icon either, which made every group in a
@@ -27,15 +27,20 @@ interface ConversationAvatarProps {
  * numbers: a sidebar mixing groups and direct chats has to keep one column of
  * text, and two maps drift the first time one of them is edited.
  */
-export function ConversationAvatar({
-	conversation,
-	currentUserId,
-	onlineUserIds,
-	size = "md",
-}: ConversationAvatarProps) {
+export function ConversationAvatar({ conversation, currentUserId, size = "md" }: ConversationAvatarProps) {
 	const peer = getDirectPeer(conversation, currentUserId);
 
 	if (!peer) {
+		if (conversation.avatarUrl) {
+			return (
+				<img
+					src={conversation.avatarUrl}
+					alt=""
+					className={cn("rounded-full object-cover", AVATAR_SIZE_CLASSES[size])}
+				/>
+			);
+		}
+
 		return (
 			<span
 				aria-hidden="true"
@@ -49,5 +54,5 @@ export function ConversationAvatar({
 		);
 	}
 
-	return <Avatar user={peer} size={size} isOnline={onlineUserIds.has(peer.id)} />;
+	return <Avatar user={peer} size={size} />;
 }

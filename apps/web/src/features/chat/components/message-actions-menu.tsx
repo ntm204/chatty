@@ -1,4 +1,4 @@
-import { Bookmark, CornerUpLeft, Forward, Pencil, Pin, PinOff, SmilePlus, Trash2, UserRoundX, X } from "lucide-react";
+import { CornerUpLeft, Forward, Pencil, Pin, PinOff, SmilePlus, Trash2, UserRoundX, X } from "lucide-react";
 import { Button } from "@/components/button";
 
 interface MessageActionsMenuProps {
@@ -12,7 +12,6 @@ interface MessageActionsMenuProps {
 	/** Absent until somebody has reacted — see `MessageActions`. */
 	onShowReactions?: (() => void) | undefined;
 	onForward?: (() => void) | undefined;
-	onSave?: (() => void) | undefined;
 	onTogglePin?: (() => void) | undefined;
 	isPinned: boolean;
 	canChangeForEveryone: boolean;
@@ -29,7 +28,6 @@ export function MessageActionsMenu({
 	onReply,
 	onShowReactions,
 	onForward,
-	onSave,
 	onTogglePin,
 	isPinned,
 	canChangeForEveryone,
@@ -110,17 +108,6 @@ export function MessageActionsMenu({
 				>
 					<Forward className="size-4" />
 					Forward
-				</Button>
-			)}
-			{onSave && (
-				<Button
-					variant="ghost"
-					role="menuitem"
-					onClick={() => runAndClose(onSave)}
-					className="w-full justify-start px-2.5 py-2 text-ink"
-				>
-					<Bookmark className="size-4" />
-					Save message
 				</Button>
 			)}
 			{onTogglePin && (

@@ -2,6 +2,7 @@ import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback } from "react";
 import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
 import { NOTIFICATION_TAG_PREFIX } from "../constants/notification-tag";
+import { isConversationMuted } from "../utils/conversation-mute";
 import { useNotificationSetting } from "@/hooks/use-notification-setting";
 import { useSocketEvent } from "./use-socket-event";
 
@@ -35,9 +36,7 @@ export function useMessageNotifications(currentUserId: string, conversations: Co
 				if (document.visibilityState === "visible") return;
 				if (!message.author || message.author.id === currentUserId) return;
 				const conversation = conversations.find((item) => item.id === message.conversationId);
-				const isMuted = Boolean(
-					conversation?.mutedUntil && new Date(conversation.mutedUntil).getTime() > Date.now(),
-				);
+				const isMuted = conversation ? isConversationMuted(conversation) : false;
 				if (isMuted && !message.mentionedUserIds.includes(currentUserId)) return;
 
 				new Notification(message.author.displayName, {

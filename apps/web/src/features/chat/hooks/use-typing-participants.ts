@@ -1,5 +1,6 @@
-import type { TypingEvent } from "@chatty/shared-types";
+import type { MessageDTO, PresenceEvent, TypingEvent } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getSocket } from "@/lib/socket";
 import { TYPING_EXPIRY_MS } from "../constants/typing";
 import { useSocketEvent } from "./use-socket-event";
 
@@ -69,12 +70,45 @@ export function useTypingParticipants(conversationId: string | null): {
 
 	useEffect(() => {
 		const timers = expiryTimers.current;
+		const socket = getSocket();
+		const clearTyping = () => {
+			for (const timer of timers.values()) clearTimeout(timer);
+			timers.clear();
+			setTypingByConversation({});
+		};
+		socket.on("disconnect", clearTyping);
 
 		return () => {
+			socket.off("disconnect", clearTyping);
 			for (const timer of timers.values()) clearTimeout(timer);
 			timers.clear();
 		};
 	}, []);
+
+	useSocketEvent(
+		"message:new",
+		useCallback(
+			(message: MessageDTO) => {
+				if (message.author) forgetTyper(message.conversationId, message.author.id);
+			},
+			[forgetTyper],
+		),
+	);
+
+	useSocketEvent(
+		"presence:update",
+		useCallback(
+			(event: PresenceEvent) => {
+				if (event.isOnline) return;
+				for (const targetConversationId of Object.keys(typingByConversation)) {
+					if (typingByConversation[targetConversationId]?.includes(event.userId)) {
+						forgetTyper(targetConversationId, event.userId);
+					}
+				}
+			},
+			[forgetTyper, typingByConversation],
+		),
+	);
 
 	return { activeUserIds: conversationId ? (typingByConversation[conversationId] ?? []) : [], typingByConversation };
 }

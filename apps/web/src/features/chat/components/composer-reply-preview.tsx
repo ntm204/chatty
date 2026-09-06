@@ -20,7 +20,7 @@ export function ComposerReplyPreview({ replyTo, onCancel }: ComposerReplyPreview
 				</span>
 				<span className="truncate text-[12.5px]/[1.45] text-ink-soft">
 					{replyTo.content ||
-						(replyTo.attachments.length > 0 ? getAttachmentPreviewText(replyTo.attachments.length) : "")}
+						(replyTo.attachments.length > 0 ? getAttachmentPreviewText(replyTo.attachments) : "")}
 				</span>
 			</div>
 			{replyTo.attachments[0] && (

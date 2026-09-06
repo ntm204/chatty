@@ -47,7 +47,19 @@ export function App() {
 				{/* Unguarded for the same reason: the link is opened in the new
 				    mailbox, which is regularly a phone that has never signed in. */}
 				<Route path="/confirm-email" element={<ConfirmEmailPage />} />
-				<Route path="/chat" element={currentUser ? <ChatPage /> : <Navigate to="/login" replace />} />
+				<Route
+					path="/chat"
+					element={
+						currentUser ? (
+							<>
+								<ChatPage />
+								<SettingsPage />
+							</>
+						) : (
+							<Navigate to="/login" replace />
+						)
+					}
+				/>
 				{/* The chat and the dialog on top of it, as siblings, so a
 				    reload of /profile shows what a click on the settings icon
 				    shows and Back closes the dialog rather than leaving the app.

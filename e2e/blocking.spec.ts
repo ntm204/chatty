@@ -40,6 +40,7 @@ test.describe("blocking", () => {
 		// The panel is a second surface over the same store: blocking here has to
 		// have changed what it offers, or it would invite blocking someone twice.
 		await maiPage.getByRole("button", { name: "Conversation storage and details" }).click();
+		await maiPage.getByText("Privacy & support", { exact: true }).click();
 		await expect(maiPage.getByRole("button", { name: `Unblock ${linh.displayName}` })).toBeVisible({
 			timeout: 15_000,
 		});
@@ -76,7 +77,9 @@ test.describe("blocking", () => {
 		// reads as "sent" to whoever wrote it.
 		await linhPage.getByRole("textbox", { name: "Message" }).fill("after the block");
 		await linhPage.keyboard.press("Enter");
-		await expect(linhPage.getByText("after the block")).toBeVisible({ timeout: 15_000 });
+		await expect(linhPage.getByLabel("Message history").getByText("after the block")).toBeVisible({
+			timeout: 15_000,
+		});
 		await expect(linhPage.getByRole("main").getByText(/Not sent/i)).toBeVisible({ timeout: 15_000 });
 	});
 });
