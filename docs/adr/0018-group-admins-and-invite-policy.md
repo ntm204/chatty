@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. Supersedes the two-role permission table in [ADR 0008](0008-group-owner-role.md). The
-single-owner invariant, explicit ownership transfer and leave semantics from that record remain.
+Superseded by [ADR 0021](0021-flatten-group-roles-to-admin-member.md), which removes the single-owner
+invariant and the owner-only restrictions this record introduced. Supersedes the two-role permission
+table in [ADR 0008](0008-group-owner-role.md); the leave semantics from that record remain.
 
 ## Context
 

@@ -498,12 +498,13 @@ function toPinnedMessageDTO(
 		messageId: string;
 		pinnedById: string;
 		pinnedAt: Date;
-		message: { content: string };
+		message: MessageRow;
 	}[],
 ): PinnedMessageDTO[] {
 	return rows.map((row) => ({
 		messageId: row.messageId,
 		content: row.message.content,
+		message: toMessageDTO(row.message),
 		pinnedById: row.pinnedById,
 		pinnedAt: row.pinnedAt.toISOString(),
 	}));
@@ -572,7 +573,7 @@ export async function setMessagePinned(
 				messageId: true,
 				pinnedById: true,
 				pinnedAt: true,
-				message: { select: { content: true } },
+				message: { select: messageSelect },
 			},
 		});
 

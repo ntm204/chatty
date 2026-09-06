@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { ValidationError } from "../../lib/errors.js";
 import {
 	addParticipantSchema,
 	archiveConversationSchema,
@@ -9,10 +10,15 @@ import {
 	pinConversationSchema,
 	renameConversationSchema,
 	setInvitePolicySchema,
+	setNicknameSchema,
 	setParticipantRoleSchema,
-	transferOwnershipSchema,
+	setQuickReactionSchema,
+	setThemeSchema,
 } from "./conversations.schema.js";
 import * as conversationsService from "./conversations.service.js";
+
+/** Same value as `users.controller.ts`'s — a year, immutable, safe because the URL carries the upload timestamp. */
+const AVATAR_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 // req.userId is always set here: requireAuth runs before these controllers (see conversations.routes.ts)
 
@@ -67,6 +73,64 @@ export async function muteConversationController(req: Request, res: Response): P
 	res.status(200).json(state);
 }
 
+export async function setNicknameController(req: Request, res: Response): Promise<void> {
+	const input = setNicknameSchema.parse(req.body);
+	const conversation = await conversationsService.setConversationNickname(
+		req.userId!,
+		req.params.conversationId as string,
+		req.params.userId as string,
+		input,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function setThemeController(req: Request, res: Response): Promise<void> {
+	const input = setThemeSchema.parse(req.body);
+	const conversation = await conversationsService.setConversationTheme(
+		req.userId!,
+		req.params.conversationId as string,
+		input,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function setQuickReactionController(req: Request, res: Response): Promise<void> {
+	const input = setQuickReactionSchema.parse(req.body);
+	const conversation = await conversationsService.setConversationQuickReaction(
+		req.userId!,
+		req.params.conversationId as string,
+		input,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function uploadConversationAvatarController(req: Request, res: Response): Promise<void> {
+	if (!req.file) throw new ValidationError('Attach an image in an "avatar" field');
+	const conversation = await conversationsService.setConversationPhoto(
+		req.userId!,
+		req.params.conversationId as string,
+		req.file.buffer,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function deleteConversationAvatarController(req: Request, res: Response): Promise<void> {
+	const conversation = await conversationsService.removeConversationPhoto(
+		req.userId!,
+		req.params.conversationId as string,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function getConversationAvatarController(req: Request, res: Response): Promise<void> {
+	const conversationId = req.params.conversationId as string;
+	const filePath = await conversationsService.getConversationAvatarFilePath(conversationId);
+
+	res.setHeader("Cache-Control", AVATAR_CACHE_CONTROL);
+	// See users.controller.ts's getAvatarController for why `dotfiles: "allow"` is required.
+	res.status(200).sendFile(filePath, { dotfiles: "allow" });
+}
+
 export async function markReadController(req: Request, res: Response): Promise<void> {
 	const input = markReadSchema.parse(req.body);
 	const conversationId = req.params.conversationId as string;
@@ -88,13 +152,6 @@ export async function removeParticipantController(req: Request, res: Response): 
 	// No body: the actor and the target both learn what happened from socket
 	// events, not from this response — see removeParticipant's doc comment.
 	res.status(204).send();
-}
-
-export async function transferOwnershipController(req: Request, res: Response): Promise<void> {
-	const input = transferOwnershipSchema.parse(req.body);
-	const conversationId = req.params.conversationId as string;
-	const conversation = await conversationsService.transferGroupOwnership(req.userId!, conversationId, input);
-	res.status(200).json(conversation);
 }
 
 export async function setParticipantRoleController(req: Request, res: Response): Promise<void> {

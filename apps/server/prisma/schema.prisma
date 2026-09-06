@@ -328,19 +328,31 @@ model OutboxMessage {
 }
 
 model Conversation {
-  id           String                   @id @default(cuid())
+  id                 String                   @id @default(cuid())
   // true once a third participant joins; kept explicit rather than derived
   // from participant count so a 1-1 chat that later becomes a group doesn't
   // silently change identity.
-  isGroup      Boolean                  @default(false)
+  isGroup            Boolean                  @default(false)
   // display name for group chats; null for 1-1 (client derives a name from
   // the other participant)
-  name         String?
-  /// Who may add people. Only the owner may change this; EVERYONE preserves
-  /// the original open-invite behaviour, MANAGERS means owner or admin.
-  invitePolicy ConversationInvitePolicy @default(EVERYONE)
-  createdAt    DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime                 @updatedAt @db.Timestamptz(3)
+  name               String?
+  /// Who may add people. Any admin may change this; EVERYONE preserves the
+  /// original open-invite behaviour, MANAGERS means admins only.
+  invitePolicy       ConversationInvitePolicy @default(EVERYONE)
+  /// Set only for a group's own photo — mirrors `User.avatarUpdatedAt` exactly,
+  /// including the cache-busting scheme. Null in a direct conversation, which
+  /// always shows the peer's own avatar instead. Group-only and admin-gated,
+  /// same as renaming. See ADR 0022.
+  avatarUpdatedAt    DateTime?                @db.Timestamptz(3)
+  /// The whole conversation's shared accent, or null for today's fixed
+  /// appearance. Cosmetic, so any participant may change it — unlike the
+  /// admin-gated settings above. See ADR 0022.
+  themeColor         ConversationTheme?
+  /// Overrides the app-wide default reaction a double-click on a bubble
+  /// leaves (`DEFAULT_REACTION`). Cosmetic, any participant may change it.
+  quickReactionEmoji String?
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
 
   participants   ConversationParticipant[]
   messages       Message[]
@@ -349,11 +361,10 @@ model Conversation {
   pinnedMessages PinnedMessage[]
 }
 
-/// A small hierarchy rather than a permission matrix. OWNER alone changes
-/// roles/policy and transfers ownership; OWNER and ADMIN manage ordinary group
-/// activity; MEMBER acts on themselves and may invite only under open policy.
+/// Two tiers, symmetric within ADMIN: any admin manages the group, other
+/// admins included, and none is more privileged than another. MEMBER acts
+/// on themselves and may invite only under open policy. See ADR 0021.
 enum ConversationRole {
-  OWNER
   ADMIN
   MEMBER
 }
@@ -363,18 +374,31 @@ enum ConversationInvitePolicy {
   MANAGERS
 }
 
+/// Restricted to the avatar-tint tokens already in the design palette
+/// (@/constants/avatar-colors on the web side) — no new colors introduced.
+enum ConversationTheme {
+  AZURE
+  AMBER
+  MOSS
+  PLUM
+  CLAY
+  TEAL
+  IRIS
+  FERN
+}
+
 model ConversationParticipant {
   id                      String           @id @default(cuid())
   conversationId          String
   userId                  String
-  /// Every group has exactly one OWNER while it has anyone in it: the creator
-  /// to begin with, and on their way out the longest-standing member left (see
-  /// `removeParticipant`). ADMIN is optional and may repeat. Meaningless in a
-  /// direct conversation, where both rows stay MEMBER.
+  /// Every non-empty group keeps at least one ADMIN: the creator starts as
+  /// one, and whoever is longest-standing is promoted if the last admin
+  /// leaves or is demoted (see `promoteNextAdmin`). Meaningless in a direct
+  /// conversation, where both rows stay MEMBER.
   ///
-  /// PostgreSQL enforces the cross-row rule Prisma cannot express: the phase 7
-  /// migration adds an OWNER-only unique index plus a deferred constraint
-  /// trigger, so a non-empty group has exactly one owner at commit time.
+  /// PostgreSQL enforces the cross-row rule Prisma cannot express: a deferred
+  /// constraint trigger requires a non-empty group to keep at least one admin
+  /// at commit time. See ADR 0021.
   role                    ConversationRole @default(MEMBER)
   joinedAt                DateTime         @default(now()) @db.Timestamptz(3)
   // Newest message this participant has read. Per-participant, so it belongs
@@ -407,6 +431,12 @@ model ConversationParticipant {
   pinnedAt                DateTime?        @db.Timestamptz(3)
   /// Null is audible; a far-future timestamp represents "mute forever".
   mutedUntil              DateTime?        @db.Timestamptz(3)
+  /// How everyone else in this conversation sees this participant labeled,
+  /// here instead — unlike the private fields above, this one *is* broadcast
+  /// with conversation:updated: it means the same thing to every viewer.
+  /// Settable by any participant, on any row, cosmetic rather than
+  /// moderation. See ADR 0022.
+  nickname                String?
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -50,7 +50,8 @@ function avatarPathFor(userId: string): string {
 }
 
 /**
- * Normalizes an uploaded image and writes it as this user's avatar.
+ * Normalizes an uploaded image into avatar shape: same size, same format,
+ * nothing of the input left in it.
  *
  * The re-encode is the security control, not a nicety. A browser decides what a
  * file is by sniffing its bytes, not by the extension or the Content-Type the
@@ -61,16 +62,13 @@ function avatarPathFor(userId: string): string {
  * It also drops metadata — sharp does unless asked otherwise — so an avatar
  * cannot publish the GPS coordinates the phone put in the EXIF.
  *
- * Overwrites in place under one key per user. Writing a new filename each time
- * would leave every previous picture on disk forever; the cache is busted by
- * `avatarUpdatedAt` in the URL instead.
+ * Shared by user avatars and, since ADR 0022, group photos — the same shape,
+ * the same security control, so this is the one place either caller trusts to
+ * get it right.
  */
-export async function saveAvatar(userId: string, upload: Buffer): Promise<void> {
-	const filePath = avatarPathFor(userId);
-
-	let normalized: Buffer;
+export async function normalizeAvatarImage(upload: Buffer): Promise<Buffer> {
 	try {
-		normalized = await sharp(upload, { limitInputPixels: MAX_INPUT_PIXELS })
+		return await sharp(upload, { limitInputPixels: MAX_INPUT_PIXELS })
 			// Applies the EXIF orientation flag, then discards it. Without this,
 			// photos taken in portrait arrive sideways.
 			.rotate()
@@ -83,6 +81,16 @@ export async function saveAvatar(userId: string, upload: Buffer): Promise<void> 
 		// fault, so this is a 400 rather than the 500 an unhandled throw would be.
 		throw new ValidationError("That file could not be read as an image");
 	}
+}
+
+/**
+ * Overwrites in place under one key per user. Writing a new filename each time
+ * would leave every previous picture on disk forever; the cache is busted by
+ * `avatarUpdatedAt` in the URL instead.
+ */
+export async function saveAvatar(userId: string, upload: Buffer): Promise<void> {
+	const filePath = avatarPathFor(userId);
+	const normalized = await normalizeAvatarImage(upload);
 
 	await mkdir(avatarsDirectory, { recursive: true });
 	await writeFile(filePath, normalized);

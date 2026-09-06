@@ -148,7 +148,7 @@ describe("deleteAccount", () => {
 		expect(seenByAn[0]!.unreadCount).toBe(1);
 	});
 
-	it("hands over the groups they owned and says so in the log", async () => {
+	it("hands over the groups they administered and says so in the log", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -156,17 +156,17 @@ describe("deleteAccount", () => {
 
 		await deleteAccount(minhId, { currentPassword: PASSWORD });
 
-		// The database refuses a non-empty group with no owner, so this is not a
+		// The database refuses a non-empty group with no admin, so this is not a
 		// nicety — without the hand-over the whole delete would fail.
-		const owners = await prisma.conversationParticipant.findMany({
-			where: { conversationId: group.id, role: "OWNER" },
+		const admins = await prisma.conversationParticipant.findMany({
+			where: { conversationId: group.id, role: "ADMIN" },
 			select: { userId: true },
 		});
-		expect(owners).toEqual([{ userId: anId }]);
-		expect(await systemLines(group.id)).toEqual(["minh deleted their account", "an is now the group owner"]);
+		expect(admins).toEqual([{ userId: anId }]);
+		expect(await systemLines(group.id)).toEqual(["minh deleted their account", "an is now a group admin"]);
 	});
 
-	it("leaves a group it did not own with its owner intact", async () => {
+	it("leaves a group it did not administer with its admin intact", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -174,11 +174,11 @@ describe("deleteAccount", () => {
 
 		await deleteAccount(binhId, { currentPassword: PASSWORD });
 
-		const owners = await prisma.conversationParticipant.findMany({
-			where: { conversationId: group.id, role: "OWNER" },
+		const admins = await prisma.conversationParticipant.findMany({
+			where: { conversationId: group.id, role: "ADMIN" },
 			select: { userId: true },
 		});
-		expect(owners).toEqual([{ userId: minhId }]);
+		expect(admins).toEqual([{ userId: minhId }]);
 		expect(await systemLines(group.id)).toEqual(["binh deleted their account"]);
 	});
 

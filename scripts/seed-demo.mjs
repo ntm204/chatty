@@ -266,7 +266,6 @@ async function seedDirectMedia(conversation, accounts, replyAnchor) {
 		images: [createDemoImage("DIRECT IMAGE", "#f3efe3", "#e9684a")],
 	});
 	const fileMessage = await sendMultipartMessage(accounts.minh, conversation.id, "demo-direct-file", {
-		content: "File ghi chú để kiểm tra tải xuống và tên file tiếng Việt.",
 		file: {
 			name: "ghi-chú-kiểm-thử.txt",
 			blob: new Blob(["Chatty demo file\nDirect conversation\nDownload verified through the API.\n"], {
@@ -300,7 +299,6 @@ async function seedGroupMedia(conversation, accounts, replyAnchor) {
 		voice: createVoiceSample(),
 	});
 	const fileMessage = await sendMultipartMessage(accounts.lan, conversation.id, "demo-group-file", {
-		content: "Tài liệu kiểm tra: tải xuống phải giữ đúng nội dung và tên file.",
 		file: {
 			name: "chatty-demo-checklist.txt",
 			blob: new Blob(

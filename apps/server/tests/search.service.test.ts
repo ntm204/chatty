@@ -29,8 +29,8 @@ async function makeConversation(userIds: string[], name: string | null = null): 
 			participants: {
 				create: userIds.map((userId, index) => ({
 					userId,
-					// A group needs exactly one owner or the phase 7 trigger refuses it.
-					...(userIds.length > 2 && index === 0 ? { role: "OWNER" as const } : {}),
+					// A non-empty group needs at least one admin or the trigger refuses it.
+					...(userIds.length > 2 && index === 0 ? { role: "ADMIN" as const } : {}),
 				})),
 			},
 		},

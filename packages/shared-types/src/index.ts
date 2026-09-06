@@ -97,13 +97,14 @@ export interface CurrentUserDTO extends UserDTO {
  */
 export interface ParticipantDTO extends UserDTO {
 	/**
-	 * What this participant may do to the group: the owner controls roles and
-	 * policy; owner/admin manage ordinary members and naming; a member may always
-	 * leave and may invite only while the group policy is open.
+	 * What this participant may do to the group: an admin manages members,
+	 * naming, roles and invite policy — symmetric with every other admin; a
+	 * member may always leave and may invite only while the group policy is
+	 * open.
 	 *
 	 * Present on a direct conversation's participants too, where it is always
 	 * "member" and means nothing — a two-person chat has nothing to administer.
-	 * See ADR 0008.
+	 * See ADR 0021.
 	 */
 	role: ConversationRole;
 	/**
@@ -121,6 +122,13 @@ export interface ParticipantDTO extends UserDTO {
 	 * the point.
 	 */
 	lastReadMessageId: string | null;
+	/**
+	 * How everyone in this conversation sees this participant labeled, or null
+	 * for their real `displayName`. Shared, not per-viewer — set by any
+	 * participant, visible to all of them, the same way Messenger's chat
+	 * nicknames work. See ADR 0022.
+	 */
+	nickname: string | null;
 }
 
 /**
@@ -130,8 +138,15 @@ export interface ParticipantDTO extends UserDTO {
  * schema.prisma). The mapper is the one place that knows both spellings, the
  * same way `createdAt` is a Date on one side and an ISO string on the other.
  */
-export type ConversationRole = "owner" | "admin" | "member";
+export type ConversationRole = "admin" | "member";
 export type GroupInvitePolicy = "everyone" | "managers";
+
+/**
+ * The conversation's shared accent color, or null for the fixed default.
+ * Restricted to the avatar-tint tokens already in the design palette — see
+ * `@/constants/avatar-colors` on the web side. See ADR 0022.
+ */
+export type ConversationTheme = "azure" | "amber" | "moss" | "plum" | "clay" | "teal" | "iris" | "fern";
 
 export interface ConversationDTO {
 	id: string;
@@ -139,6 +154,12 @@ export interface ConversationDTO {
 	name: string | null; // null for 1-1 conversations; derived from participants on the client
 	/** Who may add people; meaningful only for groups. */
 	invitePolicy: GroupInvitePolicy;
+	/** A group's own photo, or null (initials shown instead). Always null for a direct conversation — see ADR 0022. */
+	avatarUrl: string | null;
+	/** The whole conversation's shared accent, or null for the fixed default. Any participant may change it. */
+	themeColor: ConversationTheme | null;
+	/** Overrides the app-wide default reaction a double-click leaves, or null for that default. */
+	quickReactionEmoji: string | null;
 	participants: ParticipantDTO[];
 	lastMessage: MessageDTO | null;
 	/**
@@ -239,6 +260,7 @@ export interface MessageLinkPageDTO {
 }
 
 export interface PinnedMessageDTO {
+	message?: MessageDTO;
 	messageId: string;
 	content: string;
 	pinnedAt: string;
@@ -571,23 +593,20 @@ export interface DeleteAccountRequest {
 	currentPassword: string;
 }
 
-/**
- * Body of `PUT /conversations/:conversationId/owner`.
- *
- * PUT because it replaces the group's single owner: handing it to the same
- * person twice ends in the same state, and the second request simply finds
- * itself no longer the owner and is refused.
- */
-export interface TransferOwnershipRequest {
-	userId: string;
-}
-
 export interface SetParticipantRoleRequest {
-	role: Exclude<ConversationRole, "owner">;
+	role: ConversationRole;
 }
 
 export interface SetGroupInvitePolicyRequest {
 	invitePolicy: GroupInvitePolicy;
+}
+
+export interface SetThemeRequest {
+	theme: ConversationTheme | null;
+}
+
+export interface SetQuickReactionRequest {
+	emoji: string | null;
 }
 
 /**
@@ -843,6 +862,9 @@ export interface ConversationUpdatedEvent {
 	conversationId: string;
 	name: string | null;
 	invitePolicy: GroupInvitePolicy;
+	avatarUrl: string | null;
+	themeColor: ConversationTheme | null;
+	quickReactionEmoji: string | null;
 	participants: ParticipantDTO[];
 }
 

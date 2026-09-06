@@ -73,8 +73,8 @@ async function createGroup(creatorId: string, otherIds: string[], name = "Group"
  * The system lines written into a conversation, oldest first.
  *
  * Ordered by id as well as time because two of these can land in the same
- * millisecond — leaving a group you own writes the departure line and the
- * ownership line back to back — and `createdAt` alone would then be free to
+ * millisecond — the last admin leaving writes the departure line and the
+ * succession line back to back — and `createdAt` alone would then be free to
  * return them in either order. A cuid embeds a counter after its timestamp, so
  * it breaks that tie the same way the writes happened.
  */
@@ -398,8 +398,8 @@ describe("renameConversation", () => {
 	});
 });
 
-describe("group ownership", () => {
-	it("makes whoever created a group its owner, and everyone else a member", async () => {
+describe("group administration", () => {
+	it("makes whoever created a group its first admin, and everyone else a member", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -407,13 +407,13 @@ describe("group ownership", () => {
 		const group = await createGroup(minhId, [anId, binhId]);
 
 		const roles = new Map(group.participants.map((participant) => [participant.id, participant.role]));
-		expect(roles.get(minhId)).toBe("owner");
+		expect(roles.get(minhId)).toBe("admin");
 		expect(roles.get(anId)).toBe("member");
 		expect(roles.get(binhId)).toBe("member");
 	});
 
-	it("gives a direct conversation no owner at all", async () => {
-		// Two people have nothing to administer between them, and an owner there
+	it("gives a direct conversation no admin at all", async () => {
+		// Two people have nothing to administer between them, and an admin there
 		// would only be a role the UI has to remember not to show.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
@@ -423,9 +423,9 @@ describe("group ownership", () => {
 		expect(direct.participants.every((participant) => participant.role === "member")).toBe(true);
 	});
 
-	it("lets a member who does not own the group add someone", async () => {
-		// Inviting is how a group grows; gating it behind one person makes them a
-		// bottleneck for the thing groups are for. See ADR 0008.
+	it("lets an ordinary member add someone under the open invite policy", async () => {
+		// Inviting is how a group grows; gating it behind admins makes them a
+		// bottleneck for the thing groups are for unless the policy asks for it.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -451,8 +451,8 @@ describe("group ownership", () => {
 	});
 
 	it("lets a member remove themselves", async () => {
-		// The one thing the role must never block: an owner who could keep people
-		// in a group would be worse than a group with no owner.
+		// The one thing the role must never block: admins who could keep people
+		// in a group would be worse than a group with no admin.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -476,7 +476,7 @@ describe("group ownership", () => {
 		expect(unchanged.name).toBe("Weekend football");
 	});
 
-	it("hands the group to the longest-standing member when the owner leaves", async () => {
+	it("hands the group to the longest-standing member when the last admin leaves", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -485,15 +485,15 @@ describe("group ownership", () => {
 		await removeParticipant(minhId, group.id, minhId);
 
 		const remaining = await conversationAsSeenBy(anId, group.id);
-		const owners = remaining.participants.filter((participant) => participant.role === "owner");
-		// Exactly one, not "at least one": two owners is the state where the rule
-		// "the owner decides" stops meaning anything.
-		expect(owners).toHaveLength(1);
-		expect(owners[0]?.id).toBe(anId);
+		const admins = remaining.participants.filter((participant) => participant.role === "admin");
+		// One successor, not everyone remaining: multiple admins are allowed in
+		// general, but this promotion only replaces the admin who just left.
+		expect(admins).toHaveLength(1);
+		expect(admins[0]?.id).toBe(anId);
 	});
 
-	it("lets the new owner do what they could not do a moment ago", async () => {
-		// The transfer is only worth anything if the role it grants is real.
+	it("lets the newly promoted admin do what they could not do a moment ago", async () => {
+		// The succession is only worth anything if the role it grants is real.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -519,9 +519,10 @@ describe("group ownership", () => {
 		await expect(prisma.conversationParticipant.count({ where: { conversationId: group.id } })).resolves.toBe(0);
 	});
 
-	it("serialises an owner and their likely successor leaving at the same time", async () => {
-		// Without the conversation row lock, the owner can select `an` for promotion
-		// while the other request deletes `an`, leaving `binh` alone and ownerless.
+	it("serialises the last admin and their likely successor leaving at the same time", async () => {
+		// Without the conversation row lock, the departing admin can select `an`
+		// for promotion while the other request deletes `an`, leaving `binh` alone
+		// and adminless.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -530,10 +531,10 @@ describe("group ownership", () => {
 		await Promise.all([removeParticipant(minhId, group.id, minhId), removeParticipant(anId, group.id, anId)]);
 
 		const remaining = await conversationAsSeenBy(binhId, group.id);
-		expect(remaining.participants).toEqual([expect.objectContaining({ id: binhId, role: "owner" })]);
+		expect(remaining.participants).toEqual([expect.objectContaining({ id: binhId, role: "admin" })]);
 	});
 
-	it("has a database constraint against demoting the only owner", async () => {
+	it("has a database constraint against demoting the only admin", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -544,31 +545,31 @@ describe("group ownership", () => {
 				where: { conversationId_userId: { conversationId: group.id, userId: minhId } },
 				data: { role: "MEMBER" },
 			}),
-		).rejects.toThrow(/exactly one owner/);
+		).rejects.toThrow(/at least one admin/);
 
 		const unchanged = await conversationAsSeenBy(minhId, group.id);
-		expect(unchanged.participants.find((participant) => participant.id === minhId)?.role).toBe("owner");
+		expect(unchanged.participants.find((participant) => participant.id === minhId)?.role).toBe("admin");
 	});
 
-	it("has a database constraint against promoting a second owner", async () => {
+	it("allows more than one admin at once", async () => {
+		// The old model refused a second OWNER; the flattened one has no reason to
+		// refuse a second, third, or fourth ADMIN — none of them is senior.
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
 		const group = await createGroup(minhId, [anId, binhId]);
 
-		await expect(
-			prisma.conversationParticipant.update({
-				where: { conversationId_userId: { conversationId: group.id, userId: anId } },
-				data: { role: "OWNER" },
-			}),
-		).rejects.toMatchObject({ code: "P2002" });
+		await prisma.conversationParticipant.update({
+			where: { conversationId_userId: { conversationId: group.id, userId: anId } },
+			data: { role: "ADMIN" },
+		});
 
 		await expect(
-			prisma.conversationParticipant.count({ where: { conversationId: group.id, role: "OWNER" } }),
-		).resolves.toBe(1);
+			prisma.conversationParticipant.count({ where: { conversationId: group.id, role: "ADMIN" } }),
+		).resolves.toBe(2);
 	});
 
-	it("has a database constraint against giving a direct conversation an owner", async () => {
+	it("has a database constraint against giving a direct conversation an admin", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const direct = await createConversation(minhId, { participantIds: [anId] });
@@ -576,9 +577,9 @@ describe("group ownership", () => {
 		await expect(
 			prisma.conversationParticipant.update({
 				where: { conversationId_userId: { conversationId: direct.id, userId: minhId } },
-				data: { role: "OWNER" },
+				data: { role: "ADMIN" },
 			}),
-		).rejects.toThrow(/cannot have an owner/);
+		).rejects.toThrow(/cannot have an admin/);
 	});
 });
 
@@ -654,7 +655,7 @@ describe("atomic group mutations", () => {
 		expect(fakeIO.emits).toHaveLength(0);
 	});
 
-	it("rolls the whole owner hand-over back when its second system message fails", async () => {
+	it("rolls the whole admin hand-over back when its second system message fails", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -662,7 +663,7 @@ describe("atomic group mutations", () => {
 		fakeIO.emits.length = 0;
 		fakeIO.leaves.length = 0;
 
-		await rejectSystemMessages(`"kind" <> 'SYSTEM' OR "content" NOT LIKE '% is now the group owner'`);
+		await rejectSystemMessages(`"kind" <> 'SYSTEM' OR "content" NOT LIKE '% is now a group admin'`);
 		try {
 			await expect(removeParticipant(minhId, group.id, minhId)).rejects.toThrow();
 		} finally {
@@ -670,7 +671,7 @@ describe("atomic group mutations", () => {
 		}
 
 		const unchanged = await conversationAsSeenBy(minhId, group.id);
-		expect(unchanged.participants.find((participant) => participant.id === minhId)?.role).toBe("owner");
+		expect(unchanged.participants.find((participant) => participant.id === minhId)?.role).toBe("admin");
 		await expect(systemLines(group.id)).resolves.toEqual([]);
 		expect(fakeIO.leaves).toHaveLength(0);
 		expect(fakeIO.emits).toHaveLength(0);
@@ -799,7 +800,7 @@ describe("system messages", () => {
 		await expect(systemLines(group.id)).resolves.toEqual(['minh renamed the group to "Weekend football"']);
 	});
 
-	it("records the departure before the handover when an owner leaves", async () => {
+	it("records the departure before the handover when the last admin leaves", async () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const binhId = await createUser("binh");
@@ -807,7 +808,7 @@ describe("system messages", () => {
 
 		await removeParticipant(minhId, group.id, minhId);
 
-		await expect(systemLines(group.id)).resolves.toEqual(["minh left the group", "an is now the group owner"]);
+		await expect(systemLines(group.id)).resolves.toEqual(["minh left the group", "an is now a group admin"]);
 	});
 
 	it("broadcasts each line to the conversation as a message", async () => {

@@ -69,7 +69,7 @@ async function main(): Promise<void> {
 			isGroup: true,
 			name: "Weekend football",
 			participants: {
-				create: [{ userId: minh.id, role: "OWNER" }, { userId: an.id }, { userId: binh.id }],
+				create: [{ userId: minh.id, role: "ADMIN" }, { userId: an.id }, { userId: binh.id }],
 			},
 		},
 		select: { id: true },

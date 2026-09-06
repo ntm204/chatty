@@ -2,9 +2,11 @@
 
 ## Status
 
-Superseded in part by [ADR 0018](0018-group-admins-and-invite-policy.md). This record superseded the
-decision in [ADR 0006](0006-flat-group-permissions.md); its single-owner invariant, leaving/removal
-shape and groups reaching zero participants still stand.
+Superseded by [ADR 0018](0018-group-admins-and-invite-policy.md), itself superseded by
+[ADR 0021](0021-flatten-group-roles-to-admin-member.md), which removes the single-owner invariant this
+record introduced. This record superseded the decision in
+[ADR 0006](0006-flat-group-permissions.md); the leaving/removal shape and groups reaching zero
+participants still stand.
 
 ## Context
 

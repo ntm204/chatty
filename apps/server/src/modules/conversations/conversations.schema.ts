@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SINGLE_RGI_EMOJI } from "../messages/messages.schema.js";
 
 export const createConversationSchema = z.object({
 	// IDs of the other participant(s). A 1-1 chat has exactly one entry here;
@@ -28,17 +29,7 @@ export const renameConversationSchema = z.object({
 });
 export type RenameConversationInput = z.infer<typeof renameConversationSchema>;
 
-export const transferOwnershipSchema = z.object({
-	// Who the group is being handed to. They have to already be in it — inviting
-	// and promoting are two decisions, and rolling them into one would let a
-	// stranger be made owner in a single request.
-	userId: z.string().min(1),
-});
-export type TransferOwnershipInput = z.infer<typeof transferOwnershipSchema>;
-
 export const setParticipantRoleSchema = z.object({
-	// OWNER moves through its dedicated transfer endpoint because changing it is
-	// a two-row invariant, not one participant property.
 	role: z.enum(["admin", "member"]),
 });
 export type SetParticipantRoleInput = z.infer<typeof setParticipantRoleSchema>;
@@ -68,3 +59,18 @@ export type PinConversationInput = z.infer<typeof pinConversationSchema>;
 
 export const muteConversationSchema = z.object({ until: z.string().datetime().nullable() });
 export type MuteConversationInput = z.infer<typeof muteConversationSchema>;
+
+export const setNicknameSchema = z.object({ nickname: z.string().trim().min(1).max(50).nullable() });
+export type SetNicknameInput = z.infer<typeof setNicknameSchema>;
+
+export const setThemeSchema = z.object({
+	theme: z.enum(["azure", "amber", "moss", "plum", "clay", "teal", "iris", "fern"]).nullable(),
+});
+export type SetThemeInput = z.infer<typeof setThemeSchema>;
+
+export const setQuickReactionSchema = z.object({
+	// Same fully-qualified-emoji rule as toggling a reaction — see messages.schema's SINGLE_RGI_EMOJI.
+	// Null restores the app-wide default (DEFAULT_REACTION on the web side).
+	emoji: z.string().max(64).regex(SINGLE_RGI_EMOJI, "Must be a single emoji").nullable(),
+});
+export type SetQuickReactionInput = z.infer<typeof setQuickReactionSchema>;

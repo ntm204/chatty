@@ -73,7 +73,7 @@ export type EditMessageContract = AssertAssignable<EditMessageInput, EditMessage
  * compiler limit rather than a runtime one, and bumping the shared target to
  * work around one regex would change the emit for the web bundle too.
  */
-const SINGLE_RGI_EMOJI = new RegExp("^\\p{RGI_Emoji}$", "v");
+export const SINGLE_RGI_EMOJI = new RegExp("^\\p{RGI_Emoji}$", "v");
 
 export const toggleReactionSchema = z.object({
 	// `max` before the regex so a hostile megabyte is rejected on its length

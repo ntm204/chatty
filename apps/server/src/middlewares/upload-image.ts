@@ -177,6 +177,14 @@ export const uploadAvatar = createImageUpload({
 	maxFiles: 1,
 });
 
+/** Same shape as a user avatar upload — see ADR 0022. */
+export const uploadConversationAvatar = createImageUpload({
+	field: "avatar",
+	maxBytes: MAX_AVATAR_BYTES,
+	label: "Photo",
+	maxFiles: 1,
+});
+
 /**
  * Mounted on `POST /conversations/:id/messages`, which also accepts plain JSON.
  * Multer passes a non-multipart request straight through, leaving `req.files`
