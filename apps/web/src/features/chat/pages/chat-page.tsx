@@ -2,6 +2,7 @@ import type { MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
+import { ChatWelcome } from "../components/chat-welcome";
 import { ConnectionBanner, ChatConversationPane, ConversationSidebar, KeyboardShortcutsPanel } from "../components";
 import {
 	useBlockedUsersSync,
@@ -185,11 +186,11 @@ export function ChatPage() {
 	if (!currentUser) return null;
 
 	return (
-		<div className="relative flex h-dvh flex-col overflow-hidden bg-paper">
+		<div className="chat-shell relative flex h-dvh flex-col overflow-hidden bg-paper">
 			{isShortcutHelpOpen && <KeyboardShortcutsPanel onClose={() => setIsShortcutHelpOpen(false)} />}
 			{isConnectionLost && <ConnectionBanner />}
 
-			<div className="flex min-h-0 flex-1 lg:gap-2 lg:p-2">
+			<div className="chat-workspace flex min-h-0 flex-1 lg:gap-3 lg:p-3">
 				<ConversationSidebar
 					currentUser={currentUser}
 					conversations={conversations}
@@ -285,11 +286,7 @@ export function ChatPage() {
 							}}
 						/>
 					) : (
-						<div className="flex flex-1 items-center justify-center">
-							<p className="text-sm text-ink-faint">
-								Pick a conversation, or search for someone to start one.
-							</p>
-						</div>
+						<ChatWelcome />
 					)}
 				</main>
 			</div>

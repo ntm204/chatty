@@ -1,6 +1,7 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { Archive, ArrowLeft, LogOut, Settings } from "lucide-react";
+import { Archive, ArrowLeft, LogOut, Settings, Sparkles } from "lucide-react";
+import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
@@ -50,7 +51,7 @@ export function ConversationSidebar({
 		<aside
 			id="conversation-sidebar"
 			className={cn(
-				"relative flex w-full shrink-0 flex-col bg-paper-raised lg:w-[var(--panel-width,320px)] lg:rounded-xl lg:border lg:border-rule",
+				"conversation-sidebar relative flex w-full shrink-0 flex-col bg-paper-raised lg:w-[var(--panel-width,320px)] lg:rounded-xl lg:border lg:border-rule",
 				className,
 			)}
 		>
@@ -63,8 +64,21 @@ export function ConversationSidebar({
 				maxWidth={400}
 				className="hidden lg:block"
 			/>
-			<div className="flex h-[70px] shrink-0 items-center justify-between px-4">
-				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">Chats</h1>
+			<div className="sidebar-brand">
+				<Brand />
+				<span className="eyebrow">
+					THE GOOD
+					<br />
+					COMPANY CLUB
+				</span>
+			</div>
+			<div className="sidebar-heading flex h-[70px] shrink-0 items-center justify-between px-4">
+				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">
+					Chats
+					<span className="sidebar-heading-star" aria-hidden="true">
+						✳
+					</span>
+				</h1>
 				<Button
 					variant="ghost"
 					onClick={onToggleArchived}
@@ -78,7 +92,10 @@ export function ConversationSidebar({
 
 			<NewConversationPanel onConversationStarted={onConversationStarted} />
 
-			{isShowingArchived && <p className="eyebrow px-5 pb-2 text-ink-faint">Archived conversations</p>}
+			<div className="sidebar-list-label">
+				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "YOUR CONVERSATIONS"}</span>
+				<Sparkles size={13} aria-hidden="true" />
+			</div>
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<ConversationList
@@ -95,7 +112,7 @@ export function ConversationSidebar({
 			{/* Pinned to the bottom, where an account lives in every application
 			    shell people already use. It sat in the header before, which put the
 			    thing you touch least at the top of the thing you scan most. */}
-			<div className="flex shrink-0 items-center gap-3 border-t border-rule-soft px-4 py-3">
+			<div className="sidebar-account flex shrink-0 items-center gap-3 border-t border-rule-soft px-4 py-3">
 				<Avatar user={currentUser} size="md" />
 
 				<div className="min-w-0 flex-1">

@@ -88,7 +88,7 @@ export function ChatConversationPane({
 				<section
 					aria-label="Conversation"
 					className={cn(
-						"flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:border-rule",
+						"conversation-pane flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:border-rule",
 						isManagingDetails && "max-xl:hidden",
 					)}
 				>

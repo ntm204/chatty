@@ -1,6 +1,6 @@
 # Product direction
 
-Chatty is a **fast, calm, relationship-first messenger**. It combines proven interaction ideas from
+Chatty is a **fast, colorful, relationship-first messenger**. It combines proven interaction ideas from
 social products without copying their identity, growth loops or infrastructure. A feature belongs
 only when it improves a conversation, trust between people, or the cost of delivering those two.
 
@@ -34,7 +34,10 @@ require a public deployment. The foundations below remain context for future dec
 5. **Zero recurring vendor bill first.** The first public version may require a domain and free
    accounts. A paid dependency needs a measured limit, an explicit budget and a migration reason.
 6. **One recognisable Chatty interface.** Familiar placement is good; copying another product's
-   visual identity is not. Ink, paper, one signal colour and restrained motion remain the language.
+   visual identity is not. Nostalgic maximalism is the visual language: colorful stationery,
+   collaged welcome artwork, crisp ink edges and restrained motion. Reading surfaces stay calm,
+   with accessible text contrast and distinct action, notification and presence colors.
+   See [visual direction](design/maximalism.md).
 
 ## What is worth carrying forward
 

@@ -9,7 +9,9 @@ export function LoginPage() {
 	return (
 		<AuthCard
 			title={isLogin ? "Sign in" : "Create an account"}
-			description={isLogin ? "Welcome back." : "Pick a handle people can find you by."}
+			description={
+				isLogin ? "Your people are just a hello away. Welcome back!" : "Pick a handle people can find you by."
+			}
 		>
 			{isLogin ? <LoginForm /> : <RegisterForm />}
 

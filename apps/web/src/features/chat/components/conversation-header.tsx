@@ -46,7 +46,7 @@ export function ConversationHeader({
 	);
 
 	return (
-		<header className="flex h-[70px] shrink-0 items-center gap-3 border-b border-rule bg-paper-raised px-4 sm:px-5 md:px-7">
+		<header className="conversation-header flex h-[70px] shrink-0 items-center gap-3 border-b border-rule bg-paper-raised px-4 sm:px-5 md:px-7">
 			{onBack && (
 				<Button
 					variant="ghost"

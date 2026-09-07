@@ -47,9 +47,7 @@ interface MessageBubbleProps {
  * **A message that is nothing but a few emoji gets no bubble at all**: no fill,
  * no border, no radius, and type several times the size. At bubble size an
  * emoji reads as a typo, and the bubble is chrome around content that does not
- * need explaining. Every messenger worth using does this, and it is how emoji
- * are given prominence here without spending the app's one colour — see the
- * note in `EmojiPicker` about why the reactions did not follow.
+ * need explaining. The surrounding stationery stays separate from user content.
  */
 export function MessageBubble({
 	message,
@@ -156,7 +154,7 @@ export function MessageBubble({
 					: cn(
 							isMine ? cn(theme.bubble, theme.bubbleInk) : "bg-paper-sunken text-ink",
 							(isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition],
-							"px-3 py-1.5",
+							"chat-bubble px-3 py-1.5",
 						),
 			)}
 		>

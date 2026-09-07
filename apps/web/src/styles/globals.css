@@ -1,27 +1,5 @@
-/*
- * Fonts are self-hosted, not pulled from Google.
- *
- * `nginx.conf.template` keeps styles same-origin and permits the data-URL fonts
- * emitted by the icon/font packages bundled into the production CSS.
- * A <link> to fonts.googleapis.com would need both relaxed, and the stylesheet
- * it returns is a runtime dependency on a third party for a chat app that has
- * none anywhere else. Vite fingerprints these into the bundle, so the policy
- * stays as strict as it was and the fonts are still there with the network off.
- *
- * Geist and Geist Mono are one superfamily rather than two faces that happen to
- * sit together: the mono is the sans redrawn on a fixed pitch, so a timestamp
- * beside a sentence shares its skeleton, its weight and its x-height instead of
- * arguing with it. That is the whole reason for the pairing — the old
- * Archivo/IBM Plex combination was two unrelated designs, and every 10px label
- * in the app was a seam.
- *
- * Both ship a `vietnamese` subset, which the previous pair did not: a display
- * name or a message with diacritics used to fall back per glyph mid-word.
- * Instrument Serif does not, and is never allowed to hold user text — it is the
- * wordmark and four fixed English headings, nothing else.
- *
- * Only the weights the design actually uses. Geist ships 100-900 and every one
- * of them is a file somebody downloads.
+/* Self-hosted fonts keep the existing CSP and offline behavior intact.
+ * Geist covers Vietnamese; Instrument Serif is reserved for fixed English display copy.
  */
 @import "@fontsource/geist/400.css";
 @import "@fontsource/geist/500.css";
@@ -30,316 +8,152 @@
 @import "@fontsource/geist-mono/400.css";
 @import "@fontsource/geist-mono/500.css";
 @import "@fontsource/instrument-serif/400.css";
-
+@import "@fontsource/instrument-serif/400-italic.css";
 @import "tailwindcss";
+@import "./maximalism.css";
 
-/*
- * `dark:` keys off the attribute this app sets, not off `prefers-color-scheme`.
- *
- * Tailwind's built-in dark variant reads the OS directly, which would ignore an
- * explicit Light or Dark choice — the reader would flip the setting and half the
- * app would follow while every `dark:` utility stayed with the OS. `public/theme.js`
- * resolves the preference to one of two values and stamps it on <html>, and this
- * points the variant at the same fact.
- *
- * Almost nothing needs it: the palette below swaps under the same attribute, so a
- * component written against the tokens is already correct in both themes. It is
- * here for the handful of cases a colour cannot express — dimming a photograph,
- * or a border that has to exist in one theme and not the other.
- */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/*
- * Ink on paper.
- *
- * The palette is a printer's, not a screen's: a sheet, near-black ink at three
- * strengths, hairline rules, and exactly one colour. Vermilion never fills a
- * surface — it marks an unread count, the conversation you are in, and
- * something you cannot undo. Anything that looked like a status pill, a soft
- * shadow or a gradient in the old slate/blue app is gone deliberately.
- *
- * The sheet is warm *white*, not cream. Chroma on the paper tokens was cut by
- * roughly half: at the old 0.009 the background read as aged newsprint, which
- * dirtied every photograph posted on it and pulled the neutral greys yellow.
- * What is left is just enough warmth to keep it from looking like a browser
- * default, and `paper-raised` is now near-white so a card actually lifts off it.
- *
- * `ink` is a deep warm charcoal rather than black. It is still 14:1 on paper —
- * the darkest thing on screen — but a message bubble filled with true black
- * reads as a hole punched in the page, and half the surface of a chat app is
- * message bubbles.
- *
- * `--live` is the one exception to "one colour": presence is a different kind of
- * fact from a notification, and giving them the same red made an online dot read
- * as something demanding attention.
- *
- * **This block is the light theme.** Dark redefines the same names further down;
- * nothing in the app names a colour that is not here.
+/* The stationery palette: readable paper surfaces, colorful accents and crisp ink.
+ * Decorative colors have their own on-color ink; UI surfaces follow the theme.
  */
 @theme {
-	--color-paper: oklch(0.976 0.0045 92);
-	--color-paper-raised: oklch(0.996 0.002 92);
-	/* Wells: a search field, a hovered row, the inside of the composer. */
-	--color-paper-sunken: oklch(0.949 0.005 92);
-
-	--color-ink: oklch(0.235 0.012 58);
-	--color-ink-soft: oklch(0.478 0.01 58);
-	/* Lifted from 0.635: the meta utility sets 10.5px, and at the old value a
-	   timestamp on paper missed the 4.5:1 that small text needs. */
-	--color-ink-faint: oklch(0.607 0.009 60);
-
-	--color-rule: oklch(0.897 0.006 85);
-	--color-rule-soft: oklch(0.94 0.005 85);
-
-	--color-signal: oklch(0.545 0.185 30);
-	--color-signal-hover: oklch(0.465 0.19 30);
-	--color-signal-soft: oklch(0.955 0.028 32);
-
-	--color-live: oklch(0.6 0.145 150);
-
-	/*
-	 * The app's one solid fill: a message you sent, and a group's avatar.
-	 *
-	 * Its own pair rather than `bg-ink text-paper`, because those two names
-	 * invert together and this must not. In dark, ink *is* near-white, so a
-	 * bubble written as `bg-ink` would come back as a white slab covering half
-	 * the thread — the single loudest thing on a dark screen, and the opposite
-	 * of what every messenger does with the message you just sent.
-	 *
-	 * Light keeps full ink, which is the design. Dark steps *up* off the sheet
-	 * instead of inverting against it: 0.335 against a 0.185 page and a 0.225
-	 * received bubble, so the three surfaces stay in order and none of them
-	 * shouts. A `primary` Button still uses ink/paper directly and should — a
-	 * call to action is allowed to be the brightest thing in the room; a bubble
-	 * you will send forty of is not.
-	 */
-	--color-block: oklch(0.235 0.012 58);
-	--color-block-ink: oklch(0.976 0.0045 92);
-
-	/*
-	 * Behind a dialog, and behind a photograph opened full screen.
-	 *
-	 * Not `bg-ink/30`, for the reason above and one more: a scrim's whole job is
-	 * to darken what is behind it, and in dark mode a 0.235 charcoal at 30% over
-	 * a 0.185 page darkens nothing. It goes blacker rather than lighter.
-	 */
-	--color-scrim: oklch(0.235 0.012 58);
-
-	/*
-	 * Type and chrome drawn *on* a photograph or a scrim — an image count, the
-	 * lightbox controls.
-	 *
-	 * The one token that is the same in both themes, and deliberately: what it
-	 * sits on is a stranger's picture or a near-black wash, neither of which
-	 * knows anything about the reader's theme.
-	 */
-	--color-on-media: oklch(0.985 0.002 92);
-
-	/*
-	 * Avatar tints, in pairs: a ground and an ink dark enough to read on it.
-	 * Pairs rather than "any hue plus white", because a generated hue eventually
-	 * lands on yellow and produces an initial nobody can make out. Consumed
-	 * through `@/constants/avatar-colors`, never named directly by a component.
-	 *
-	 * Desaturated a step against the whiter sheet: the old grounds were mixed to
-	 * sit on cream and turned into colour blocks once the yellow came out.
-	 *
-	 * Dark inverts each pair rather than dimming it — a pale ground carried into
-	 * dark mode is eight bright discs down a sidebar, which is the one place in
-	 * the app that is meant to be scannable rather than looked at.
-	 */
-	--color-tint-azure: oklch(0.885 0.042 220);
-	--color-tint-azure-ink: oklch(0.34 0.09 240);
-	--color-tint-amber: oklch(0.905 0.04 75);
-	--color-tint-amber-ink: oklch(0.4 0.09 60);
-	--color-tint-moss: oklch(0.912 0.036 150);
-	--color-tint-moss-ink: oklch(0.38 0.09 155);
-	--color-tint-plum: oklch(0.897 0.038 340);
-	--color-tint-plum-ink: oklch(0.37 0.1 345);
-	--color-tint-clay: oklch(0.903 0.032 30);
-	--color-tint-clay-ink: oklch(0.4 0.09 25);
-	--color-tint-teal: oklch(0.897 0.038 190);
-	--color-tint-teal-ink: oklch(0.35 0.09 195);
-	--color-tint-iris: oklch(0.895 0.038 285);
-	--color-tint-iris-ink: oklch(0.36 0.1 290);
-	--color-tint-fern: oklch(0.91 0.038 115);
-	--color-tint-fern-ink: oklch(0.38 0.09 120);
-
-	/*
-	 * The two swatches the Appearance setting draws its previews from.
-	 *
-	 * Fixed values rather than the live tokens, because a preview of Dark has to
-	 * look dark while the app around it is light. They are the only place in the
-	 * app where a colour does not follow the theme, and the only place it would
-	 * be wrong for one to.
-	 */
-	--color-swatch-light: oklch(0.976 0.0045 92);
-	--color-swatch-light-ink: oklch(0.235 0.012 58);
-	--color-swatch-dark: oklch(0.185 0.006 60);
-	--color-swatch-dark-ink: oklch(0.945 0.005 85);
-
+	--color-paper: #fff8eb;
+	--color-paper-raised: #fffdf6;
+	--color-paper-sunken: #f1e9d9;
+	--color-ink: #282b42;
+	--color-ink-soft: #555369;
+	--color-ink-faint: #716779;
+	--color-rule: #b7ada2;
+	--color-rule-soft: #e5d9c9;
+	--color-signal: #b93827;
+	--color-signal-hover: #982b20;
+	--color-signal-soft: #fce1d8;
+	--color-live: #32714a;
+	--color-block: #364cc5;
+	--color-block-ink: #fffdf6;
+	--color-scrim: #171729;
+	--color-on-media: #fffdf6;
+	--color-tint-azure: #badff6;
+	--color-tint-azure-ink: #204d6a;
+	--color-tint-amber: #f8d77c;
+	--color-tint-amber-ink: #65430d;
+	--color-tint-moss: #c9deb0;
+	--color-tint-moss-ink: #34552c;
+	--color-tint-plum: #f3c3d8;
+	--color-tint-plum-ink: #763051;
+	--color-tint-clay: #f5bba0;
+	--color-tint-clay-ink: #793d2a;
+	--color-tint-teal: #b2dcd3;
+	--color-tint-teal-ink: #245b51;
+	--color-tint-iris: #d1c5ef;
+	--color-tint-iris-ink: #534181;
+	--color-tint-fern: #d9e79b;
+	--color-tint-fern-ink: #4f601f;
+	--color-cobalt: #354ac4;
+	--color-cobalt-hover: #293aa4;
+	--color-butter: #f6d76d;
+	--color-tomato: #df5038;
+	--color-lilac: #d9c8ed;
+	--color-peach: #f7c2a9;
+	--color-mint: #d9e4be;
+	--color-decor-ink: #2c3047;
+	--color-on-cobalt: #fff9ec;
+	--color-stationery: #f9e7a9;
+	--color-grid: #d9c28c;
+	--color-shell: #e9c773;
+	--color-swatch-light: #fff8eb;
+	--color-swatch-light-ink: #354ac4;
+	--color-swatch-dark: #242336;
+	--color-swatch-dark-ink: #d9c8ed;
 	--font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, monospace;
 	--font-display: "Instrument Serif", Georgia, serif;
-
-	/* Controls stay compact; text, media and the composer have their own geometry. */
-	--radius-badge: 3px;
-	--radius-control: 6px;
-	--radius-bubble: 10px;
-	--radius-panel: 12px;
+	--radius-badge: 5px;
+	--radius-control: 9px;
+	--radius-bubble: 12px;
+	--radius-panel: 16px;
 	--radius-message: 18px;
-	/* Only the facing corners tighten inside a sender's run; its ends stay soft. */
 	--radius-message-join: 5px;
-	--radius-media: 12px;
-	--radius-composer: 20px;
-
-	/*
-	 * The one shadow in the app, and it is a lift rather than a glow: a 1px
-	 * contact edge so a popover does not float, then a wide soft drop. Tinted
-	 * with the ink hue instead of neutral black, which is what stops a menu over
-	 * warm paper from casting a grey that belongs on a different page.
-	 */
-	--shadow-lift: 0 1px 2px rgb(41 36 32 / 0.05), 0 14px 30px -12px rgb(41 36 32 / 0.2);
-	/* Contact shadow for tiny reaction badges that overlap a message edge. */
-	--shadow-reaction: 0 1px 2px rgb(41 36 32 / 0.1), 0 3px 8px rgb(41 36 32 / 0.12);
-	/* The same gesture at the scale a dialog needs, so the two never disagree. */
-	--shadow-modal: 0 1px 3px rgb(41 36 32 / 0.06), 0 40px 72px -24px rgb(41 36 32 / 0.26);
+	--radius-media: 14px;
+	--radius-composer: 14px;
+	--shadow-lift: 3px 4px 0 rgb(44 48 71 / 0.18), 0 8px 24px rgb(44 48 71 / 0.08);
+	--shadow-reaction: 1px 2px 0 rgb(44 48 71 / 0.2);
+	--shadow-modal: 8px 8px 0 rgb(44 48 71 / 0.28), 0 24px 70px rgb(44 48 71 / 0.2);
 }
 
-/*
- * The same sheet, at night.
- *
- * One selector, not two. `public/theme.js` runs before the first paint and
- * always resolves the stored preference — Light, Dark or System — down to one of
- * two concrete values, so the app never renders without `data-theme` and there
- * is no `prefers-color-scheme` fallback to keep in sync. That matters more than
- * it looks: a palette written twice is a palette that drifts, and the drift
- * shows up as one wrong grey six months later.
- *
- * The attribute is matched anywhere rather than on `:root` only, so a subtree
- * can be given a theme of its own. Nothing does yet; the Appearance previews use
- * fixed swatch tokens instead, because they must show *both* themes at once.
- *
- * What changed, and what did not:
- *
- *  - The ladder is preserved, not mirrored. Paper still steps sunken → base →
- *    raised, ink still steps faint → soft → full. Every component that leaned on
- *    "raised is lighter than base" keeps being right.
- *  - `ink-faint` sits at 0.635 rather than the light theme's 0.607. Small text
- *    needs 4.5:1 in both directions and the curve is not symmetric — the value
- *    that clears it on white does not clear it on near-black.
- *  - `signal` goes *up*, not down. A 0.545 vermilion on a 0.185 page is a dark
- *    red on a dark ground; the badge it draws has to be legible before it can be
- *    a warning. `signal-soft` stops being a tint of white and becomes a tint of
- *    the page, which is the only way a "soft" background means anything here.
- *  - The shadows lose the ink hue and gain depth. A warm brown drop shadow is
- *    invisible on a dark ground, so elevation is carried by a black drop with
- *    more of it — the contact edge is what stops a menu looking pasted on.
- */
 [data-theme="dark"] {
 	color-scheme: dark;
-
-	--color-paper: oklch(0.185 0.006 60);
-	--color-paper-raised: oklch(0.225 0.0065 60);
-	--color-paper-sunken: oklch(0.148 0.005 60);
-
-	--color-ink: oklch(0.945 0.005 85);
-	--color-ink-soft: oklch(0.735 0.008 80);
-	--color-ink-faint: oklch(0.635 0.008 75);
-
-	--color-rule: oklch(0.315 0.007 70);
-	--color-rule-soft: oklch(0.255 0.006 70);
-
-	--color-signal: oklch(0.665 0.175 32);
-	--color-signal-hover: oklch(0.735 0.155 32);
-	--color-signal-soft: oklch(0.285 0.055 32);
-
-	--color-live: oklch(0.7 0.155 150);
-
-	--color-block: oklch(0.335 0.012 60);
-	--color-block-ink: oklch(0.965 0.004 85);
-
-	--color-scrim: oklch(0.06 0.004 60);
-
-	--color-tint-azure: oklch(0.335 0.055 225);
-	--color-tint-azure-ink: oklch(0.87 0.06 225);
-	--color-tint-amber: oklch(0.345 0.05 78);
-	--color-tint-amber-ink: oklch(0.88 0.07 80);
-	--color-tint-moss: oklch(0.335 0.05 152);
-	--color-tint-moss-ink: oklch(0.87 0.07 152);
-	--color-tint-plum: oklch(0.335 0.05 342);
-	--color-tint-plum-ink: oklch(0.87 0.06 342);
-	--color-tint-clay: oklch(0.34 0.045 32);
-	--color-tint-clay-ink: oklch(0.88 0.06 32);
-	--color-tint-teal: oklch(0.332 0.05 192);
-	--color-tint-teal-ink: oklch(0.87 0.06 192);
-	--color-tint-iris: oklch(0.338 0.052 288);
-	--color-tint-iris-ink: oklch(0.87 0.06 288);
-	--color-tint-fern: oklch(0.34 0.05 118);
-	--color-tint-fern-ink: oklch(0.88 0.065 118);
-
-	--shadow-lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 30px -12px rgb(0 0 0 / 0.66);
-	--shadow-reaction: 0 1px 2px rgb(0 0 0 / 0.45), 0 3px 8px rgb(0 0 0 / 0.5);
-	--shadow-modal: 0 1px 3px rgb(0 0 0 / 0.5), 0 40px 72px -24px rgb(0 0 0 / 0.72);
+	--color-paper: #242336;
+	--color-paper-raised: #2e2b41;
+	--color-paper-sunken: #39354b;
+	--color-ink: #fff1d9;
+	--color-ink-soft: #d2c5c6;
+	--color-ink-faint: #b6a8b8;
+	--color-rule: #797083;
+	--color-rule-soft: #484056;
+	--color-signal: #ffac8f;
+	--color-signal-hover: #ffccb5;
+	--color-signal-soft: #54362f;
+	--color-live: #add39b;
+	--color-block: #5257b2;
+	--color-block-ink: #fff8eb;
+	--color-scrim: #080712;
+	--color-tint-azure: #304963;
+	--color-tint-azure-ink: #c3e4fa;
+	--color-tint-amber: #554425;
+	--color-tint-amber-ink: #f5d58f;
+	--color-tint-moss: #374c36;
+	--color-tint-moss-ink: #c4e1ac;
+	--color-tint-plum: #55344b;
+	--color-tint-plum-ink: #f1c5de;
+	--color-tint-clay: #553c35;
+	--color-tint-clay-ink: #f6c6ae;
+	--color-tint-teal: #2a4b48;
+	--color-tint-teal-ink: #bde6df;
+	--color-tint-iris: #44365c;
+	--color-tint-iris-ink: #ddd0ff;
+	--color-tint-fern: #424928;
+	--color-tint-fern-ink: #d8e69f;
+	--color-stationery: #393147;
+	--color-grid: #55435b;
+	--color-shell: #191a2c;
+	--shadow-lift: 3px 4px 0 rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.2);
+	--shadow-reaction: 1px 2px 0 rgb(0 0 0 / 0.4);
+	--shadow-modal: 8px 8px 0 rgb(0 0 0 / 0.4), 0 24px 70px rgb(0 0 0 / 0.35);
 }
 
 @layer base {
 	html {
-		/*
-		 * Native scrollbars and form widgets follow the page, not the OS. The
-		 * dark block above flips it; this is the value for a page that has not
-		 * been stamped yet, which is the frame before `theme.js` runs.
-		 */
 		color-scheme: light;
 	}
-
 	body {
 		margin: 0;
-		background-color: var(--color-paper);
+		background: var(--color-paper);
 		color: var(--color-ink);
 		font-family: var(--font-sans);
-		/*
-		 * Geist is drawn a touch wide for setting at 13-14px, which is where this
-		 * app lives. A hair of negative tracking closes the word shapes back up;
-		 * any more and the diacritic stacks in Vietnamese start to collide.
-		 *
-		 * Antialiasing is the difference between "a webpage" and "an application"
-		 * on macOS: subpixel rendering thickens light text on a warm ground and is
-		 * what made the old draft look slightly muddy at every size.
-		 */
 		letter-spacing: -0.006em;
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
-
-	/*
-	 * Icons are drawn the way the rules on this page are: square caps, mitred
-	 * joins. lucide ships every icon with round ones, and a rounded tick beside a
-	 * hairline border is the single thing that made early drafts of this look
-	 * like a different app from the waist down. One rule here rather than four
-	 * props on every icon in the codebase.
-	 */
 	svg {
-		stroke-linecap: square;
-		stroke-linejoin: miter;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+	::selection {
+		background: var(--color-lilac);
+		color: var(--color-decor-ink);
+	}
+	:focus-visible {
+		outline: 2px solid var(--color-block);
+		outline-offset: 4px;
+	}
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: var(--color-rule) transparent;
 	}
 }
 
-/*
- * Two utilities, because the alternative is five classes repeated in forty
- * files — and because each one is a rule rather than a look.
- *
- * `eyebrow` is every label, byline and status: mono, uppercase, tracked out.
- * `meta` is anything a machine produced — a timestamp, a handle, a count —
- * which is tabular so a number changing width does not shift the row it is in.
- *
- * Both lose a little tracking against the old pair: Geist Mono is already wider
- * than IBM Plex Mono at the same size, so the letter-spacing that made Plex
- * legible at 10px makes Geist look spaced out.
- *
- * Neither sets a colour: that is the caller's, and leaving it out is what keeps
- * `eyebrow text-signal` from being a fight between two classes.
- */
 @utility eyebrow {
 	font-family: var(--font-mono);
 	font-size: 10px;

@@ -57,7 +57,7 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 				// without its Save button landing half under the footer, and capped
 				// at the viewport so a short window scrolls the category instead of
 				// pushing the dialog off screen.
-				className="flex h-[min(720px,100%)] w-full max-w-[920px] overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none max-sm:flex-col"
+				className="settings-dialog flex h-[min(720px,100%)] w-full max-w-[920px] overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none max-sm:flex-col"
 			>
 				<SettingsNav user={user} activeSection={activeSection} onSelect={setActiveSection} />
 

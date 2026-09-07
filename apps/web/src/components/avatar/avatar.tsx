@@ -24,7 +24,7 @@ export function Avatar({ user, size = "md", className }: AvatarProps) {
 	const initials = getInitials(user.displayName);
 
 	return (
-		<span className={cn("relative inline-flex shrink-0", className)}>
+		<span className={cn("chatty-avatar relative inline-flex shrink-0", className)}>
 			{user.avatarUrl ? (
 				<img
 					src={user.avatarUrl}

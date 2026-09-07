@@ -42,7 +42,7 @@ export function ConversationList({
 	}
 
 	return (
-		<ul className="flex flex-col gap-0.5 px-2 pb-2">
+		<ul className="conversation-list flex flex-col gap-1.5 px-3 pb-3">
 			{conversations.map((conversation) => {
 				const hasUnread = conversation.unreadCount > 0;
 				const isSelected = conversation.id === selectedConversationId;
@@ -68,7 +68,7 @@ export function ConversationList({
 							// A conversation row is a full-width, left-aligned block, not a
 							// centred action. twMerge lets these win over Button's defaults.
 							className={cn(
-								"relative w-full items-center justify-start gap-3 rounded-panel px-3 py-3 text-left font-normal",
+								"conversation-row relative w-full items-center justify-start gap-3 rounded-panel px-3 py-3 text-left font-normal",
 								isSelected
 									? "bg-paper-sunken hover:bg-paper-sunken"
 									: isMentioned

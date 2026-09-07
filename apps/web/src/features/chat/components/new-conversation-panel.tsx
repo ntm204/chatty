@@ -65,7 +65,7 @@ export function NewConversationPanel({ onConversationStarted }: NewConversationP
 	return (
 		<div className="px-4 pb-3">
 			<form onSubmit={search}>
-				<div className="flex h-10 items-center gap-2.5 rounded-full bg-paper-sunken px-3 transition-shadow focus-within:ring-2 focus-within:ring-ink/10">
+				<div className="people-search flex h-10 items-center gap-2.5 rounded-full bg-paper-sunken px-3 transition-shadow focus-within:ring-2 focus-within:ring-ink/10">
 					<Search className="size-[15px] shrink-0 text-ink-faint" />
 					<input
 						id="global-conversation-search"

@@ -8,6 +8,7 @@ export { ForwardMessagePanel } from "./forward-message-panel";
 export { KeyboardShortcutsPanel } from "./keyboard-shortcuts-panel";
 export { ConversationMessageSearch } from "./conversation-message-search";
 export { ConversationList } from "./conversation-list";
+export { ChatWelcome } from "./chat-welcome";
 export { ConversationSidebar } from "./conversation-sidebar";
 export { DaySeparator } from "./day-separator";
 export { EmojiPicker } from "./emoji-picker";

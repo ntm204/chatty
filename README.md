@@ -10,6 +10,11 @@ Current development focus: **everyday usability and interface polish**. The
 acceptance criteria and dependencies. Public launch and large feature additions are deferred while
 this work improves the existing messaging experience.
 
+The interface uses a nostalgic maximalist stationery style: butter yellow, cobalt, tomato and
+lilac, paper collages, crisp outlines and a quieter dotted message canvas. Authentication, chat,
+conversation details and account settings share the palette, with a coordinated dark theme and
+responsive phone layouts. See [visual direction](docs/design/maximalism.md).
+
 ## Read first
 
 | Document | What it answers |

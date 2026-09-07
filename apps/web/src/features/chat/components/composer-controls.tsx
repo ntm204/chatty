@@ -86,7 +86,7 @@ export function ComposerControls({
 
 			<div
 				className={cn(
-					"flex min-w-0 flex-1 items-center rounded-composer bg-paper-sunken pl-1",
+					"composer-well flex min-w-0 flex-1 items-center rounded-composer bg-paper-sunken pl-1",
 					"transition-shadow focus-within:ring-2 focus-within:ring-ink/10",
 					isVoiceActive && "hidden",
 				)}

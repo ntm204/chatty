@@ -24,10 +24,9 @@ export function AppearanceSettings() {
 	const setPreference = useTheme((state) => state.setPreference);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="appearance-settings flex flex-col gap-4">
 			<p className="text-[13px] text-ink-soft">
-				How Chatty is drawn on this device. Like notifications, the choice is this browser&apos;s rather than
-				your account&apos;s — a phone at night and a desk at noon are not asking for the same answer.
+				A little sunshine or a little moonlight? Make Chatty feel like you. Your theme stays on this device.
 			</p>
 
 			<div role="radiogroup" aria-label="Theme" className="flex flex-col gap-2">

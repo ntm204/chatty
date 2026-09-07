@@ -5,6 +5,15 @@ work it describes — a roadmap that lags behind the code is worse than none, be
 
 Status: `done` · `next` · `planned` · `blocked` · `dropped`
 
+## Current visual direction — nostalgic maximalism
+
+The owner's September 2026 direction replaces the former one-signal ink-on-paper identity with a
+colorful stationery system. Authentication, the chat workspace, welcome state, controls, message
+bubbles, conversation details and settings share coordinated light/dark palettes. The layout keeps
+conversation content readable, supports narrow phones and reduced motion, and keeps fonts/assets
+local. Earlier visual phases below describe historical decisions; their single-color restrictions
+are superseded. See [the design notes](design/maximalism.md) for scope and validation.
+
 ## Current focus — everyday experience polish
 
 The next work follows the [experience polish plan](plans/experience-polish.md): 60 individually

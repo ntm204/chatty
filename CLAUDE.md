@@ -27,7 +27,7 @@ Read this before writing any code. It is the entry point: the conventions block 
 - React version: `18` <!-- turns off the React.FormEvent rule; revisit on upgrade to 19 -->
 - Styling helper: `cn()` <!-- @/utils/cn — Tailwind CSS v4 + clsx + tailwind-merge -->
 - Colours: `design tokens only` <!-- @theme in src/styles/globals.css, plus a [data-theme="dark"] block redefining the same names; a numbered Tailwind swatch is a bug, audit 29 catches it -->
-- Fonts: `Archivo / IBM Plex Mono / Instrument Serif` <!-- self-hosted via @fontsource — the CSP is style-src 'self' -->
+- Fonts: `Geist / Geist Mono / Instrument Serif` <!-- self-hosted via @fontsource — the CSP is style-src 'self' -->
 - Button: `Button from @/components/button` <!-- build it before the first button is needed -->
 - Icons: `lucide-react`
 - Images: `raw <img> allowed` <!-- no Next.js image component in a Vite app -->

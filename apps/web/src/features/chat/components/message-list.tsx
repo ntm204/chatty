@@ -188,7 +188,7 @@ export function MessageList({
 				role="region"
 				aria-label="Message history"
 				tabIndex={-1}
-				className="h-full overflow-y-auto bg-paper outline-none"
+				className="message-paper h-full overflow-y-auto bg-paper outline-none"
 			>
 				{/* `justify-end` on a wrapper that is at least as tall as the viewport is
 			    what makes a short conversation sit on the composer rather than
