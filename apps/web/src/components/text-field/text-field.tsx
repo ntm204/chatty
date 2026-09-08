@@ -37,7 +37,7 @@ export function TextField({ label, error, className, ...rest }: TextFieldProps) 
 				{...rest}
 			/>
 			{error && (
-				<p id={`${inputId}-error`} className="eyebrow text-signal">
+				<p id={`${inputId}-error`} className="text-xs leading-relaxed text-signal">
 					{error}
 				</p>
 			)}

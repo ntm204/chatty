@@ -1,0 +1,296 @@
+/* The symbol and each letter fall independently. Only the curtain and reveal
+ * share the full timeline; the login stays mounted without changing geometry. */
+.welcome-intro,
+.login-reveal {
+	--welcome-duration: 3.8s;
+}
+.welcome-intro {
+	position: fixed;
+	inset: 0;
+	z-index: 100;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	outline: none;
+	background:
+		radial-gradient(
+			ellipse at 50% 85%,
+			color-mix(in srgb, var(--color-halo-purple) 10%, transparent),
+			transparent 65%
+		),
+		var(--color-paper-raised);
+	animation: welcome-curtain var(--welcome-duration) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.welcome-intro-scene {
+	padding: 24px;
+	text-align: center;
+}
+.welcome-intro-label {
+	margin-bottom: 26px;
+	font-size: 12px;
+	letter-spacing: 0.14em;
+	color: var(--color-ink-faint);
+	animation: welcome-label var(--welcome-duration) ease both;
+}
+.welcome-intro-logo {
+	/* Keep the group still so each child has its own landing. */
+	line-height: 1;
+}
+.welcome-intro .brand {
+	gap: 17px;
+	font-size: clamp(48px, 8vw, 76px);
+	letter-spacing: -0.045em;
+}
+.welcome-intro .brand-symbol {
+	width: clamp(48px, 8vw, 66px);
+	height: clamp(38px, 6vw, 52px);
+	gap: 10px;
+	border-radius: 15px 15px 0 15px;
+	transform-origin: 50% 85%;
+	animation:
+		welcome-symbol-drop 650ms cubic-bezier(0.32, 0, 0.65, 1) 200ms both,
+		welcome-symbol-attention 1570ms ease-in-out 960ms forwards;
+}
+.welcome-intro .brand-symbol::after {
+	bottom: -8px;
+	border-top-width: 10px;
+	border-left-width: 10px;
+}
+.welcome-intro .brand-symbol i {
+	width: 6px;
+	height: 13px;
+	translate: none;
+	transition: none;
+	animation:
+		welcome-eye-look 1750ms cubic-bezier(0.4, 0, 0.2, 1) 850ms both,
+		welcome-eye-expression 1750ms ease-in-out 850ms both,
+		welcome-eye-smile 420ms ease-in-out 2570ms forwards;
+}
+.welcome-intro .brand .brand-symbol i:last-child {
+	animation:
+		welcome-eye-look 1750ms cubic-bezier(0.4, 0, 0.2, 1) 850ms both,
+		welcome-eye-expression 1750ms ease-in-out 850ms both,
+		welcome-eye-wink 420ms ease-in-out 2570ms forwards;
+}
+.welcome-intro-note {
+	margin-top: 28px;
+	font-size: 14px;
+	color: var(--color-ink-soft);
+	animation: welcome-note var(--welcome-duration) ease both;
+}
+.welcome-intro-skip {
+	position: absolute;
+	right: max(24px, env(safe-area-inset-right));
+	bottom: max(24px, env(safe-area-inset-bottom));
+	min-height: 40px;
+	border-radius: 24px;
+	font-size: 12px;
+}
+.login-reveal {
+	animation: welcome-login-reveal var(--welcome-duration) ease both;
+}
+@keyframes welcome-curtain {
+	0% {
+		transform: translateY(-100%);
+		border-radius: 0 0 48px 48px;
+	}
+	14%,
+	80% {
+		transform: translateY(0);
+		opacity: 1;
+		border-radius: 0;
+	}
+	100% {
+		transform: translateY(-8px);
+		opacity: 0;
+	}
+}
+@keyframes welcome-symbol-drop {
+	0% {
+		transform: translateY(-55vh) rotate(-12deg);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	70% {
+		transform: translateY(9px) rotate(4deg) scale(1.08, 0.92);
+	}
+	86% {
+		transform: translateY(-8px) rotate(-3deg) scale(0.97, 1.03);
+	}
+	100% {
+		transform: translateY(0) rotate(0) scale(1);
+		opacity: 1;
+	}
+}
+/* Eyes lead each turn. The face follows a beat later, turning in depth rather
+ * than rocking side to side. Held poses give the glances a readable intention. */
+@keyframes welcome-symbol-attention {
+	0%,
+	74%,
+	100% {
+		transform: perspective(220px) translateX(0) rotateY(0);
+	}
+	10%,
+	25% {
+		transform: perspective(220px) translateX(-1.5px) rotateY(-14deg);
+	}
+	38%,
+	57% {
+		transform: perspective(220px) translateX(1.5px) rotateY(14deg);
+	}
+}
+@keyframes welcome-eye-look {
+	0%,
+	82%,
+	100% {
+		translate: 0 0;
+	}
+	10%,
+	27% {
+		translate: -7px -1px;
+	}
+	38%,
+	56% {
+		translate: 7px -2px;
+	}
+	65% {
+		translate: 6px 0;
+	}
+}
+@keyframes welcome-eye-expression {
+	0%,
+	27%,
+	62%,
+	76%,
+	100% {
+		transform: scale(1);
+	}
+	38%,
+	52% {
+		transform: scale(1.06, 1.16);
+	}
+	68% {
+		transform: scale(1.04, 0.16);
+	}
+}
+@keyframes welcome-eye-smile {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	35%,
+	65% {
+		transform: scale(1.08, 0.8);
+	}
+}
+.welcome-intro .brand-wordmark {
+	display: inline-flex;
+}
+.welcome-intro .brand-wordmark > span {
+	display: inline-block;
+	transform-origin: 50% 85%;
+	animation: welcome-letter-drop 650ms cubic-bezier(0.32, 0, 0.65, 1) both;
+}
+.welcome-intro .brand-wordmark > span:nth-child(1) {
+	animation-delay: 390ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(2) {
+	animation-delay: 480ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(3) {
+	animation-delay: 570ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(4) {
+	animation-delay: 660ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(5) {
+	animation-delay: 750ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(6) {
+	animation-delay: 840ms;
+}
+.welcome-intro .brand-wordmark > span:nth-child(even) {
+	--letter-tilt: 12deg;
+}
+@keyframes welcome-letter-drop {
+	0% {
+		transform: translateY(-55vh) rotate(var(--letter-tilt, -12deg));
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	70% {
+		transform: translateY(7px) rotate(3deg) scale(1.04, 0.95);
+	}
+	86% {
+		transform: translateY(-5px) rotate(-2deg) scale(0.98, 1.02);
+	}
+	100% {
+		transform: translateY(0) rotate(0) scale(1);
+		opacity: 1;
+	}
+}
+@keyframes welcome-eye-wink {
+	0%,
+	100% {
+		transform: scaleY(1);
+	}
+	35%,
+	65% {
+		transform: scaleY(0.12);
+	}
+}
+@keyframes welcome-label {
+	0%,
+	19% {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+	34%,
+	75% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+}
+@keyframes welcome-note {
+	0%,
+	45% {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	58%,
+	77% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+}
+@keyframes welcome-login-reveal {
+	0%,
+	78% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.welcome-intro,
+	.welcome-intro *,
+	.welcome-intro .brand .brand-symbol i:last-child,
+	.welcome-intro .brand-symbol,
+	.welcome-intro .brand-wordmark > span,
+	.login-reveal {
+		animation: none;
+	}
+}

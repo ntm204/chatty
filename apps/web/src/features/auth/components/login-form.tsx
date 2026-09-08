@@ -71,7 +71,11 @@ export function LoginForm() {
 				onChange={(event) => setFields((current) => ({ ...current, password: event.target.value }))}
 			/>
 
-			{errors.form && <p className="text-[13px] text-signal">{errors.form}</p>}
+			{errors.form && (
+				<p role="alert" className="text-[13px] text-signal">
+					{errors.form}
+				</p>
+			)}
 
 			<Button type="submit" disabled={isSubmitting}>
 				{isSubmitting ? "Signing in…" : "Sign in"}

@@ -20,6 +20,25 @@ shadows have been removed.
 Earlier visual phases below describe historical decisions; their visual restrictions are
 superseded. See [the current design notes](design/visual-direction.md) for scope and validation.
 
+## Design review — character and interaction polish
+
+The 2026-09-09 review connects the login character to the chat welcome, makes the yellow sidebar
+invitation focus people search, clarifies error typography/borders and announces server errors.
+Message bubble padding is now 8px vertically; theme selection changes immediately. The settings
+content column shrinks on short phone screens so its controls remain reachable. Primary buttons
+and the welcome arrow have small interaction feedback under normal motion preferences.
+See [the review](design/review-2026-09-09.md) for findings, decisions and verification scope.
+
+## Login welcome sequence
+
+Every login reload plays a 3.8-second welcome curtain. The symbol and each of the six letters
+fall independently with staggered landings; the eyes glance left, pause, follow the falling letters right, then return to the viewer and wink before the
+overlay dissolves into the mounted login. The former once-per-tab marker has been removed.
+Skip intro/Escape dismiss immediately; the form is inert during the greeting and focus stays
+in the overlay. Switching form modes does not restart it. Reduced motion bypasses the sequence
+and a fallback timer guarantees access if animation events do not fire. Recovery/confirmation
+routes and authenticated chat skip it. Browser checks sample separate letter positions, held glances, eye contact, the wink and replay after reload.
+
 ## Logo eye animation
 
 The shared wordmark now has a gentle idle blink, bounded pointer-following eyes and a one-eye

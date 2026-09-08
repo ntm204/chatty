@@ -418,7 +418,7 @@
 	background: var(--color-paper-raised);
 }
 .chat-bubble {
-	padding: 9px 14px;
+	padding: 8px 14px;
 }
 .chat-bubble.bg-paper-sunken {
 	background: var(--color-paper-sunken);
@@ -487,10 +487,12 @@
 	color: var(--color-heading);
 	background: var(--color-selection);
 }
-.welcome-icon svg {
-	width: 28px;
-	height: 28px;
-	stroke-width: 1.5;
+.welcome-mascot .brand-symbol {
+	width: 36px;
+	height: 29px;
+}
+.welcome-mascot .brand-symbol i {
+	animation-delay: -2.4s;
 }
 .welcome-content h1 {
 	margin-top: 24px;
@@ -525,9 +527,9 @@
 	border-color: var(--color-rule-soft);
 }
 .settings-nav > h2 {
-	font-family: var(--font-display);
-	font-size: 24px;
-	font-weight: 700;
+	font-family: var(--font-sans);
+	font-size: 22px;
+	font-weight: 600;
 	color: var(--color-heading);
 	padding-block: 27px 22px;
 }
@@ -548,9 +550,9 @@
 	padding-top: 27px;
 }
 .settings-dialog header h2 {
-	font-family: var(--font-display);
-	font-weight: 700;
-	font-size: 27px;
+	font-family: var(--font-sans);
+	font-weight: 600;
+	font-size: 25px;
 	color: var(--color-heading);
 	letter-spacing: 0.01em;
 }
@@ -743,5 +745,36 @@
 @media (prefers-reduced-motion: reduce) {
 	.chatty-button {
 		transition: none;
+	}
+}
+
+/* Validation must remain distinct from both the neutral field and its focus ring. */
+.text-field[aria-invalid="true"],
+.auth-fields .text-field[aria-invalid="true"] {
+	border-color: var(--color-signal);
+}
+.text-field[aria-invalid="true"]:focus {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-signal) 14%, transparent);
+}
+.sidebar-brand-label:hover {
+	background: var(--color-brand-yellow-hover);
+	color: var(--color-brand-navy);
+}
+@media (prefers-reduced-motion: no-preference) {
+	.chatty-button[data-variant="primary"] {
+		transition:
+			background-color 150ms,
+			border-color 150ms,
+			box-shadow 150ms,
+			transform 120ms;
+	}
+	.chatty-button[data-variant="primary"]:active:not(:disabled) {
+		transform: translateY(1px);
+	}
+	.welcome-cta > svg {
+		transition: transform 160ms ease;
+	}
+	.welcome-cta:is(:hover, :focus-visible) > svg {
+		transform: translateX(3px);
 	}
 }

@@ -66,7 +66,14 @@ export function ConversationSidebar({
 			/>
 			<div className="sidebar-brand">
 				<Brand />
-				<span className="sidebar-brand-label">Let’s talk.</span>
+				<Button
+					variant="ghost"
+					className="sidebar-brand-label"
+					aria-label="Start a conversation"
+					onClick={() => document.getElementById("global-conversation-search")?.focus()}
+				>
+					Let’s talk.
+				</Button>
 			</div>
 			<div className="sidebar-heading flex h-[70px] shrink-0 items-center justify-between px-4">
 				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">Chats</h1>

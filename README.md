@@ -14,6 +14,12 @@ The interface follows the owner's [chatty.net](https://chatty.net/) reference: d
 bright yellow, faint violet gradients, restrained typography and rounded surfaces.
 Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
 The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
+The chat welcome reuses this character. “Let’s talk” in the sidebar opens people search; validation
+and compact conversation/settings layouts follow the [design review](docs/design/review-2026-09-09.md).
+Every login reload plays a 3.8-second welcome: a descending curtain, the symbol and six letters
+falling separately, then a curious left/right glance, eye contact and wink before dissolving into the ready form.
+Skip intro/Escape ends it immediately. Switching between login and registration does not restart
+it; reduced motion skips it, and account-recovery links go straight to their forms.
 Authentication, chat and settings share coordinated light/dark themes and responsive phone layouts.
 See [visual direction](docs/design/visual-direction.md). Fontshare fonts download once when starting
 the web dev server or building, then stay self-hosted with no third-party browser requests.

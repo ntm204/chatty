@@ -23,9 +23,14 @@ calls to action are not part of this messaging application.
   static radial backgrounds. Phones show the form alone. There are no decorative conversations,
   floating badges, grain or blurred rings. Login and registration fit ordinary laptop/phone
   viewports; only the form can scroll when validation, zoom or a keyboard requires extra room.
+- Each login reload plays a 3.8-second welcome: the curtain descends, the symbol and six letters
+  fall separately, the eyes look left, then right, return to the viewer and wink, then the scene dissolves. Login is already
+  mounted and inert underneath. Skip intro/Escape dismisses it, reduced motion bypasses it and a
+  fallback timer prevents stalled animation from blocking access. Form-mode changes do not replay
+  it; recovery routes and authenticated chat go directly through.
 - The masthead's Get started action switches to the actual registration form. Account help opens
   password recovery. Existing sign-in, registration and recovery behavior remains in place.
-- The chat welcome screen uses a compact icon, quiet sans-serif heading and a working Find your
+- The chat welcome screen reuses the animated Chatty face, with a quiet sans-serif heading and a working Find your
   people action that focuses search. Its content stays centered within the conversation pane
   without scrolling or clipping the heading on short laptops.
 - The inbox, conversation header, composer, secondary panels and account settings use white/lavender
@@ -73,3 +78,6 @@ Completed validation:
 
 Browser screenshots use isolated mock data; end-to-end tests use the isolated test database and
 real API. Fonts are served locally, with no browser request to Fontshare or chatty.net.
+
+The [2026-09-09 design review](review-2026-09-09.md) records the subsequent character, feedback,
+validation and compact-layout refinements with their verification scope.

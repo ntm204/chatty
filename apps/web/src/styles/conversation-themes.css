@@ -51,6 +51,8 @@
 	--chat-complement: var(--color-paper-raised);
 }
 .theme-choice {
+	/* Selection changes immediately; only the hover wash eases between colors. */
+	transition-property: background-color, color;
 	min-width: 0;
 	flex-direction: column;
 	gap: 5px;

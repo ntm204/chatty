@@ -4,6 +4,8 @@ import { makeUser, register } from "./helpers.js";
 // Screens once passed horizontal checks while the form sat below the fold and
 // the welcome heading scrolled out of view. Check content bounds, not just CSS.
 test("sign-in and registration fit ordinary laptop and phone viewports", async ({ page }) => {
+	// Intro motion has its own coverage; isolate form geometry here.
+	await page.emulateMedia({ reducedMotion: "reduce" });
 	for (const viewport of [
 		{ width: 1440, height: 800 },
 		{ width: 1280, height: 650 },

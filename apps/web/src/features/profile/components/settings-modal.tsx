@@ -61,7 +61,7 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 			>
 				<SettingsNav user={user} activeSection={activeSection} onSelect={setActiveSection} />
 
-				<div className="flex min-w-0 flex-1 flex-col">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<header className="flex shrink-0 items-start justify-between gap-4 border-b border-rule px-7 py-5">
 						<div className="min-w-0">
 							<h2 id={titleId} className="text-[19px] font-bold tracking-tight">

@@ -1,5 +1,6 @@
-import { ArrowRight, MessagesSquare } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AmbientBackground } from "@/components/ambient-background";
+import { Brand } from "@/components/brand";
 import { Button } from "@/components/button";
 
 export function ChatWelcome() {
@@ -8,7 +9,7 @@ export function ChatWelcome() {
 			<AmbientBackground />
 			<div className="welcome-content">
 				<span className="welcome-icon" aria-hidden="true">
-					<MessagesSquare />
+					<Brand isSymbolOnly className="welcome-mascot" />
 				</span>
 				<h1>
 					A little closer,
