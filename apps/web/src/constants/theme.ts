@@ -27,7 +27,7 @@ export const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
  * escape hatch is at the bottom.
  */
 export const THEME_OPTIONS: ThemeOption[] = [
-	{ id: "light", label: "Light", description: "Butter-yellow paper, cobalt ink, a little sunshine.", icon: Sun },
-	{ id: "dark", label: "Dark", description: "Midnight plum, soft lilac, the same good company.", icon: Moon },
+	{ id: "light", label: "Light", description: "Fresh whites, deep blue and a little sunshine.", icon: Sun },
+	{ id: "dark", label: "Dark", description: "Midnight blue, soft violet and a warmer glow.", icon: Moon },
 	{ id: "system", label: "System", description: "Follow this device, and change when it does.", icon: Monitor },
 ];

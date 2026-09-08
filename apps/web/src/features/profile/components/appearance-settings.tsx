@@ -26,7 +26,8 @@ export function AppearanceSettings() {
 	return (
 		<div className="appearance-settings flex flex-col gap-4">
 			<p className="text-[13px] text-ink-soft">
-				A little sunshine or a little moonlight? Make Chatty feel like you. Your theme stays on this device.
+				Light, dark, or in sync with your device. Choose how Chatty feels to you. This preference stays on this
+				device.
 			</p>
 
 			<div role="radiogroup" aria-label="Theme" className="flex flex-col gap-2">

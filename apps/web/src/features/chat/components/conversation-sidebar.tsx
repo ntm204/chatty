@@ -1,6 +1,6 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { Archive, ArrowLeft, LogOut, Settings, Sparkles } from "lucide-react";
+import { Archive, ArrowLeft, LogOut, Settings } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -66,19 +66,10 @@ export function ConversationSidebar({
 			/>
 			<div className="sidebar-brand">
 				<Brand />
-				<span className="eyebrow">
-					THE GOOD
-					<br />
-					COMPANY CLUB
-				</span>
+				<span className="sidebar-brand-label">Let’s talk.</span>
 			</div>
 			<div className="sidebar-heading flex h-[70px] shrink-0 items-center justify-between px-4">
-				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">
-					Chats
-					<span className="sidebar-heading-star" aria-hidden="true">
-						✳
-					</span>
-				</h1>
+				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">Chats</h1>
 				<Button
 					variant="ghost"
 					onClick={onToggleArchived}
@@ -93,8 +84,7 @@ export function ConversationSidebar({
 			<NewConversationPanel onConversationStarted={onConversationStarted} />
 
 			<div className="sidebar-list-label">
-				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "YOUR CONVERSATIONS"}</span>
-				<Sparkles size={13} aria-hidden="true" />
+				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "Your conversations"}</span>
 			</div>
 
 			<div className="min-h-0 flex-1 overflow-y-auto">

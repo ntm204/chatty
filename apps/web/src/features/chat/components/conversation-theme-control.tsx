@@ -1,69 +1,36 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Check } from "lucide-react";
-import { useState } from "react";
-import { api } from "@/api/client";
+import { ChevronRight, Palette } from "lucide-react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/button";
-import { cn } from "@/utils/cn";
-import { CONVERSATION_THEME_OPTIONS, getConversationThemeClasses } from "../constants/conversation-theme";
+import { CONVERSATION_THEME_OPTIONS } from "../constants/conversation-theme";
+import { ConversationThemeDialog } from "./conversation-theme-dialog";
 
 interface ConversationThemeControlProps {
 	conversation: ConversationDTO;
 }
 
-/** Cosmetic — any participant may change it, in a direct conversation or a group alike. See ADR 0022. */
 export function ConversationThemeControl({ conversation }: ConversationThemeControlProps) {
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState("");
-
-	async function choose(theme: (typeof CONVERSATION_THEME_OPTIONS)[number]["value"] | null) {
-		if (theme === conversation.themeColor) return;
-		setIsSaving(true);
-		setError("");
-		try {
-			await api.setConversationTheme(conversation.id, theme);
-		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not change the theme");
-		} finally {
-			setIsSaving(false);
-		}
-	}
+	const [isOpen, setIsOpen] = useState(false);
+	const close = useCallback(() => setIsOpen(false), []);
+	const currentLabel =
+		CONVERSATION_THEME_OPTIONS.find((option) => option.value === conversation.themeColor)?.label ?? "Default";
 
 	return (
-		<div className="px-3 py-2">
-			<div className="flex flex-wrap gap-2">
-				<Button
-					variant="ghost"
-					disabled={isSaving}
-					onClick={() => void choose(null)}
-					aria-label="Default theme"
-					aria-pressed={conversation.themeColor === null}
-					className="size-8 rounded-full border border-rule bg-block p-0 text-block-ink"
-				>
-					{conversation.themeColor === null && <Check className="size-3.5" />}
-				</Button>
-				{CONVERSATION_THEME_OPTIONS.map((option) => {
-					const swatch = getConversationThemeClasses(option.value);
-
-					return (
-						<Button
-							key={option.value}
-							variant="ghost"
-							disabled={isSaving}
-							onClick={() => void choose(option.value)}
-							aria-label={option.label}
-							aria-pressed={conversation.themeColor === option.value}
-							className={cn("size-8 rounded-full p-0", swatch.bubble, swatch.bubbleInk)}
-						>
-							{conversation.themeColor === option.value && <Check className="size-3.5" />}
-						</Button>
-					);
-				})}
-			</div>
-			{error && (
-				<p role="alert" className="eyebrow mt-2 text-signal">
-					{error}
-				</p>
-			)}
-		</div>
+		<>
+			<Button
+				variant="ghost"
+				onClick={() => setIsOpen(true)}
+				aria-label={`Theme: ${currentLabel}`}
+				aria-haspopup="dialog"
+				aria-expanded={isOpen}
+				className="min-h-12 w-full justify-start gap-3 px-3 text-left font-normal"
+			>
+				<Palette className="size-4 text-heading" />
+				<span className="flex-1 text-[13px]">Theme</span>
+				<span className="text-xs text-ink-faint">{currentLabel}</span>
+				<ChevronRight className="size-4 text-ink-faint" />
+			</Button>
+			{isOpen && <ConversationThemeDialog key={conversation.id} conversation={conversation} onClose={close} />}
+		</>
 	);
 }

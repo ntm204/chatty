@@ -77,6 +77,7 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await expect(page.locator(`#message-${photoId}`).getByText("Pinned", { exact: true })).toHaveCount(0);
 	await expect(page.locator(`#message-${textId}`).getByText("Pinned", { exact: true })).toHaveCount(0);
 	await expect(page.getByLabel("Show pinned messages")).toBeVisible();
+	expect((await page.locator(".pinned-messages-banner").boundingBox())!.height).toBeLessThanOrEqual(40);
 	await page.reload();
 	await openConversationWith(page, other);
 	await expect(page.getByLabel("Show pinned messages")).toBeVisible();

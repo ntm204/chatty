@@ -87,6 +87,7 @@ export function ChatConversationPane({
 			<div className="flex min-h-0 flex-1 xl:gap-2">
 				<section
 					aria-label="Conversation"
+					data-conversation-theme={conversation.themeColor ?? "default"}
 					className={cn(
 						"conversation-pane flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:border-rule",
 						isManagingDetails && "max-xl:hidden",

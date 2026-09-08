@@ -9,7 +9,9 @@
 		"typecheck": "tsc --noEmit --incremental --tsBuildInfoFile ../../node_modules/.chatty-web-typecheck.tsbuildinfo",
 		"test": "vitest run",
 		"test:changed": "vitest run --changed --passWithNoTests",
-		"preview": "vite preview"
+		"preview": "vite preview",
+		"predev": "node scripts/prepare-fonts.mjs",
+		"prebuild": "node scripts/prepare-fonts.mjs"
 	},
 	"dependencies": {
 		"@chatty/shared-types": "*",

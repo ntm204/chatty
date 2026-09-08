@@ -34,10 +34,13 @@ require a public deployment. The foundations below remain context for future dec
 5. **Zero recurring vendor bill first.** The first public version may require a domain and free
    accounts. A paid dependency needs a measured limit, an explicit budget and a migration reason.
 6. **One recognisable Chatty interface.** Familiar placement is good; copying another product's
-   visual identity is not. Nostalgic maximalism is the visual language: colorful stationery,
-   collaged welcome artwork, crisp ink edges and restrained motion. Reading surfaces stay calm,
+   visual identity is not. The owner's current visual reference is [chatty.net](https://chatty.net/):
+   deep navy, bright yellow, faint violet gradients, sans-serif type and rounded surfaces.
+   Decoration stays restrained; entry forms and the welcome fit the viewport, with local form
+   scrolling only when a keyboard, zoom or validation needs more room.
+   The messaging product keeps its own copy and functional flows. Reading surfaces stay calm,
    with accessible text contrast and distinct action, notification and presence colors.
-   See [visual direction](design/maximalism.md).
+   See [visual direction](design/visual-direction.md).
 
 ## What is worth carrying forward
 

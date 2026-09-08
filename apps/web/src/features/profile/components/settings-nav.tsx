@@ -16,7 +16,7 @@ interface SettingsNavProps {
 export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps) {
 	return (
 		<div className="settings-nav flex w-[250px] shrink-0 flex-col border-r border-rule bg-paper-raised max-sm:w-full max-sm:border-b max-sm:border-r-0">
-			<h2 className="px-5 pb-4 pt-5 font-display text-[22px] leading-none tracking-tight">Your little corner</h2>
+			<h2 className="px-5 pb-4 pt-5 font-display text-[22px] leading-none tracking-tight">Your account</h2>
 
 			<div className="flex items-center gap-3 px-5 pb-4">
 				<Avatar user={user} size="sm" />

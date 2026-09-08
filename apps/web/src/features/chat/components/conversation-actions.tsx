@@ -53,11 +53,19 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 			menuRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
 		});
 
-		function closeFromOutside(event: PointerEvent) {
+		function closeFromOutside(event: Event) {
 			if (!rootRef.current?.contains(event.target as Node) && !menuRef.current?.contains(event.target as Node))
 				close();
 		}
 		function closeFromKeyboard(event: KeyboardEvent) {
+			// A portalled menu is last in the document: native Tab can move into
+			// browser chrome without a focusin event. Resume the row's tab order.
+			if (event.key === "Tab" && menuRef.current?.contains(document.activeElement)) {
+				close();
+				rootRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")?.focus();
+
+				return;
+			}
 			if (event.key === "Escape") {
 				close();
 				rootRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")?.focus();
@@ -76,11 +84,13 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 			else items[(currentIndex - 1 + items.length) % items.length]?.focus();
 		}
 		document.addEventListener("pointerdown", closeFromOutside);
+		document.addEventListener("focusin", closeFromOutside);
 		document.addEventListener("keydown", closeFromKeyboard);
 
 		return () => {
 			window.cancelAnimationFrame(focusFrame);
 			document.removeEventListener("pointerdown", closeFromOutside);
+			document.removeEventListener("focusin", closeFromOutside);
 			document.removeEventListener("keydown", closeFromKeyboard);
 		};
 	}, [isOpen, isChoosingMute]);
@@ -159,7 +169,7 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 				aria-expanded={isOpen}
 				className={cn(
 					"size-7 rounded-full p-0 text-ink-faint opacity-0 transition-opacity hover:bg-transparent hover:text-ink",
-					"group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-70",
+					"group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-70",
 					isOpen && "bg-paper-raised text-ink opacity-100 shadow-sm",
 				)}
 			>

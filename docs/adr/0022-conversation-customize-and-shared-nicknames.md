@@ -50,6 +50,11 @@ colors. It recolors the "mine" surface (outgoing bubble, voice player, the react
 *everyone* in the conversation, because the theme is one shared value: each person's own messages
 render in it, the same way `bg-block` already meant "a message you sent" before this.
 
+The 2026-09-08 refinement also uses these tokens for a quiet gradient behind the message history.
+A labeled Theme row opens a preview picker; Apply persists the existing shared value, while
+Cancel/Escape leaves it unchanged. Default restores the plain reading surface. This adds no
+wallpaper uploads or new server theme values.
+
 **A group's photo reuses the user-avatar pipeline exactly** — same sharp resize/re-encode, same
 public unsigned URL with a `?v=` cache-bust — under its own storage key and route
 (`GET /conversations/:id/avatar`). A group photo is no more sensitive than a user's public profile

@@ -10,10 +10,13 @@ Current development focus: **everyday usability and interface polish**. The
 acceptance criteria and dependencies. Public launch and large feature additions are deferred while
 this work improves the existing messaging experience.
 
-The interface uses a nostalgic maximalist stationery style: butter yellow, cobalt, tomato and
-lilac, paper collages, crisp outlines and a quieter dotted message canvas. Authentication, chat,
-conversation details and account settings share the palette, with a coordinated dark theme and
-responsive phone layouts. See [visual direction](docs/design/maximalism.md).
+The interface follows the owner's [chatty.net](https://chatty.net/) reference: deep navy,
+bright yellow, faint violet gradients, restrained typography and rounded surfaces.
+Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
+The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
+Authentication, chat and settings share coordinated light/dark themes and responsive phone layouts.
+See [visual direction](docs/design/visual-direction.md). Fontshare fonts download once when starting
+the web dev server or building, then stay self-hosted with no third-party browser requests.
 
 ## Read first
 
@@ -220,6 +223,9 @@ The sidebar shows `Draft: <text>` immediately while composing, including the sel
 A reply without text shows `Draft: Reply`; whitespace alone does not create an indicator. Drafts take
 priority over typing and the last-message preview, but unread/mention badges remain visible. The old
 message timestamp and author prefix are hidden while showing a draft; drafting does not reorder chats.
+Row actions appear on hover, keyboard focus or touch, and do not stay visible merely because a
+row was clicked. Menus close on a second trigger click, Escape, outside clicks or focus leaving
+the menu and trigger.
 Conversation rows use two aligned lines: name and right-aligned time above, preview and unread badge
 below. The actions button has its own space on the lower right, so hover never hides the unread badge
 or shifts the text. Timestamps no longer sit inside the message preview.
@@ -436,23 +442,26 @@ The panel stays open while chatting on desktop; use the header toggle, Close, or
 Only conversation details use the 240ms enter/exit motion system. Reduced motion skips movement
 and the close delay. Images and settings open and close immediately.
 Both direct and group details open on an overview, mirroring Messenger's layout: mute/search quick
-actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared theme color,
+actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared chat theme,
 and per-member nicknames — all shared with everyone in the conversation, not private to whoever set
 them), then Media/files/links, Members, Group options and Privacy & support as collapsible
 sections — content, then people, then settings, then the rare, sensitive controls, rather than
 interleaving settings between content. Renaming and the group photo are admin-gated; the rest of
 Customize chat is open to any participant — cosmetic, not moderation. See
 [ADR 0022](docs/adr/0022-conversation-customize-and-shared-nicknames.md). Rename, the group photo
-and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
+theme and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
 place, replacing the real name rather than opening a second input beside it. Adding people to a
 group is search-then-multi-select-then-confirm in its own modal, matching how starting a new
 conversation already works, rather than adding on first click. A member row's actions menu is
 portalled above the list rather than pushed inline, so opening it never shifts the rows below.
 Invite permissions (Group options, admin-gated) use a toggle switch, not a dropdown — there are
-only two states. Pinned messages have previous/next navigation and a selectable list, also
-reachable from conversation details.
+only two states. Theme opens a preview picker with eight coordinated bubble/background palettes
+and Default. Previewing or cancelling changes nothing for other participants; Apply saves the
+shared theme and syncs it live. Light/dark mode remains each person's own preference.
+The 40px pinned-message bar keeps author and preview on one line. Clicking it jumps to the latest
+pin; its expand button opens the full list, also reachable from conversation details.
 
 Pinned messages open in a separate dialog without resizing the thread. Photo/file/voice previews
-include their attachment identity; captions remain secondary. Each original message shows a Pinned
-marker, and pins can be removed from the list. Message jumps scroll only the history viewport and
+include their attachment identity; captions remain secondary. Pins can be removed from the list; their status appears in the bar rather than an inline
+marker. Message jumps scroll only the history viewport and
 wait for it to become visible after closing mobile details.

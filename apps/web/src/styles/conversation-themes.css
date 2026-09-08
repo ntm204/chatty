@@ -1,0 +1,80 @@
+/* Shared theme values already persist through the conversation API. These local
+ * tokens color both the picker preview and the reading surface in either mode. */
+[data-conversation-theme="azure"] {
+	--chat-accent: var(--color-tint-azure);
+	--chat-complement: var(--color-tint-teal);
+}
+[data-conversation-theme="amber"] {
+	--chat-accent: var(--color-tint-amber);
+	--chat-complement: var(--color-tint-clay);
+}
+[data-conversation-theme="moss"] {
+	--chat-accent: var(--color-tint-moss);
+	--chat-complement: var(--color-tint-fern);
+}
+[data-conversation-theme="plum"] {
+	--chat-accent: var(--color-tint-plum);
+	--chat-complement: var(--color-tint-iris);
+}
+[data-conversation-theme="clay"] {
+	--chat-accent: var(--color-tint-clay);
+	--chat-complement: var(--color-tint-amber);
+}
+[data-conversation-theme="teal"] {
+	--chat-accent: var(--color-tint-teal);
+	--chat-complement: var(--color-tint-azure);
+}
+[data-conversation-theme="iris"] {
+	--chat-accent: var(--color-tint-iris);
+	--chat-complement: var(--color-tint-plum);
+}
+[data-conversation-theme="fern"] {
+	--chat-accent: var(--color-tint-fern);
+	--chat-complement: var(--color-tint-moss);
+}
+.theme-wallpaper,
+[data-conversation-theme] .message-paper {
+	background:
+		radial-gradient(
+			ellipse at 95% 5%,
+			color-mix(in srgb, var(--chat-complement) 32%, transparent),
+			transparent 65%
+		),
+		linear-gradient(
+			145deg,
+			color-mix(in srgb, var(--chat-accent) 22%, var(--color-paper-raised)),
+			var(--color-paper-raised)
+		);
+}
+[data-conversation-theme="default"] {
+	--chat-accent: var(--color-paper-raised);
+	--chat-complement: var(--color-paper-raised);
+}
+.theme-choice {
+	min-width: 0;
+	flex-direction: column;
+	gap: 5px;
+	border: 1px solid var(--color-rule-soft);
+	border-radius: 12px;
+	padding: 7px;
+	font-size: 11px;
+}
+.theme-choice-selected {
+	border-color: var(--color-heading);
+	box-shadow: 0 0 0 1px var(--color-heading);
+	color: var(--color-heading);
+}
+.theme-swatch {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	height: 29px;
+	border-radius: 6px;
+	padding: 6px;
+}
+.theme-swatch > span {
+	width: 28px;
+	height: 14px;
+	border-radius: 7px 7px 2px 7px;
+}

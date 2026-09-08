@@ -8,6 +8,7 @@ export function LoginPage() {
 
 	return (
 		<AuthCard
+			onCreateAccount={() => setMode("register")}
 			title={isLogin ? "Sign in" : "Create an account"}
 			description={
 				isLogin ? "Your people are just a hello away. Welcome back!" : "Pick a handle people can find you by."

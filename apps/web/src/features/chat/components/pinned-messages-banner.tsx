@@ -18,15 +18,17 @@ export function PinnedMessagesBanner({ pinnedMessages, currentUserId, onOpenMess
 	if (!latest) return null;
 
 	return (
-		<div className="flex shrink-0 items-center gap-2 border-b border-rule bg-paper-raised px-4 py-1 sm:px-5 md:px-7">
+		<div className="pinned-messages-banner flex h-10 shrink-0 items-center gap-2 border-b border-rule-soft bg-paper-raised px-4 sm:px-5">
 			<Pin className="size-3.5 shrink-0 text-ink-faint" />
 			<Button
 				variant="ghost"
 				onClick={() => onOpenMessage(latest.messageId)}
-				className="min-w-0 flex-1 flex-col items-start justify-center gap-0 text-left font-normal hover:bg-transparent"
+				className="h-full min-w-0 flex-1 justify-start gap-2 px-1 py-0 text-left font-normal hover:bg-transparent"
 			>
-				<span className="text-xs text-ink-faint">{getPinnedMessageAuthorLabel(latest, currentUserId)}</span>
-				<span className="min-w-0 max-w-full truncate text-sm text-ink">{getPinnedMessagePreview(latest)}</span>
+				<span className="max-w-[25%] shrink-0 truncate text-xs text-ink-faint">
+					{getPinnedMessageAuthorLabel(latest, currentUserId)}
+				</span>
+				<span className="min-w-0 max-w-full truncate text-xs text-ink">{getPinnedMessagePreview(latest)}</span>
 			</Button>
 			{pinnedMessages.length > 1 && (
 				<Button

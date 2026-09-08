@@ -7,7 +7,7 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 	error?: string;
 }
 
-/** Shared fields keep an ink edge, a colored focus shadow and linked error text. */
+/** Shared fields keep a clear focus ring and linked error text. */
 export function TextField({ label, error, className, ...rest }: TextFieldProps) {
 	// useId, not a prop: two TextFields on one page must not share an id, or
 	// clicking one label focuses the other's input.

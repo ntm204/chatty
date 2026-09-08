@@ -19,3 +19,6 @@ playwright-report/
 # Editor state is local. Repository-wide tooling belongs in committed config
 # files rather than settings that only one IDE reads.
 .vscode/
+
+# Fontshare fonts are obtained by each checkout, never redistributed as source.
+apps/web/src/assets/fonts/*.woff2

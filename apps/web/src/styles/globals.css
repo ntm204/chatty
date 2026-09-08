@@ -1,5 +1,5 @@
-/* Self-hosted fonts keep the existing CSP and offline behavior intact.
- * Geist covers Vietnamese; Instrument Serif is reserved for fixed English display copy.
+/* Self-hosted fonts keep the CSP and offline behavior intact. General Sans
+ * and Clash Display match the reference; Geist is the Vietnamese fallback.
  */
 @import "@fontsource/geist/400.css";
 @import "@fontsource/geist/500.css";
@@ -7,33 +7,44 @@
 @import "@fontsource/geist/700.css";
 @import "@fontsource/geist-mono/400.css";
 @import "@fontsource/geist-mono/500.css";
-@import "@fontsource/instrument-serif/400.css";
-@import "@fontsource/instrument-serif/400-italic.css";
+@import "./fonts.css";
 @import "tailwindcss";
-@import "./maximalism.css";
+@import "./surfaces.css";
+@import "./conversation-themes.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* The stationery palette: readable paper surfaces, colorful accents and crisp ink.
- * Decorative colors have their own on-color ink; UI surfaces follow the theme.
+/* Reference palette: navy #06038d, yellow #fbc80b and violet #5750fe.
+ * Semantic pairs keep user content and controls readable in both themes.
  */
 @theme {
-	--color-paper: #fff8eb;
-	--color-paper-raised: #fffdf6;
-	--color-paper-sunken: #f1e9d9;
-	--color-ink: #282b42;
-	--color-ink-soft: #555369;
-	--color-ink-faint: #716779;
-	--color-rule: #b7ada2;
-	--color-rule-soft: #e5d9c9;
-	--color-signal: #b93827;
-	--color-signal-hover: #982b20;
-	--color-signal-soft: #fce1d8;
-	--color-live: #32714a;
-	--color-block: #364cc5;
-	--color-block-ink: #fffdf6;
-	--color-scrim: #171729;
-	--color-on-media: #fffdf6;
+	--color-brand-navy: #06038d;
+	--color-brand-yellow: #fbc80b;
+	--color-brand-yellow-hover: #e4b60a;
+	--color-brand-violet: #5750fe;
+	--color-brand-lavender: #e6e6f4;
+	--color-brand-on-navy: #ffffff;
+	--color-heading: #06038d;
+	--color-halo-yellow: #fbc80b;
+	--color-halo-purple: #8e8afe;
+	--color-selection: #e6e6f4;
+	--color-selection-ink: #06038d;
+	--color-paper: #f7f7fc;
+	--color-paper-raised: #ffffff;
+	--color-paper-sunken: #eeeef8;
+	--color-ink: #171743;
+	--color-ink-soft: #50506d;
+	--color-ink-faint: #686880;
+	--color-rule: #dcdceb;
+	--color-rule-soft: #ececf5;
+	--color-signal: #b73146;
+	--color-signal-hover: #98223a;
+	--color-signal-soft: #fcecf0;
+	--color-live: #227047;
+	--color-block: #06038d;
+	--color-block-ink: #ffffff;
+	--color-scrim: #0c0b28;
+	--color-on-media: #ffffff;
 	--color-tint-azure: #badff6;
 	--color-tint-azure-ink: #204d6a;
 	--color-tint-amber: #f8d77c;
@@ -50,55 +61,49 @@
 	--color-tint-iris-ink: #534181;
 	--color-tint-fern: #d9e79b;
 	--color-tint-fern-ink: #4f601f;
-	--color-cobalt: #354ac4;
-	--color-cobalt-hover: #293aa4;
-	--color-butter: #f6d76d;
-	--color-tomato: #df5038;
-	--color-lilac: #d9c8ed;
-	--color-peach: #f7c2a9;
-	--color-mint: #d9e4be;
-	--color-decor-ink: #2c3047;
-	--color-on-cobalt: #fff9ec;
-	--color-stationery: #f9e7a9;
-	--color-grid: #d9c28c;
-	--color-shell: #e9c773;
-	--color-swatch-light: #fff8eb;
-	--color-swatch-light-ink: #354ac4;
-	--color-swatch-dark: #242336;
-	--color-swatch-dark-ink: #d9c8ed;
-	--font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+	--color-shell: #eeeef8;
+	--color-swatch-light: #ffffff;
+	--color-swatch-light-ink: #06038d;
+	--color-swatch-dark: #16162e;
+	--color-swatch-dark-ink: #d7d5ff;
+	--font-sans: "General Sans", "Geist", ui-sans-serif, system-ui, sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, monospace;
-	--font-display: "Instrument Serif", Georgia, serif;
+	--font-display: "Clash Display", "General Sans", "Geist", sans-serif;
 	--radius-badge: 5px;
-	--radius-control: 9px;
+	--radius-control: 12px;
 	--radius-bubble: 12px;
-	--radius-panel: 16px;
+	--radius-panel: 20px;
 	--radius-message: 18px;
 	--radius-message-join: 5px;
 	--radius-media: 14px;
-	--radius-composer: 14px;
-	--shadow-lift: 3px 4px 0 rgb(44 48 71 / 0.18), 0 8px 24px rgb(44 48 71 / 0.08);
-	--shadow-reaction: 1px 2px 0 rgb(44 48 71 / 0.2);
-	--shadow-modal: 8px 8px 0 rgb(44 48 71 / 0.28), 0 24px 70px rgb(44 48 71 / 0.2);
+	--radius-composer: 24px;
+	--shadow-lift: 0 8px 32px rgb(6 3 141 / 0.12), 0 1px 3px rgb(6 3 141 / 0.06);
+	--shadow-reaction: 0 2px 6px rgb(6 3 141 / 0.12);
+	--shadow-modal: 0 24px 80px rgb(6 3 141 / 0.18);
 }
 
 [data-theme="dark"] {
+	--color-heading: #d7d5ff;
+	--color-halo-yellow: #7770bf;
+	--color-halo-purple: #746de0;
+	--color-selection: #39375c;
+	--color-selection-ink: #e6e4ff;
 	color-scheme: dark;
-	--color-paper: #242336;
-	--color-paper-raised: #2e2b41;
-	--color-paper-sunken: #39354b;
-	--color-ink: #fff1d9;
-	--color-ink-soft: #d2c5c6;
-	--color-ink-faint: #b6a8b8;
-	--color-rule: #797083;
-	--color-rule-soft: #484056;
-	--color-signal: #ffac8f;
-	--color-signal-hover: #ffccb5;
-	--color-signal-soft: #54362f;
-	--color-live: #add39b;
-	--color-block: #5257b2;
-	--color-block-ink: #fff8eb;
-	--color-scrim: #080712;
+	--color-paper: #16162e;
+	--color-paper-raised: #202039;
+	--color-paper-sunken: #2b2b46;
+	--color-ink: #f2f1ff;
+	--color-ink-soft: #c4c3de;
+	--color-ink-faint: #a6a5c0;
+	--color-rule: #454460;
+	--color-rule-soft: #33334e;
+	--color-signal: #ff9db3;
+	--color-signal-hover: #ffc0ce;
+	--color-signal-soft: #4c2b40;
+	--color-live: #9ed8b4;
+	--color-block: #5750c8;
+	--color-block-ink: #ffffff;
+	--color-scrim: #050513;
 	--color-tint-azure: #304963;
 	--color-tint-azure-ink: #c3e4fa;
 	--color-tint-amber: #554425;
@@ -115,12 +120,10 @@
 	--color-tint-iris-ink: #ddd0ff;
 	--color-tint-fern: #424928;
 	--color-tint-fern-ink: #d8e69f;
-	--color-stationery: #393147;
-	--color-grid: #55435b;
-	--color-shell: #191a2c;
-	--shadow-lift: 3px 4px 0 rgb(0 0 0 / 0.35), 0 8px 24px rgb(0 0 0 / 0.2);
-	--shadow-reaction: 1px 2px 0 rgb(0 0 0 / 0.4);
-	--shadow-modal: 8px 8px 0 rgb(0 0 0 / 0.4), 0 24px 70px rgb(0 0 0 / 0.35);
+	--color-shell: #101023;
+	--shadow-lift: 0 8px 32px rgb(0 0 0 / 0.35);
+	--shadow-reaction: 0 2px 6px rgb(0 0 0 / 0.3);
+	--shadow-modal: 0 24px 80px rgb(0 0 0 / 0.45);
 }
 
 @layer base {
@@ -141,8 +144,8 @@
 		stroke-linejoin: round;
 	}
 	::selection {
-		background: var(--color-lilac);
-		color: var(--color-decor-ink);
+		background: var(--color-brand-lavender);
+		color: var(--color-brand-navy);
 	}
 	:focus-visible {
 		outline: 2px solid var(--color-block);

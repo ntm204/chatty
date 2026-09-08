@@ -65,6 +65,19 @@ describe("ConversationActions", () => {
 		expect(screen.getByRole("menuitem", { name: "Mute" })).toBeInTheDocument();
 	});
 
+	it("closes on a second trigger click and restores keyboard focus with Escape", async () => {
+		const user = userEvent.setup();
+		renderDirectActions();
+		const trigger = screen.getByRole("button", { name: "Conversation actions" });
+		await user.click(trigger);
+		await user.click(trigger);
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		await user.click(trigger);
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(trigger).toHaveFocus();
+	});
+
 	it("uses an in-app mute submenu instead of a native dropdown", async () => {
 		const user = userEvent.setup();
 		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" />);

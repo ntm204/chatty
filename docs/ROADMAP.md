@@ -5,14 +5,36 @@ work it describes — a roadmap that lags behind the code is worse than none, be
 
 Status: `done` · `next` · `planned` · `blocked` · `dropped`
 
-## Current visual direction — nostalgic maximalism
+## Current visual direction — navy, yellow and soft gradients
 
-The owner's September 2026 direction replaces the former one-signal ink-on-paper identity with a
-colorful stationery system. Authentication, the chat workspace, welcome state, controls, message
-bubbles, conversation details and settings share coordinated light/dark palettes. The layout keeps
-conversation content readable, supports narrow phones and reduced motion, and keeps fonts/assets
-local. Earlier visual phases below describe historical decisions; their single-color restrictions
-are superseded. See [the design notes](design/maximalism.md) for scope and validation.
+On 2026-09-08 the owner replaced the nostalgic maximalism direction with the visual style of
+[chatty.net](https://chatty.net/). The interface now uses that reference's navy/yellow/violet palette,
+Clash Display and General Sans, rounded surfaces and faint static gradients. Authentication,
+chat welcome, the inbox, conversation surfaces and settings share the system, including dark mode
+and phone layouts. A follow-up removes oversized promotional headings, decorative chat previews,
+floating badges, grain and blurred rings. Login/registration fit ordinary laptop and phone
+viewports; only the form can scroll under keyboard/zoom/validation constraints. The welcome
+stays centered without scrolling on short laptops. Dedicated browser regressions check content
+bounds, scrolling and keyboard/search access. The old scrapbook artwork, paper grids and offset
+shadows have been removed.
+Earlier visual phases below describe historical decisions; their visual restrictions are
+superseded. See [the current design notes](design/visual-direction.md) for scope and validation.
+
+## Logo eye animation
+
+The shared wordmark now has a gentle idle blink, bounded pointer-following eyes and a one-eye
+wink on hover. Eye movement returns to center after inactivity or leaving the window, pauses
+when the page is hidden and respects reduced motion. It changes no layout or navigation.
+
+## Conversation appearance follow-up
+
+The sidebar action trigger no longer stays visible from mouse focus on its row; menus also close
+when keyboard focus leaves. The pinned-message bar is a compact 40px single line with the same
+latest-pin navigation and full-list dialog. Customize chat now exposes a labeled Theme row and
+a preview/Apply dialog with eight shared bubble/background palettes plus Default. The existing
+conversation API persists and broadcasts the selection; preview and cancellation remain local.
+Light/dark tokens adapt the gradients without changing personal appearance preferences. Browser
+regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
 ## Current focus — everyday experience polish
 

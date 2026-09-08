@@ -1,4 +1,4 @@
-import { Asterisk } from "lucide-react";
+import { useBrandGaze } from "@/hooks/use-brand-gaze";
 import { cn } from "@/utils/cn";
 
 interface BrandProps {
@@ -6,14 +6,15 @@ interface BrandProps {
 }
 
 export function Brand({ className }: BrandProps) {
+	const brandRef = useBrandGaze();
+
 	return (
-		<span className={cn("brand", className)}>
-			<span className="brand-flower" aria-hidden="true">
-				<Asterisk />
+		<span ref={brandRef} className={cn("brand", className)}>
+			<span className="brand-symbol" aria-hidden="true">
+				<i />
+				<i />
 			</span>
-			<span>
-				chatty<span className="brand-period">.</span>
-			</span>
+			<span>chatty</span>
 		</span>
 	);
 }

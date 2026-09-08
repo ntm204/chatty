@@ -47,7 +47,7 @@ interface MessageBubbleProps {
  * **A message that is nothing but a few emoji gets no bubble at all**: no fill,
  * no border, no radius, and type several times the size. At bubble size an
  * emoji reads as a typo, and the bubble is chrome around content that does not
- * need explaining. The surrounding stationery stays separate from user content.
+ * need explaining. Decorative surfaces stay separate from user content.
  */
 export function MessageBubble({
 	message,
