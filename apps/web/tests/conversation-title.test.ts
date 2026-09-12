@@ -50,9 +50,15 @@ describe("getConversationTitle", () => {
 		expect(getConversationTitle(conversation, "minh")).toBe("Group");
 	});
 
-	it("falls back to 'Unknown' when the other participant is missing", () => {
-		const conversation = makeConversation({ participants: [makeParticipant("minh", "Minh")] });
+	it("falls back to 'Unknown' when the conversation has no participants", () => {
+		const conversation = makeConversation({ participants: [] });
 
 		expect(getConversationTitle(conversation, "minh")).toBe("Unknown");
+	});
+
+	it("titles a conversation with only yourself as 'Saved messages'", () => {
+		const conversation = makeConversation({ participants: [makeParticipant("minh", "Minh")] });
+
+		expect(getConversationTitle(conversation, "minh")).toBe("Saved messages");
 	});
 });

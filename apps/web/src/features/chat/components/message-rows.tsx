@@ -45,6 +45,7 @@ export const MessageRows = memo(function MessageRows({
 	...actions
 }: MessageRowsProps) {
 	const systemRuns = getSystemMessageRuns(messages, unreadDividerMessageId);
+
 	return messages.map((message, index) => {
 		const previous = messages[index - 1];
 		const isFirstOfDay = isNewDay(message.createdAt, previous?.createdAt);
@@ -54,6 +55,7 @@ export const MessageRows = memo(function MessageRows({
 		if (message.kind === "system") {
 			const run = systemRuns.get(index);
 			if (!run) return null;
+
 			return (
 				<Fragment key={message.id}>
 					{divider}

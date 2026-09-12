@@ -1,21 +1,29 @@
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
+import { Button } from "@/components/button";
+import { cn } from "@/utils/cn";
 import type { ThreadMessage } from "../types/thread-message";
 import { SYSTEM_MESSAGE_COLLAPSE_THRESHOLD } from "../utils/system-message-runs";
 import { SystemMessage } from "./system-message";
 
-export function SystemMessageGroup({ messages }: { messages: ThreadMessage[] }) {
+interface SystemMessageGroupProps {
+	messages: ThreadMessage[];
+}
+
+export function SystemMessageGroup({ messages }: SystemMessageGroupProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const contentId = useId();
+
 	if (messages.length < SYSTEM_MESSAGE_COLLAPSE_THRESHOLD) {
 		return messages.map((message) => (
 			<SystemMessage key={message.id} content={message.content} createdAt={message.createdAt} />
 		));
 	}
+
 	return (
 		<div className="w-full py-2 text-xs text-ink-faint">
-			<button
-				type="button"
+			<Button
+				variant="ghost"
 				aria-expanded={isOpen}
 				aria-controls={contentId}
 				onClick={() => setIsOpen((value) => !value)}
@@ -24,9 +32,9 @@ export function SystemMessageGroup({ messages }: { messages: ThreadMessage[] }) 
 				<span>{messages.length} chat updates</span>
 				<ChevronDown
 					aria-hidden="true"
-					className={`size-3.5 motion-safe:transition-transform ${isOpen ? "rotate-180" : ""}`}
+					className={cn("size-3.5 motion-safe:transition-transform", isOpen && "rotate-180")}
 				/>
-			</button>
+			</Button>
 			<div id={contentId} hidden={!isOpen}>
 				{messages.map((message) => (
 					<SystemMessage key={message.id} content={message.content} createdAt={message.createdAt} />

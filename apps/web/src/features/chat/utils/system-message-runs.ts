@@ -25,5 +25,6 @@ export function getSystemMessageRuns(messages: ThreadMessage[], unreadId: string
 		}
 		run.push(message);
 	}
+
 	return runs;
 }

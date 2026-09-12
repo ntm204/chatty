@@ -7,6 +7,7 @@ import { ConnectionBanner, ChatConversationPane, ConversationSidebar, KeyboardSh
 import {
 	useBlockedUsersSync,
 	useConversationList,
+	useConversationNavigation,
 	useReplyTarget,
 	useConversationMessages,
 	useDocumentTitle,
@@ -20,8 +21,7 @@ import {
 	useSocketConnection,
 	useTypingParticipants,
 } from "../hooks";
-import type { MessageSearchSession } from "../types/message-search";
-import { getNewestStoredMessage, scrollToMessage } from "../utils";
+import { findFirstUnreadConversation, getNewestStoredMessage, getTotalUnreadCount } from "../utils";
 
 export function ChatPage() {
 	const currentUser = useAuth((state) => state.currentUser);
@@ -151,41 +151,21 @@ export function ChatPage() {
 		selectedConversation?.pinnedMessages,
 	);
 
-	function handleConversationStarted(conversationId: string, conversation?: ConversationDTO) {
-		if (conversation) setOpenedSavedConversation(conversation);
-		refreshConversations();
-		setIsConversationSearchOpen(false);
-		setRequestedMessageId(null);
-		setSelectedConversationId(conversationId);
-	}
-
-	function handleConversationSelected(conversationId: string) {
-		setIsConversationSearchOpen(false);
-		setRequestedMessageId(null);
-		setSelectedConversationId(conversationId);
-	}
-
-	function selectSearchResult(session: MessageSearchSession) {
-		const result = session.results[session.activeIndex];
-		if (!result) return;
-
-		setSelectedConversationId(result.conversation.id);
-		setRequestedMessageId(result.message.id);
-	}
-
-	const closeMessageSearch = useCallback(() => {
-		setIsConversationSearchOpen(false);
-		setRequestedMessageId(null);
-	}, []);
-
-	// A miss means the message is outside what the thread currently holds, so the
-	// search panel closes and the list is asked to load the page around it.
-	const jumpToMessage = useCallback((messageId: string) => {
-		if (scrollToMessage(messageId)) return;
-
-		setIsConversationSearchOpen(false);
-		setRequestedMessageId(messageId);
-	}, []);
+	const {
+		handleConversationStarted,
+		handleConversationSelected,
+		selectSearchResult,
+		closeMessageSearch,
+		openFirstUnreadConversation,
+		jumpToMessage,
+	} = useConversationNavigation({
+		conversations,
+		refreshConversations,
+		setSelectedConversationId,
+		setOpenedSavedConversation,
+		setRequestedMessageId,
+		setIsConversationSearchOpen,
+	});
 
 	if (!currentUser) return null;
 
@@ -291,20 +271,10 @@ export function ChatPage() {
 						/>
 					) : (
 						<ChatWelcome
-							unreadCount={conversations.reduce(
-								(total, conversation) => total + conversation.unreadCount,
-								0,
-							)}
+							unreadCount={getTotalUnreadCount(conversations)}
 							isConnectionLost={isConnectionLost}
 							onOpenUnread={
-								conversations.some((conversation) => conversation.unreadCount > 0)
-									? () => {
-											const unread = conversations.find(
-												(conversation) => conversation.unreadCount > 0,
-											);
-											if (unread) handleConversationSelected(unread.id);
-										}
-									: undefined
+								findFirstUnreadConversation(conversations) ? openFirstUnreadConversation : undefined
 							}
 						/>
 					)}

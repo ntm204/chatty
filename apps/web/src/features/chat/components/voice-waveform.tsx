@@ -43,6 +43,7 @@ export function VoiceWaveform({
 		}
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
+
 		return () => {
 			observer.disconnect();
 			window.removeEventListener("resize", measure);
@@ -69,6 +70,7 @@ export function VoiceWaveform({
 				}}
 			/>
 		));
+
 	return (
 		<div
 			ref={containerRef}

@@ -28,7 +28,7 @@ describe("attachment components", () => {
 
 	it("renders server-derived voice duration without loading audio", () => {
 		vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
-		render(
+		const { container } = render(
 			<VoicePlayer
 				attachment={makeAttachment({
 					kind: "audio",
@@ -43,7 +43,8 @@ describe("attachment components", () => {
 
 		expect(screen.getByText("1:05")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Play voice message" })).toBeEnabled();
-		expect(screen.getByRole("button", { name: "Change playback speed" })).toHaveTextContent("1×");
+		// aria-hidden until playback starts, so an accessible-name query can't see it — see voice-player.tsx.
+		expect(container.querySelector(".voice-player-speed")).toHaveTextContent("1×");
 		expect(screen.getByRole("slider", { name: "Seek voice message" })).toHaveAttribute(
 			"aria-valuetext",
 			"0:00 of 1:05",
