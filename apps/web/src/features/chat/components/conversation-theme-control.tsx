@@ -23,10 +23,12 @@ export function ConversationThemeControl({ conversation }: ConversationThemeCont
 				aria-label={`Theme: ${currentLabel}`}
 				aria-haspopup="dialog"
 				aria-expanded={isOpen}
-				className="min-h-12 w-full justify-start gap-3 px-3 text-left font-normal"
+				className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
 			>
-				<Palette className="size-4 text-heading" />
-				<span className="flex-1 text-[13px]">Theme</span>
+				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+					<Palette className="size-4 text-ink-soft" aria-hidden="true" />
+				</span>
+				<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">Theme</span>
 				<span className="text-xs text-ink-faint">{currentLabel}</span>
 				<ChevronRight className="size-4 text-ink-faint" />
 			</Button>

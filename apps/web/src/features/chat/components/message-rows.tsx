@@ -7,7 +7,8 @@ import { getClusterPosition, hasMessageTimeGap, isNewDay, isWithinMessageBurst }
 import { DaySeparator } from "./day-separator";
 import { MessageRow } from "./message-row";
 import { MessageTimeSeparator } from "./message-time-separator";
-import { SystemMessage } from "./system-message";
+import { SystemMessageGroup } from "./system-message-group";
+import { getSystemMessageRuns } from "../utils/system-message-runs";
 import { UnreadDivider } from "./unread-divider";
 
 interface MessageRowsProps extends MessageRowActions {
@@ -43,6 +44,7 @@ export const MessageRows = memo(function MessageRows({
 	pinnedMessageIds,
 	...actions
 }: MessageRowsProps) {
+	const systemRuns = getSystemMessageRuns(messages, unreadDividerMessageId);
 	return messages.map((message, index) => {
 		const previous = messages[index - 1];
 		const isFirstOfDay = isNewDay(message.createdAt, previous?.createdAt);
@@ -50,12 +52,14 @@ export const MessageRows = memo(function MessageRows({
 		const divider = message.id === unreadDividerMessageId ? <UnreadDivider count={unreadCount} /> : null;
 
 		if (message.kind === "system") {
+			const run = systemRuns.get(index);
+			if (!run) return null;
 			return (
 				<Fragment key={message.id}>
 					{divider}
 					{isFirstOfDay && <DaySeparator isoTimestamp={message.createdAt} />}
 					{hasLongPause && <MessageTimeSeparator isoTimestamp={message.createdAt} />}
-					<SystemMessage content={message.content} createdAt={message.createdAt} />
+					<SystemMessageGroup messages={run} />
 				</Fragment>
 			);
 		}

@@ -1,6 +1,7 @@
 import type { ConversationDTO, ParticipantDTO } from "@chatty/shared-types";
 import { getDirectPeer } from "./direct-peer";
 import { formatLastSeen } from "./format-last-seen";
+import { isSavedConversation } from "./is-saved-conversation";
 
 export interface ConversationPresence {
 	/** The other person in a 1-1, or null in a group. */
@@ -38,7 +39,11 @@ export function getConversationPresence(
 	return {
 		peer,
 		isPeerOnline,
-		peerStatus: isPeerOnline ? "Online" : (lastSeen ?? "Last seen hidden"),
+		peerStatus: isSavedConversation(conversation, currentUserId)
+			? "Your personal storage"
+			: isPeerOnline
+				? "Online"
+				: (lastSeen ?? "Last seen hidden"),
 		onlineCount: conversation.participants.filter((participant) => onlineUserIds.has(participant.id)).length,
 	};
 }

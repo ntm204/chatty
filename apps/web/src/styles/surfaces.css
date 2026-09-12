@@ -778,3 +778,129 @@
 		transform: translateX(3px);
 	}
 }
+
+/* A compact activity island that opens into conversation actions. */
+.welcome-island {
+	width: 248px;
+	max-width: 100%;
+	margin-inline: auto;
+	overflow: hidden;
+	border: 1px solid rgb(255 255 255 / 10%);
+	border-radius: 28px;
+	background: #101016;
+	color: #f3f0ff;
+	box-shadow:
+		0 12px 36px rgb(0 0 0 / 18%),
+		inset 0 1px 0 rgb(255 255 255 / 5%);
+	transition:
+		width 440ms cubic-bezier(0.22, 1, 0.36, 1),
+		border-radius 440ms ease;
+}
+.welcome-island[data-expanded="true"] {
+	width: 340px;
+	border-radius: 30px;
+}
+.welcome-island-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 54px;
+	padding: 14px 20px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+}
+.welcome-island-toggle:focus-visible {
+	outline: 2px solid var(--color-brand-yellow);
+	outline-offset: -5px;
+	border-radius: 28px;
+}
+.welcome-island-dot {
+	width: 7px;
+	height: 7px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: #bcb2ff;
+	box-shadow: 0 0 12px rgb(188 178 255 / 35%);
+}
+.welcome-island[data-offline="true"] .welcome-island-toggle > svg:first-child {
+	color: #ffd166;
+}
+.welcome-island-chevron {
+	flex-shrink: 0;
+	opacity: 0.55;
+	transition: transform 350ms ease;
+}
+.welcome-island[data-expanded="true"] .welcome-island-chevron {
+	transform: rotate(180deg);
+}
+.welcome-island-details {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		grid-template-rows 440ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 250ms ease,
+		visibility 440ms;
+}
+.welcome-island[data-expanded="true"] .welcome-island-details {
+	grid-template-rows: 1fr;
+	opacity: 1;
+	visibility: visible;
+}
+.welcome-island-details > div {
+	min-height: 0;
+	overflow: hidden;
+}
+.welcome-island-details p {
+	margin: 0;
+	padding: 0 24px;
+	color: #b9b5c8;
+	font-size: 13px;
+}
+.welcome-island-action {
+	margin: 18px auto 22px;
+	min-height: 42px;
+	border-radius: 24px;
+	padding-inline: 18px;
+	font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+	.welcome-island,
+	.welcome-island-details,
+	.welcome-island-chevron {
+		transition: none;
+	}
+}
+
+.voice-player-duration {
+	transition: transform 180ms ease;
+}
+.voice-player-speed {
+	opacity: 0;
+	visibility: hidden;
+	transform: translateY(4px) scale(0.92);
+	pointer-events: none;
+	transition:
+		opacity 180ms ease,
+		transform 180ms ease,
+		visibility 180ms;
+}
+.voice-player-meta[data-playing="true"] .voice-player-duration {
+	transform: translateY(-10px);
+}
+.voice-player-meta[data-playing="true"] .voice-player-speed {
+	opacity: 1;
+	visibility: visible;
+	transform: translateY(0) scale(1);
+	pointer-events: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+	.voice-player-duration,
+	.voice-player-speed {
+		transition: none;
+	}
+}

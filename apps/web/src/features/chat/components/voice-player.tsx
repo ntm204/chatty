@@ -38,7 +38,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 			role="group"
 			aria-label="Voice message"
 			className={cn(
-				"w-60 min-w-0 max-w-full rounded-message px-2 py-1.5",
+				"voice-message w-64 min-w-0 max-w-full rounded-[18px] px-2.5 py-2.5",
 				isMine ? cn(theme.bubble, theme.bubbleInk) : "bg-paper-sunken text-ink",
 				className,
 			)}
@@ -51,10 +51,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 					aria-label={
 						error ? "Retry voice message" : isPlaying ? "Pause voice message" : "Play voice message"
 					}
-					className={cn(
-						"size-8 shrink-0 rounded-full p-0",
-						isMine ? theme.control : "bg-ink text-paper hover:bg-ink hover:text-paper",
-					)}
+					className={cn("size-8 shrink-0 rounded-full p-0", "bg-black/35 text-white hover:bg-black/45")}
 				>
 					{isLoading ? (
 						<LoaderCircle className="size-3.5 motion-safe:animate-spin" />
@@ -69,17 +66,33 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 				<div className="min-w-0 flex-1">
 					<div
 						className={cn(
-							"relative flex h-8 items-center rounded-control focus-within:ring-2",
+							"relative flex h-10 items-center rounded-control focus-within:ring-2",
 							isMine ? theme.ring : "focus-within:ring-ink/25",
 						)}
 					>
 						<VoiceWaveform
 							waveform={attachment.waveform}
 							progress={playedFraction}
-							className="h-5"
+							className="h-8"
+							barCount={28}
 							playedClassName={isMine ? theme.bubbleInk : "text-ink"}
-							unplayedClassName={isMine ? theme.unplayed : "text-ink/25"}
+							unplayedClassName={
+								elapsedMs === 0
+									? isMine
+										? theme.bubbleInk
+										: "text-ink"
+									: isMine
+										? theme.unplayed
+										: "text-ink/25"
+							}
 						/>
+						{elapsedMs > 0 && playedFraction < 1 && (
+							<span
+								aria-hidden="true"
+								className="pointer-events-none absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current shadow-sm"
+								style={{ left: `${playedFraction * 100}%` }}
+							/>
+						)}
 						<input
 							type="range"
 							min={0}
@@ -93,22 +106,29 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 							className="absolute inset-0 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
 						/>
 					</div>
-					<span className={cn("meta block h-3 leading-3", isMine ? theme.faint : "text-ink-soft")}>
-						{elapsedMs > 0 ? `${elapsedLabel} / ${durationLabel}` : durationLabel}
-					</span>
 				</div>
-				<Button
-					variant="ghost"
-					onClick={cyclePlaybackRate}
-					aria-label="Change playback speed"
-					aria-description={`Current speed: ${playbackRate} times`}
-					className={cn(
-						"meta size-8 shrink-0 rounded-full p-0 hover:bg-transparent",
-						isMine ? theme.accentText : "text-ink-soft hover:text-ink",
-					)}
+				<div
+					className="voice-player-meta relative flex h-10 w-7 shrink-0 items-center justify-center"
+					data-playing={isPlaying}
 				>
-					{playbackRate}×
-				</Button>
+					<span className="voice-player-duration text-[10px] leading-3 tabular-nums">
+						{elapsedMs > 0 ? formatDuration(Math.max(0, durationMs - elapsedMs)) : durationLabel}
+					</span>
+					<Button
+						variant="ghost"
+						onClick={cyclePlaybackRate}
+						aria-label="Change playback speed"
+						aria-description={`Current speed: ${playbackRate} times`}
+						aria-hidden={!isPlaying}
+						tabIndex={isPlaying ? 0 : -1}
+						className={cn(
+							"voice-player-speed absolute bottom-0 h-5 min-h-0 w-7 shrink-0 rounded-full bg-black/10 p-0 text-[10px] leading-none hover:bg-black/20",
+							isMine ? theme.accentText : "text-ink-soft hover:text-ink",
+						)}
+					>
+						{playbackRate}×
+					</Button>
+				</div>
 			</div>
 			{isLoading && (
 				<span role="status" className="sr-only">

@@ -1,5 +1,6 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { getDirectPeer } from "./direct-peer";
+import { isSavedConversation } from "./is-saved-conversation";
 
 /**
  * The name to show for a conversation.
@@ -10,6 +11,7 @@ import { getDirectPeer } from "./direct-peer";
  * nickname if one is set for them in this conversation, else their real name.
  */
 export function getConversationTitle(conversation: ConversationDTO, currentUserId: string): string {
+	if (isSavedConversation(conversation, currentUserId)) return "Saved messages";
 	if (conversation.isGroup) return conversation.name ?? "Group";
 
 	const peer = getDirectPeer(conversation, currentUserId);

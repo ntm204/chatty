@@ -1,4 +1,4 @@
-import type { MessageDTO } from "@chatty/shared-types";
+import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
@@ -28,6 +28,7 @@ export function ChatPage() {
 	const logout = useAuth((state) => state.logout);
 
 	const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+	const [openedSavedConversation, setOpenedSavedConversation] = useState<ConversationDTO | null>(null);
 	const [isManagingGroup, setIsManagingGroup] = useState(false);
 	// The reply target lives here rather than in the composer, because the message
 	// is picked in the list and answered in the composer — two siblings, so the
@@ -139,7 +140,9 @@ export function ChatPage() {
 	const newestStoredMessageId = getNewestStoredMessage(messages)?.id;
 	useMarkRead(selectedConversationId, newestStoredMessageId);
 
-	const selectedConversation = conversations.find((conversation) => conversation.id === selectedConversationId);
+	const selectedConversation =
+		conversations.find((conversation) => conversation.id === selectedConversationId) ??
+		(openedSavedConversation?.id === selectedConversationId ? openedSavedConversation : undefined);
 
 	// Stable identities, which is what keeps the memo on `MessageRows` working
 	// while this component re-renders on every typing and presence event.
@@ -148,7 +151,8 @@ export function ChatPage() {
 		selectedConversation?.pinnedMessages,
 	);
 
-	function handleConversationStarted(conversationId: string) {
+	function handleConversationStarted(conversationId: string, conversation?: ConversationDTO) {
+		if (conversation) setOpenedSavedConversation(conversation);
 		refreshConversations();
 		setIsConversationSearchOpen(false);
 		setRequestedMessageId(null);
@@ -286,7 +290,23 @@ export function ChatPage() {
 							}}
 						/>
 					) : (
-						<ChatWelcome />
+						<ChatWelcome
+							unreadCount={conversations.reduce(
+								(total, conversation) => total + conversation.unreadCount,
+								0,
+							)}
+							isConnectionLost={isConnectionLost}
+							onOpenUnread={
+								conversations.some((conversation) => conversation.unreadCount > 0)
+									? () => {
+											const unread = conversations.find(
+												(conversation) => conversation.unreadCount > 0,
+											);
+											if (unread) handleConversationSelected(unread.id);
+										}
+									: undefined
+							}
+						/>
 					)}
 				</main>
 			</div>

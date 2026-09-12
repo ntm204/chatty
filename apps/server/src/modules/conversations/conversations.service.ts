@@ -361,7 +361,9 @@ async function findExistingDirectConversation(
 
 	// The AND above matches any conversation containing both users; a group that
 	// happens to include them would qualify too, so require exactly two members.
-	return candidates.find((candidate) => candidate._count.participants === 2)?.id ?? null;
+	return (
+		candidates.find((candidate) => candidate._count.participants === (userId === otherUserId ? 1 : 2))?.id ?? null
+	);
 }
 
 /**
@@ -446,7 +448,7 @@ export async function createConversation(
 	// Deduplicate, and drop the caller in case the client included them.
 	const otherUserIds = [...new Set(input.participantIds)].filter((id) => id !== currentUserId);
 
-	if (otherUserIds.length === 0) {
+	if (otherUserIds.length === 0 && !input.participantIds.includes(currentUserId)) {
 		throw new ValidationError("A conversation needs at least one other participant");
 	}
 
@@ -462,7 +464,7 @@ export async function createConversation(
 	const isGroup = otherUserIds.length > 1;
 
 	if (!isGroup) {
-		const otherUserId = otherUserIds[0]!;
+		const otherUserId = otherUserIds[0] ?? currentUserId;
 		const direct = await prisma.$transaction(async (transaction) => {
 			// The lock covers a missing UserBlock row too, so a direct creation and a
 			// block cannot both pass their independent reads and commit in the wrong
@@ -475,7 +477,7 @@ export async function createConversation(
 			const created = await transaction.conversation.create({
 				data: {
 					isGroup: false,
-					participants: { create: [currentUserId, otherUserId].map((userId) => ({ userId })) },
+					participants: { create: [...new Set([currentUserId, otherUserId])].map((userId) => ({ userId })) },
 				},
 				select: { id: true },
 			});
@@ -493,8 +495,9 @@ export async function createConversation(
 		const conversationDTO = toConversationDTO(conversation, unreadCounts.get(conversation.id) ?? 0, currentUserId);
 
 		if (direct.isNew) {
-			await subscribeParticipantsToRoom([currentUserId, otherUserId], conversation.id);
-			announceNewConversation([currentUserId, otherUserId], conversationDTO);
+			const recipients = [...new Set([currentUserId, otherUserId])];
+			await subscribeParticipantsToRoom(recipients, conversation.id);
+			announceNewConversation(recipients, conversationDTO);
 		}
 
 		return conversationDTO;

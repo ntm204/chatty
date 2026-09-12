@@ -1,5 +1,7 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { Avatar } from "@/components/avatar";
+import { Bookmark } from "lucide-react";
+import { isSavedConversation } from "../utils/is-saved-conversation";
 import { AVATAR_SIZE_CLASSES } from "@/constants/avatar-sizes";
 import type { AvatarSize } from "@/types/avatar";
 import { cn } from "@/utils/cn";
@@ -28,6 +30,18 @@ interface ConversationAvatarProps {
  * text, and two maps drift the first time one of them is edited.
  */
 export function ConversationAvatar({ conversation, currentUserId, size = "md" }: ConversationAvatarProps) {
+	if (isSavedConversation(conversation, currentUserId))
+		return (
+			<span
+				aria-hidden="true"
+				className={cn(
+					"flex shrink-0 items-center justify-center bg-paper-sunken text-heading",
+					AVATAR_SIZE_CLASSES[size],
+				)}
+			>
+				<Bookmark className="h-1/2 w-1/2" />
+			</span>
+		);
 	const peer = getDirectPeer(conversation, currentUserId);
 
 	if (!peer) {
