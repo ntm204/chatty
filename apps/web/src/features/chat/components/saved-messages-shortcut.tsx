@@ -4,15 +4,15 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 
-export function SavedMessagesShortcut({
-	userId,
-	onOpen,
-}: {
+interface SavedMessagesShortcutProps {
 	userId: string;
 	onOpen: (id: string, conversation: ConversationDTO) => void;
-}) {
+}
+
+export function SavedMessagesShortcut({ userId, onOpen }: SavedMessagesShortcutProps) {
 	const [isOpening, setIsOpening] = useState(false);
 	const [error, setError] = useState("");
+
 	async function open() {
 		if (isOpening) return;
 		setIsOpening(true);
@@ -26,6 +26,7 @@ export function SavedMessagesShortcut({
 			setIsOpening(false);
 		}
 	}
+
 	return (
 		<div className="px-3 py-1">
 			<Button

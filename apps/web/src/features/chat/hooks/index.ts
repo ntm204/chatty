@@ -1,6 +1,7 @@
 export { useBlockedUsersSync } from "./use-blocked-users-sync";
 export { useRestrictedUsersSync } from "./use-restricted-users-sync";
 export { useConversationList } from "./use-conversation-list";
+export { useConversationNavigation } from "./use-conversation-navigation";
 export { useConversationVault } from "./use-conversation-vault";
 export { useReplyTarget } from "./use-reply-target";
 export { useConversationMessages } from "./use-conversation-messages";

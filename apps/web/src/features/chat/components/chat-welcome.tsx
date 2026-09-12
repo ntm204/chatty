@@ -16,13 +16,15 @@ export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: Cha
 		: unreadCount > 0
 			? `${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`
 			: "Your quiet corner";
+
 	return (
 		<section className="chat-welcome" aria-label="Welcome to your chats">
 			<AmbientBackground />
 			<div className="welcome-content">
 				<div className="welcome-island" data-expanded={isExpanded} data-offline={isConnectionLost}>
-					<button
-						className="welcome-island-toggle"
+					<Button
+						variant="ghost"
+						className="welcome-island-toggle text-current hover:bg-transparent"
 						aria-expanded={isExpanded}
 						aria-controls="welcome-island-details"
 						onClick={() => setIsExpanded((value) => !value)}
@@ -36,7 +38,7 @@ export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: Cha
 							{status}
 						</span>
 						<ChevronDown className="welcome-island-chevron" size={16} aria-hidden="true" />
-					</button>
+					</Button>
 					<div className="welcome-island-details" id="welcome-island-details" aria-hidden={!isExpanded}>
 						<div>
 							<p>

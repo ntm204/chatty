@@ -51,7 +51,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 					aria-label={
 						error ? "Retry voice message" : isPlaying ? "Pause voice message" : "Play voice message"
 					}
-					className={cn("size-8 shrink-0 rounded-full p-0", "bg-black/35 text-white hover:bg-black/45")}
+					className={cn("size-8 shrink-0 rounded-full p-0", "bg-scrim/35 text-on-media hover:bg-scrim/45")}
 				>
 					{isLoading ? (
 						<LoaderCircle className="size-3.5 motion-safe:animate-spin" />
@@ -122,7 +122,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 						aria-hidden={!isPlaying}
 						tabIndex={isPlaying ? 0 : -1}
 						className={cn(
-							"voice-player-speed absolute bottom-0 h-5 min-h-0 w-7 shrink-0 rounded-full bg-black/10 p-0 text-[10px] leading-none hover:bg-black/20",
+							"voice-player-speed absolute bottom-0 h-5 min-h-0 w-7 shrink-0 rounded-full bg-scrim/10 p-0 text-[10px] leading-none hover:bg-scrim/20",
 							isMine ? theme.accentText : "text-ink-soft hover:text-ink",
 						)}
 					>

@@ -34,3 +34,4 @@ export { resolveDisplayName } from "./resolve-display-name";
 export { getDraftPreview, announceDraftPreview } from "./draft-preview";
 
 export { getPinnedMessagePreview } from "./pinned-message-preview";
+export { getTotalUnreadCount, findFirstUnreadConversation } from "./unread-summary";
