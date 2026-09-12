@@ -1,5 +1,6 @@
 import type { GroupInvitePolicy } from "@chatty/shared-types";
 import { useState } from "react";
+import { ShieldPlus } from "lucide-react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
@@ -30,9 +31,12 @@ export function GroupInvitePolicyControl({ conversationId, policy, isAdmin }: Gr
 	}
 
 	return (
-		<div className="mt-4">
-			<div className="flex items-center justify-between gap-3">
-				<span className="text-[13px] text-ink">Only admins can add people</span>
+		<div>
+			<div className="flex min-h-12 items-center gap-3 py-2.5">
+				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+					<ShieldPlus className="size-4 text-ink-soft" aria-hidden="true" />
+				</span>
+				<span className="min-w-0 flex-1 whitespace-nowrap text-[13px] text-ink">Admin-only invites</span>
 				<Button
 					variant="ghost"
 					role="switch"
@@ -58,8 +62,8 @@ export function GroupInvitePolicyControl({ conversationId, policy, isAdmin }: Gr
 					<span
 						aria-hidden="true"
 						className={cn(
-							"absolute top-0.5 size-5 rounded-full bg-paper-raised shadow-sm transition-transform",
-							isAdminsOnly ? "translate-x-5" : "translate-x-0.5",
+							"absolute left-0.5 top-1/2 size-[18px] -translate-y-1/2 rounded-full bg-paper-raised shadow-sm motion-safe:transition-transform",
+							isAdminsOnly ? "translate-x-5" : "translate-x-0",
 						)}
 					/>
 				</Button>

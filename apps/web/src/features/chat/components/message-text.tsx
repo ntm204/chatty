@@ -59,7 +59,7 @@ export function MessageText({ content, mentionedUserIds = [], participants = [],
 					return (
 						<span
 							key={`${index}-${piece}`}
-							className={cn("rounded-badge px-0.5 font-semibold", "bg-signal-soft text-signal")}
+							className={cn("rounded-badge px-0.5 font-semibold", "text-signal")}
 						>
 							@{participant.handle}
 						</span>

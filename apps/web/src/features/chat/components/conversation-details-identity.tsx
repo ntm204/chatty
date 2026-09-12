@@ -1,6 +1,7 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { getConversationTitle, getDirectPeer } from "../utils";
 import { ConversationAvatar } from "./conversation-avatar";
+import { isSavedConversation } from "../utils/is-saved-conversation";
 
 interface ConversationDetailsIdentityProps {
 	conversation: ConversationDTO;
@@ -30,7 +31,9 @@ export function ConversationDetailsIdentity({
 					{getConversationTitle(conversation, currentUserId)}
 				</h3>
 
-				{peer ? (
+				{isSavedConversation(conversation, currentUserId) ? (
+					<p className="text-xs text-ink-faint">Your personal storage</p>
+				) : peer ? (
 					<p className="meta max-w-full truncate text-ink-faint">@{peer.handle}</p>
 				) : (
 					<p className="text-xs text-ink-faint">{conversation.participants.length} members</p>

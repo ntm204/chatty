@@ -74,19 +74,22 @@ export function GroupMemberRow({
 	}, [isExpanded]);
 
 	return (
-		<li className="flex items-center gap-2.5 rounded-panel px-1 py-2">
-			<Avatar user={participant} size="sm" />
+		<li className="flex min-h-12 items-center gap-3 rounded-panel px-3 py-2.5">
+			<Avatar user={participant} size="sm" className="size-8 shrink-0" />
 			<span className="flex min-w-0 flex-1 flex-col">
-				<span className="w-full truncate text-[13px] font-medium text-ink">
+				<span className="w-full truncate text-[13.5px] font-medium text-ink">
 					{participant.nickname ?? participant.displayName}
 					{isSelf && <span className="font-normal text-ink-faint"> (you)</span>}
+				</span>
+				<span className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
+					<span className="truncate">@{participant.handle}</span>
 					{participant.role === "admin" && (
-						<span className="eyebrow ml-2 rounded-badge border border-rule px-1.5 py-0.5 text-ink-faint">
-							Admin
-						</span>
+						<>
+							<span aria-hidden="true">·</span>
+							<span className="shrink-0">Admin</span>
+						</>
 					)}
 				</span>
-				<span className="meta w-full truncate text-ink-faint">@{participant.handle}</span>
 			</span>
 
 			{/* No remove button on your own row — leaving has its own clearly-labelled

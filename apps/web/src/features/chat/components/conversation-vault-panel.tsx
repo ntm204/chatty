@@ -112,10 +112,12 @@ export function ConversationVaultPanel({
 						<Button
 							variant="ghost"
 							onClick={() => setIsPinsDialogOpen(true)}
-							className="min-h-12 w-full justify-start gap-3 px-3 text-left font-normal"
+							className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
 						>
-							<Pin className="size-4 text-ink-soft" />
-							<span className="flex-1 text-sm">Pinned messages</span>
+							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+								<Pin className="size-4 text-ink-soft" aria-hidden="true" />
+							</span>
+							<span className="min-w-0 flex-1 text-[13.5px] text-ink">Pinned messages</span>
 							<span className="meta text-ink-faint">{conversation.pinnedMessages.length}</span>
 							<ChevronRight className="size-4 text-ink-faint" />
 						</Button>

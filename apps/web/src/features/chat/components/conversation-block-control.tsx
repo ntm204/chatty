@@ -43,7 +43,7 @@ export function ConversationBlockControl({ peer }: ConversationBlockControlProps
 	}
 
 	return (
-		<div className="shrink-0 px-1 pb-2">
+		<div className="shrink-0 pb-2">
 			<Button
 				variant="ghost"
 				disabled={isSaving}
@@ -52,10 +52,17 @@ export function ConversationBlockControl({ peer }: ConversationBlockControlProps
 					if (isBlocked) void apply(false);
 					else setIsAsking(true);
 				}}
-				className={cn("w-full justify-start gap-2 px-2 py-2 text-sm", !isBlocked && "text-signal")}
+				className={cn(
+					"min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[13.5px] font-normal",
+					!isBlocked && "text-signal",
+				)}
 			>
-				<Ban className="size-4" />
-				{isBlocked ? `Unblock ${peer.displayName}` : `Block ${peer.displayName}`}
+				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+					<Ban className="size-4" aria-hidden="true" />
+				</span>
+				<span className="min-w-0 flex-1 truncate">
+					{isBlocked ? `Unblock ${peer.displayName}` : `Block ${peer.displayName}`}
+				</span>
 			</Button>
 
 			{isAsking && (

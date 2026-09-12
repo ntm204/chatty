@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NotFoundError, ValidationError } from "../src/lib/errors.js";
+import { NotFoundError } from "../src/lib/errors.js";
 import { prisma } from "../src/lib/prisma.js";
 import { userRoom } from "../src/lib/socket-bus.js";
+import { sendMessage, listMessages } from "../src/modules/messages/messages.service.js";
 import {
 	createConversation,
 	listConversationsForUser,
@@ -205,10 +206,19 @@ describe("createConversation", () => {
 		expect(conversation.participants).toHaveLength(2);
 	});
 
-	it("throws ValidationError when the caller is the only participant", async () => {
+	it("creates one personal conversation even when opened concurrently", async () => {
 		const minhId = await createUser("minh");
-
-		await expect(createConversation(minhId, { participantIds: [minhId] })).rejects.toBeInstanceOf(ValidationError);
+		const [first, second] = await Promise.all([
+			createConversation(minhId, { participantIds: [minhId] }),
+			createConversation(minhId, { participantIds: [minhId] }),
+		]);
+		expect(first.id).toBe(second.id);
+		expect(first.isGroup).toBe(false);
+		expect(first.participants.map((participant) => participant.id)).toEqual([minhId]);
+		const note = await sendMessage(minhId, first.id, { content: "A private note" });
+		expect(note.content).toBe("A private note");
+		const strangerId = await createUser("stranger");
+		await expect(listMessages(strangerId, first.id, { limit: 20 })).rejects.toThrow();
 	});
 
 	it("throws NotFoundError when a participant does not exist", async () => {

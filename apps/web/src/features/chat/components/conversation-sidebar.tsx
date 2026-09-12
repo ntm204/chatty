@@ -9,6 +9,8 @@ import type { ConversationPaging } from "../types/conversation-paging";
 import { PanelResizeHandle } from "./panel-resize-handle";
 import { ConversationList } from "./conversation-list";
 import { NewConversationPanel } from "./new-conversation-panel";
+import { SavedMessagesShortcut } from "./saved-messages-shortcut";
+import { isSavedConversation } from "../utils/is-saved-conversation";
 
 interface ConversationSidebarProps {
 	currentUser: CurrentUserDTO;
@@ -16,7 +18,7 @@ interface ConversationSidebarProps {
 	selectedConversationId: string | null;
 	onlineUserIds: Set<string>;
 	onSelect: (conversationId: string) => void;
-	onConversationStarted: (conversationId: string) => void;
+	onConversationStarted: (conversationId: string, conversation?: ConversationDTO) => void;
 	onSignOut: () => void;
 	isShowingArchived: boolean;
 	onToggleArchived: () => void;
@@ -89,6 +91,7 @@ export function ConversationSidebar({
 			</div>
 
 			<NewConversationPanel onConversationStarted={onConversationStarted} />
+			<SavedMessagesShortcut userId={currentUser.id} onOpen={onConversationStarted} />
 
 			<div className="sidebar-list-label">
 				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "Your conversations"}</span>
@@ -96,7 +99,9 @@ export function ConversationSidebar({
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<ConversationList
-					conversations={conversations}
+					conversations={conversations.filter(
+						(conversation) => !isSavedConversation(conversation, currentUser.id),
+					)}
 					currentUserId={currentUser.id}
 					selectedConversationId={selectedConversationId}
 					onlineUserIds={onlineUserIds}

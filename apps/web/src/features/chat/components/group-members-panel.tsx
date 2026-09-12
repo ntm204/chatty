@@ -110,7 +110,7 @@ export function GroupMembersPanel({
 					<h3 className="text-xs font-medium text-ink-faint">Members · {conversation.participants.length}</h3>
 				)}
 				{conversation.participants.length > 6 && (
-					<div className="mt-3">
+					<div className="mt-3 px-3">
 						<TextField
 							label="Find a member"
 							value={memberQuery}
@@ -141,15 +141,17 @@ export function GroupMembersPanel({
 				</ul>
 			</section>
 
-			<div className="mt-5">
+			<div className="mt-1">
 				<Button
 					variant="ghost"
 					onClick={() => setIsAddOpen(true)}
 					disabled={!canInvite}
-					className="w-full justify-start gap-2.5 px-1 py-2 text-left font-normal"
+					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
 				>
-					<UserPlus className="size-4 text-ink-soft" />
-					<span className="text-[13px]">Add people</span>
+					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+						<UserPlus className="size-4 text-ink-soft" aria-hidden="true" />
+					</span>
+					<span className="min-w-0 flex-1 truncate text-left text-[13.5px] text-ink">Add people</span>
 				</Button>
 				{!canInvite && <p className="mt-1 text-sm text-ink-soft">This group lets only admins add people.</p>}
 			</div>
@@ -164,14 +166,16 @@ export function GroupMembersPanel({
 
 			{/* Ruled off rather than merely spaced: the two sections above are things
 			    you do to the group, and this is the one you do to your own membership. */}
-			<div className="mt-6 border-t border-rule-soft pt-5">
+			<div className="mt-3 border-t border-rule-soft pt-2">
 				<Button
-					variant="danger"
+					variant="ghost"
 					onClick={() => setIsConfirmingLeave(true)}
 					disabled={isLeaving}
-					className="w-full"
+					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[13.5px] font-normal text-signal"
 				>
-					<LogOut className="size-4" />
+					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
+						<LogOut className="size-4" aria-hidden="true" />
+					</span>
 					Leave group
 				</Button>
 			</div>
