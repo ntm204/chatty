@@ -6,10 +6,16 @@ interface BrandProps {
 	className?: string;
 	hasSeparateLetters?: boolean;
 	isSymbolOnly?: boolean;
+	isInteractive?: boolean;
 }
 
-export function Brand({ className, hasSeparateLetters = false, isSymbolOnly = false }: BrandProps) {
-	const brandRef = useBrandGaze();
+export function Brand({
+	className,
+	hasSeparateLetters = false,
+	isSymbolOnly = false,
+	isInteractive = true,
+}: BrandProps) {
+	const brandRef = useBrandGaze(isInteractive);
 
 	return (
 		<span ref={brandRef} className={cn("brand", className)}>

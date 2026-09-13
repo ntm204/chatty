@@ -20,7 +20,7 @@ export function ConversationThemeControl({ conversation }: ConversationThemeCont
 			<Button
 				variant="ghost"
 				onClick={() => setIsOpen(true)}
-				aria-label={`Theme: ${currentLabel}`}
+				aria-label={`Message color: ${currentLabel}`}
 				aria-haspopup="dialog"
 				aria-expanded={isOpen}
 				className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
@@ -28,7 +28,7 @@ export function ConversationThemeControl({ conversation }: ConversationThemeCont
 				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 					<Palette className="size-4 text-ink-soft" aria-hidden="true" />
 				</span>
-				<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">Theme</span>
+				<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">Message color</span>
 				<span className="text-xs text-ink-faint">{currentLabel}</span>
 				<ChevronRight className="size-4 text-ink-faint" />
 			</Button>

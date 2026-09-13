@@ -38,6 +38,8 @@ Skip intro/Escape dismiss immediately; the form is inert during the greeting and
 in the overlay. Switching form modes does not restart it. Reduced motion bypasses the sequence
 and a fallback timer guarantees access if animation events do not fire. Recovery/confirmation
 routes and authenticated chat skip it. Browser checks sample separate letter positions, held glances, eye contact, the wink and replay after reload.
+The intro opts out of idle pointer/visibility handling so a background-tab start cannot pause one eye
+independently of the other; a browser regression covers this case.
 
 ## Logo eye animation
 
@@ -49,13 +51,21 @@ when the page is hidden and respects reduced motion. It changes no layout or nav
 
 The sidebar action trigger no longer stays visible from mouse focus on its row; menus also close
 when keyboard focus leaves. The pinned-message bar is a compact 40px single line with the same
-latest-pin navigation and full-list dialog. Customize chat now exposes a labeled Theme row and
-a preview/Apply dialog with eight shared bubble/background palettes plus Default. The existing
+latest-pin navigation and full-list dialog. Customize chat now exposes a labeled Message color row and
+a preview/Apply dialog with eight shared bubble colors plus Default. The existing
 conversation API persists and broadcasts the selection; preview and cancellation remain local.
-Light/dark tokens adapt the gradients without changing personal appearance preferences. Browser
+The conversation background remains unchanged. The header and pin bar float over the history with
+a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
 ## Current focus — everyday experience polish
+
+The September 12 chat polish adds a Saved messages shortcut and replaces the welcome mascot with
+an expandable activity status. Voice players now use a 256×60 px surface with a 32 px play control,
+a 32 px waveform inside a 40 px seek target, remaining time after playback starts and a speed
+control shown during playback. These dimensions supersede the Phase 49 layout recorded below.
+Browser checks now expand the status before using its search action and start playback before
+changing speed.
 
 The next work follows the [experience polish plan](plans/experience-polish.md): 60 individually
 reviewable tasks across 12 batches, covering composition, drafts, message actions, reading,
@@ -3353,9 +3363,9 @@ event and cannot retroactively adopt a nickname set afterward.
 
 The group photo reuses the exact user-avatar pipeline (`normalizeAvatarImage`, shared rather than
 duplicated) under its own storage key and an unauthenticated route, the same trust boundary user
-avatars already use. The theme is restricted to the eight avatar-tint design tokens already in the
+avatars already use. The message color is restricted to the eight avatar-tint design tokens already in the
 palette — no new colors — and recolors the "mine" surface (bubble, voice player, the reacted-by-me
-chip) for both people in a direct conversation or everyone in a group, since the theme is one value
+chip) for both people in a direct conversation or everyone in a group, since the color is one value
 shared by the whole conversation rather than a per-viewer preference.
 
 Verified 2026-09-06: `npm run verify` passed (typecheck, lint, format, the full server and web
@@ -3364,7 +3374,7 @@ suites, and the conventions audit). The migration adding `avatarUpdatedAt`/`them
 not only asserted in a unit test. `e2e/group.spec.ts` — rewritten for the new section layout — and
 `e2e/compact-thread.spec.ts`/`e2e/compact-receipts.spec.ts` all passed against a real browser, a
 real server and a real database. The panel was verified live in a browser with two real accounts in
-a shared group: setting a theme recolored both accounts' own outgoing bubbles without a reload,
+a shared group: setting a message color recolored both accounts' own outgoing bubbles without a reload,
 and setting a nickname for a third participant showed up in the system log and the nicknames list
 immediately.
 

@@ -135,7 +135,7 @@ export const CONVERSATION_THEME_CLASSES: Record<ConversationTheme, ConversationT
 	},
 };
 
-/** Resolves null (no theme set) to today's fixed appearance. */
+/** Resolves null (no color set) to today's fixed message appearance. */
 export function getConversationThemeClasses(theme: ConversationTheme | null): ConversationThemeClasses {
 	return theme ? CONVERSATION_THEME_CLASSES[theme] : DEFAULT_THEME_CLASSES;
 }

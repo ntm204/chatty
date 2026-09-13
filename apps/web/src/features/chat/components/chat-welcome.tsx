@@ -25,6 +25,7 @@ export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: Cha
 					<Button
 						variant="ghost"
 						className="welcome-island-toggle text-current hover:bg-transparent"
+						aria-label={status}
 						aria-expanded={isExpanded}
 						aria-controls="welcome-island-details"
 						onClick={() => setIsExpanded((value) => !value)}

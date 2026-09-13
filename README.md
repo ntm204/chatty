@@ -14,10 +14,11 @@ The interface follows the owner's [chatty.net](https://chatty.net/) reference: d
 bright yellow, faint violet gradients, restrained typography and rounded surfaces.
 Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
 The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
-The chat welcome reuses this character. “Let’s talk” in the sidebar opens people search; validation
+The chat welcome has an expandable activity status. “Let’s talk” in the sidebar opens people search; validation
 and compact conversation/settings layouts follow the [design review](docs/design/review-2026-09-09.md).
 Every login reload plays a 3.8-second welcome: a descending curtain, the symbol and six letters
 falling separately, then a curious left/right glance, eye contact and wink before dissolving into the ready form.
+The intro keeps both eyes on the same animation timeline, including when opened in a background tab.
 Skip intro/Escape ends it immediately. Switching between login and registration does not restart
 it; reduced motion skips it, and account-recovery links go straight to their forms.
 Authentication, chat and settings share coordinated light/dark themes and responsive phone layouts.
@@ -242,8 +243,9 @@ reload or browser storage changes; this does not synchronize an already open com
 Plain wrapped text bubbles fit their visible lines and recalculate when the thread resizes. Long links
 wrap in full, and message padding, speaker gaps and system notices keep the thread compact.
 
-Voice messages use a compact 240×56px player with 32px controls, a waveform that can
-be scrubbed by pointer or keyboard, elapsed/total time and a 1×/1.5×/2× speed control.
+Voice messages use a compact 256×60px player with a 32px play control and a waveform that can
+be scrubbed by pointer or keyboard. The duration changes to remaining time after playback starts;
+the 1×/1.5×/2× speed control appears while playing.
 Only one player runs at a time; loading and playback failures are visible with a retry action.
 The 44px recording bar shows actual microphone levels and lets you listen, seek, discard or
 send the preview. Failed uploads retain that recording in the current session.
@@ -448,23 +450,24 @@ The panel stays open while chatting on desktop; use the header toggle, Close, or
 Only conversation details use the 240ms enter/exit motion system. Reduced motion skips movement
 and the close delay. Images and settings open and close immediately.
 Both direct and group details open on an overview, mirroring Messenger's layout: mute/search quick
-actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared chat theme,
+actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared message color,
 and per-member nicknames — all shared with everyone in the conversation, not private to whoever set
 them), then Media/files/links, Members, Group options and Privacy & support as collapsible
 sections — content, then people, then settings, then the rare, sensitive controls, rather than
 interleaving settings between content. Renaming and the group photo are admin-gated; the rest of
 Customize chat is open to any participant — cosmetic, not moderation. See
 [ADR 0022](docs/adr/0022-conversation-customize-and-shared-nicknames.md). Rename, the group photo
-theme and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
+message color and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
 place, replacing the real name rather than opening a second input beside it. Adding people to a
 group is search-then-multi-select-then-confirm in its own modal, matching how starting a new
 conversation already works, rather than adding on first click. A member row's actions menu is
 portalled above the list rather than pushed inline, so opening it never shifts the rows below.
 Invite permissions (Group options, admin-gated) use a toggle switch, not a dropdown — there are
-only two states. Theme opens a preview picker with eight coordinated bubble/background palettes
-and Default. Previewing or cancelling changes nothing for other participants; Apply saves the
-shared theme and syncs it live. Light/dark mode remains each person's own preference.
-The 40px pinned-message bar keeps author and preview on one line. Clicking it jumps to the latest
+only two states. Message color opens a preview picker with eight coordinated bubble colors
+and Default; it does not change the conversation background. Previewing or cancelling changes
+nothing for other participants; Apply saves the shared color and syncs it live. Light/dark mode
+remains each person's own preference. The header and 40px pinned-message bar softly blur messages
+as they scroll behind. The pin bar keeps author and preview on one line. Clicking it jumps to the latest
 pin; its expand button opens the full list, also reachable from conversation details.
 
 Pinned messages open in a separate dialog without resizing the thread. Photo/file/voice previews

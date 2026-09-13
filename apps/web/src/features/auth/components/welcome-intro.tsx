@@ -41,7 +41,8 @@ export function WelcomeIntro({ onComplete }: WelcomeIntroProps) {
 			<div className="welcome-intro-scene">
 				<p className="welcome-intro-label">Well, hello there.</p>
 				<div className="welcome-intro-logo">
-					<Brand hasSeparateLetters />
+					{/* The scripted eyes share the curtain's clock; idle gaze must not pause just one eye. */}
+					<Brand hasSeparateLetters isInteractive={false} />
 				</div>
 				<p className="welcome-intro-note">A little closer starts with hello.</p>
 			</div>

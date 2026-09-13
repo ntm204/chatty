@@ -82,6 +82,13 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await openConversationWith(page, other);
 	await expect(page.getByLabel("Show pinned messages")).toBeVisible();
 	await expect(input).toBeVisible();
+	const header = page.locator(".conversation-header");
+	const historyViewport = page.getByLabel("Message history");
+	expect((await historyViewport.boundingBox())!.y).toBeCloseTo((await header.boundingBox())!.y, 0);
+	expect(await header.evaluate((element) => getComputedStyle(element).backdropFilter)).toContain("blur");
+	await historyViewport.evaluate((element) => element.scrollBy(0, -90));
+	await page.screenshot({ path: "/tmp/chatty-pins-blur.png" });
+	await historyViewport.evaluate((element) => element.scrollTo(0, element.scrollHeight));
 	const before = await input.boundingBox();
 	await page.getByLabel("Show pinned messages").click();
 	const dialog = page.getByRole("dialog", { name: "Pinned messages" });
@@ -105,7 +112,7 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 		.getByRole("button", { name: /Pinned messages/ })
 		.click();
 	await page
-		.getByRole("complementary", { name: "Conversation details" })
+		.getByRole("dialog", { name: "Pinned messages" })
 		.getByRole("button", { name: "Photo", exact: true })
 		.click();
 	await expect(photo).toBeInViewport();

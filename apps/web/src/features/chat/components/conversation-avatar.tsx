@@ -30,7 +30,7 @@ interface ConversationAvatarProps {
  * text, and two maps drift the first time one of them is edited.
  */
 export function ConversationAvatar({ conversation, currentUserId, size = "md" }: ConversationAvatarProps) {
-	if (isSavedConversation(conversation, currentUserId))
+	if (isSavedConversation(conversation, currentUserId)) {
 		return (
 			<span
 				aria-hidden="true"
@@ -42,6 +42,7 @@ export function ConversationAvatar({ conversation, currentUserId, size = "md" }:
 				<Bookmark className="h-1/2 w-1/2" />
 			</span>
 		);
+	}
 	const peer = getDirectPeer(conversation, currentUserId);
 
 	if (!peer) {

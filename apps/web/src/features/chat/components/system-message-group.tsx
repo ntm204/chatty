@@ -27,7 +27,7 @@ export function SystemMessageGroup({ messages }: SystemMessageGroupProps) {
 				aria-expanded={isOpen}
 				aria-controls={contentId}
 				onClick={() => setIsOpen((value) => !value)}
-				className="mx-auto flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 hover:bg-paper-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/30"
+				className="mx-auto flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-normal text-ink-faint hover:bg-paper-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink/30"
 			>
 				<span>{messages.length} chat updates</span>
 				<ChevronDown

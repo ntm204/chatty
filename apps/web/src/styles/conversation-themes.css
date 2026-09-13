@@ -1,5 +1,5 @@
-/* Shared theme values already persist through the conversation API. These local
- * tokens color both the picker preview and the reading surface in either mode. */
+/* The persisted value selects message colors only; the reading surface stays
+ * quiet and consistent across conversations. */
 [data-conversation-theme="azure"] {
 	--chat-accent: var(--color-tint-azure);
 	--chat-complement: var(--color-tint-teal);
@@ -32,19 +32,9 @@
 	--chat-accent: var(--color-tint-fern);
 	--chat-complement: var(--color-tint-moss);
 }
-.theme-wallpaper,
-[data-conversation-theme] .message-paper {
-	background:
-		radial-gradient(
-			ellipse at 95% 5%,
-			color-mix(in srgb, var(--chat-complement) 32%, transparent),
-			transparent 65%
-		),
-		linear-gradient(
-			145deg,
-			color-mix(in srgb, var(--chat-accent) 22%, var(--color-paper-raised)),
-			var(--color-paper-raised)
-		);
+
+.theme-wallpaper {
+	background: var(--color-paper-raised);
 }
 [data-conversation-theme="default"] {
 	--chat-accent: var(--color-paper-raised);
@@ -79,4 +69,48 @@
 	width: 28px;
 	height: 14px;
 	border-radius: 7px 7px 2px 7px;
+}
+
+/* The history passes behind the fixed chrome. A dense translucent wash keeps
+ * the controls readable while leaving nearby messages softly visible. */
+.conversation-chrome {
+	--conversation-chrome-height: 77px;
+	position: absolute;
+	inset: 0 0 auto;
+	z-index: 10;
+}
+.conversation-pane {
+	--conversation-chrome-height: 77px;
+}
+.conversation-pane[data-has-pins="true"] {
+	--conversation-chrome-height: 117px;
+}
+.conversation-pane[data-search-open="true"] {
+	--conversation-chrome-height: 125px;
+}
+.conversation-pane[data-has-pins="true"][data-search-open="true"] {
+	--conversation-chrome-height: 165px;
+}
+.conversation-pane .conversation-header,
+.conversation-pane .pinned-messages-banner,
+.conversation-pane .conversation-message-search {
+	background: color-mix(in srgb, var(--color-paper-raised) 82%, transparent);
+	border-color: color-mix(in srgb, var(--color-rule-soft) 68%, transparent);
+	-webkit-backdrop-filter: blur(11px) saturate(112%);
+	backdrop-filter: blur(11px) saturate(112%);
+}
+.conversation-pane .conversation-header > button {
+	background: color-mix(in srgb, var(--color-paper) 76%, transparent);
+}
+.conversation-message-content {
+	padding-top: var(--conversation-chrome-height);
+}
+@media (prefers-reduced-transparency: reduce) {
+	.conversation-pane .conversation-header,
+	.conversation-pane .pinned-messages-banner,
+	.conversation-pane .conversation-message-search {
+		background: var(--color-paper-raised);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 }

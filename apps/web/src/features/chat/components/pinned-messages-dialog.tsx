@@ -1,6 +1,7 @@
 import type { PinnedMessageDTO } from "@chatty/shared-types";
 import { X } from "lucide-react";
 import { useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/button";
 import { useDialog } from "@/hooks/use-dialog";
 import { PinnedMessagesList } from "./pinned-messages-list";
@@ -21,7 +22,8 @@ export function PinnedMessagesDialog({
 	const close = useCallback(() => onClose(), [onClose]);
 	const ref = useDialog<HTMLDivElement>(close);
 
-	return (
+	// The blurred pin bar creates a containing block; the modal belongs to the viewport.
+	return createPortal(
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
 			onClick={(event) => {
@@ -58,6 +60,7 @@ export function PinnedMessagesDialog({
 					/>
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }

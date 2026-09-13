@@ -139,10 +139,10 @@ describe("ConversationCustomizePanel, theme", () => {
 			/>,
 		);
 
-		await user.click(screen.getByRole("button", { name: /Theme: Default/ }));
+		await user.click(screen.getByRole("button", { name: /Message color: Default/ }));
 		await user.click(screen.getByRole("button", { name: "Azure" }));
 		expect(setConversationTheme).not.toHaveBeenCalled();
-		await user.click(screen.getByRole("button", { name: "Apply theme" }));
+		await user.click(screen.getByRole("button", { name: "Apply color" }));
 
 		expect(setConversationTheme).toHaveBeenCalledWith("group-1", "azure");
 	});
@@ -156,17 +156,17 @@ describe("ConversationCustomizePanel, theme", () => {
 				isAdmin={false}
 			/>,
 		);
-		await user.click(screen.getByRole("button", { name: /Theme: Default/ }));
+		await user.click(screen.getByRole("button", { name: /Message color: Default/ }));
 		await user.click(screen.getByRole("button", { name: "Plum" }));
 		await user.click(screen.getByRole("button", { name: "Cancel" }));
 		expect(setConversationTheme).not.toHaveBeenCalled();
-		await user.click(screen.getByRole("button", { name: /Theme: Default/ }));
-		expect(screen.getByRole("button", { name: "Default theme" })).toHaveAttribute("aria-pressed", "true");
+		await user.click(screen.getByRole("button", { name: /Message color: Default/ }));
+		expect(screen.getByRole("button", { name: "Default color" })).toHaveAttribute("aria-pressed", "true");
 		await user.click(screen.getByRole("button", { name: "Iris" }));
 		setConversationTheme.mockRejectedValueOnce(new Error("Please retry"));
-		await user.click(screen.getByRole("button", { name: "Apply theme" }));
+		await user.click(screen.getByRole("button", { name: "Apply color" }));
 		expect(await screen.findByRole("alert")).toHaveTextContent("Please retry");
-		await user.click(screen.getByRole("button", { name: "Apply theme" }));
+		await user.click(screen.getByRole("button", { name: "Apply color" }));
 		expect(setConversationTheme).toHaveBeenLastCalledWith("group-1", "iris");
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 	});

@@ -88,36 +88,40 @@ export function ChatConversationPane({
 				<section
 					aria-label="Conversation"
 					data-conversation-theme={conversation.themeColor ?? "default"}
+					data-has-pins={conversation.pinnedMessages.length > 0}
+					data-search-open={isSearchOpen}
 					className={cn(
-						"conversation-pane flex min-h-0 min-w-0 flex-1 flex-col lg:overflow-hidden lg:rounded-xl lg:border lg:border-rule",
+						"conversation-pane relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:rounded-xl lg:border lg:border-rule",
 						isManagingDetails && "max-xl:hidden",
 					)}
 				>
-					<ConversationHeader
-						conversation={conversation}
-						currentUserId={currentUserId}
-						onlineUserIds={onlineUserIds}
-						typingUserIds={typingUserIds}
-						onToggleGroupMembers={onToggleDetails}
-						isManagingGroup={isManagingDetails}
-						onBack={onBack}
-						onOpenMessageSearch={onOpenSearch}
-					/>
-					<PinnedMessagesBanner
-						key={conversation.id}
-						pinnedMessages={conversation.pinnedMessages}
-						currentUserId={currentUserId}
-						onOpenMessage={onOpenMessage}
-					/>
-
-					{isSearchOpen && (
-						<ConversationMessageSearch
-							conversationId={conversation.id}
-							onSelectResult={onSelectSearchResult}
-							onClearResult={onClearSearchResult}
-							onClose={onCloseSearch}
+					<div className="conversation-chrome">
+						<ConversationHeader
+							conversation={conversation}
+							currentUserId={currentUserId}
+							onlineUserIds={onlineUserIds}
+							typingUserIds={typingUserIds}
+							onToggleGroupMembers={onToggleDetails}
+							isManagingGroup={isManagingDetails}
+							onBack={onBack}
+							onOpenMessageSearch={onOpenSearch}
 						/>
-					)}
+						<PinnedMessagesBanner
+							key={conversation.id}
+							pinnedMessages={conversation.pinnedMessages}
+							currentUserId={currentUserId}
+							onOpenMessage={onOpenMessage}
+						/>
+
+						{isSearchOpen && (
+							<ConversationMessageSearch
+								conversationId={conversation.id}
+								onSelectResult={onSelectSearchResult}
+								onClearResult={onClearSearchResult}
+								onClose={onCloseSearch}
+							/>
+						)}
+					</div>
 
 					<div className="min-h-0 flex-1">
 						{loadError ? (

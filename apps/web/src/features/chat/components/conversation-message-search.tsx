@@ -50,7 +50,7 @@ export function ConversationMessageSearch({
 	// something with no visible focus at all. Same treatment the group-members
 	// search bar already gives its own bottom border.
 	return (
-		<div className="flex min-h-12 shrink-0 items-center gap-2 border-b border-rule bg-paper-raised px-7 transition-colors focus-within:border-ink">
+		<div className="conversation-message-search flex min-h-12 shrink-0 items-center gap-2 border-b border-rule bg-paper-raised px-7 transition-colors focus-within:border-ink">
 			<Search className="size-4 shrink-0 text-ink-faint" />
 			<input
 				ref={inputRef}

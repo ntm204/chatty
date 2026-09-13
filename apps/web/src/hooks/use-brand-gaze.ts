@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 
 /** Keep pointer animation off React's render path and release listeners on unmount. */
-export function useBrandGaze() {
+export function useBrandGaze(isInteractive = true) {
 	const brandRef = useRef<HTMLSpanElement>(null);
 
 	useEffect(() => {
+		if (!isInteractive) return;
 		const brand = brandRef.current;
 		const symbol = brand?.querySelector<HTMLElement>(".brand-symbol");
 		if (!brand || !symbol || !window.matchMedia) return;
@@ -60,6 +61,7 @@ export function useBrandGaze() {
 
 		return () => {
 			rest();
+			brand.removeAttribute("data-gaze-paused");
 			window.removeEventListener("pointermove", follow);
 			document.removeEventListener("pointerout", leave);
 			window.removeEventListener("blur", rest);
@@ -67,7 +69,7 @@ export function useBrandGaze() {
 			preference.removeEventListener("change", rest);
 			pointer.removeEventListener("change", rest);
 		};
-	}, []);
+	}, [isInteractive]);
 
 	return brandRef;
 }

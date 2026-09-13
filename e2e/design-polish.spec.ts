@@ -30,6 +30,7 @@ test("the branded welcome leads to search and mobile settings keep their content
 	await register(page, makeUser("Studio"));
 	await page.getByRole("button", { name: "Start a conversation" }).click();
 	await expect(page.getByLabel("Find someone")).toBeFocused();
+	await page.getByRole("button", { name: "Your quiet corner" }).click();
 	await page.getByRole("button", { name: "Find your people" }).click();
 	await expect(page.getByLabel("Find someone")).toBeFocused();
 	await page.screenshot({ path: "/tmp/chatty-polish-welcome.png", animations: "disabled" });

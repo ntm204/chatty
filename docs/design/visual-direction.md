@@ -30,8 +30,8 @@ calls to action are not part of this messaging application.
   it; recovery routes and authenticated chat go directly through.
 - The masthead's Get started action switches to the actual registration form. Account help opens
   password recovery. Existing sign-in, registration and recovery behavior remains in place.
-- The chat welcome screen reuses the animated Chatty face, with a quiet sans-serif heading and a working Find your
-  people action that focuses search. Its content stays centered within the conversation pane
+- The chat welcome screen uses an expandable activity status and a quiet sans-serif heading. Expanding
+  the status reveals Find your people (or Open unread chat). Its content stays centered within the conversation pane
   without scrolling or clipping the heading on short laptops.
 - The inbox, conversation header, composer, secondary panels and account settings use white/lavender
   surfaces, rounded edges and soft shadows. Outgoing messages are navy and actions are yellow.
@@ -70,7 +70,7 @@ Completed validation:
 - `e2e/entry-layout.spec.ts` covers login/registration at 1440×800, 1280×650, 390×844 and
   320×568 in both themes, short-window validation and keyboard access, and a welcome pane down to
   1024×480. It checks actual content bounds and scrolling, including the search action.
-- The chat-theme browser regression verifies menu dismissal, preview/cancel, two-client theme
+- The message-color browser regression verifies menu dismissal, preview/cancel, two-client color
   sync, reload/reset and mobile picker bounds. The pinned-message scenario also verifies the
   compact 40px bar and preserved navigation.
 - Core text/control color pairs exceed 4.5:1 in both themes. This is a palette check, not a claim

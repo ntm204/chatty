@@ -37,7 +37,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 			await api.setConversationTheme(conversation.id, draft);
 			onClose();
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not change the theme");
+			setError(caught instanceof Error ? caught.message : "Could not change the message color");
 		} finally {
 			setIsSaving(false);
 		}
@@ -54,15 +54,15 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
-				aria-label="Chat theme"
+				aria-label="Message color"
 				tabIndex={-1}
 				className="flex h-[580px] max-h-[calc(100dvh-32px)] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-rule-soft bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="flex shrink-0 items-center justify-between border-b border-rule-soft px-5 py-4">
-					<h2 className="text-base font-semibold text-heading">Chat theme</h2>
+					<h2 className="text-base font-semibold text-heading">Message color</h2>
 					<Button
 						variant="ghost"
-						aria-label="Close chat theme"
+						aria-label="Close message color"
 						disabled={isSaving}
 						onClick={close}
 						className="size-8 rounded-full p-0"
@@ -75,7 +75,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 						data-conversation-theme={draft ?? "default"}
 						className="theme-wallpaper rounded-2xl border border-rule-soft p-4"
 						role="img"
-						aria-label="Theme preview"
+						aria-label="Message color preview"
 					>
 						<p className="mb-3 text-center text-[11px] text-ink-faint">A little more together</p>
 						<div className="w-fit rounded-2xl rounded-bl-md bg-paper-raised px-3 py-2 text-xs text-ink">
@@ -91,11 +91,11 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 							You too. Stay a little?
 						</div>
 					</div>
-					<p className="mb-3 mt-4 text-xs text-ink-soft">A shared look for everyone in this chat.</p>
-					<div className="grid grid-cols-3 gap-2" role="group" aria-label="Choose a theme">
+					<p className="mb-3 mt-4 text-xs text-ink-soft">A shared color for messages in this chat.</p>
+					<div className="grid grid-cols-3 gap-2" role="group" aria-label="Choose a message color">
 						<Button
 							variant="ghost"
-							aria-label="Default theme"
+							aria-label="Default color"
 							aria-pressed={draft === null}
 							disabled={isSaving}
 							onClick={() => setDraft(null)}
@@ -136,7 +136,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 						Cancel
 					</Button>
 					<Button disabled={isSaving} onClick={() => void applyTheme()}>
-						{isSaving ? "Applying…" : "Apply theme"}
+						{isSaving ? "Applying…" : "Apply color"}
 					</Button>
 				</div>
 			</div>

@@ -61,6 +61,7 @@ test("validation and the submit action stay reachable in a short viewport", asyn
 
 test("the chat welcome stays fully visible and does not scroll on short laptops", async ({ page }) => {
 	await register(page, makeUser("Layout"));
+	await page.getByRole("button", { name: "Your quiet corner" }).click();
 	for (const viewport of [
 		{ width: 1440, height: 800 },
 		{ width: 1280, height: 650 },

@@ -194,7 +194,7 @@ export function MessageList({
 			    what makes a short conversation sit on the composer rather than
 			    hanging from the header with a screen of empty paper under it. It
 			    does nothing once the thread is long enough to scroll. */}
-				<div ref={contentRef} className="flex min-h-full flex-col justify-end">
+				<div ref={contentRef} className="conversation-message-content flex min-h-full flex-col justify-end">
 					{isLoadingOlder && (
 						<p className="eyebrow py-4 text-center text-ink-faint">Loading earlier messages…</p>
 					)}

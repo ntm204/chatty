@@ -62,6 +62,45 @@ test("a missing animation event or blocked storage cannot trap the login", async
 	await page.getByRole("textbox", { name: "Email", exact: true }).fill("ready@example.com");
 });
 
+test("opening in a hidden tab keeps both intro eyes on the curtain timeline", async ({ page }) => {
+	// Headless tabs remain visible, so drive the visibility signal consumed by the gaze hook.
+	await page.addInitScript(() => {
+		Object.defineProperty(document, "hidden", { configurable: true, value: true });
+	});
+	await page.goto("/login");
+	const intro = page.getByRole("dialog", { name: "Welcome to Chatty" });
+	await expect(intro).toBeVisible();
+	const eyes = intro.locator(".brand-symbol i");
+	await expect(eyes).toHaveCount(2);
+	await expect
+		.poll(() =>
+			eyes.evaluateAll((elements) =>
+				elements.every((eye) => eye.getAnimations().every((animation) => animation.playState === "running")),
+			),
+		)
+		.toBe(true);
+
+	// Ordinary logos still pause when hidden; only the scripted intro opts out.
+	await expect(page.locator(".auth-masthead .brand")).toHaveAttribute("data-gaze-paused", "");
+	await page.evaluate(() => {
+		Object.defineProperty(document, "hidden", { configurable: true, value: false });
+		document.dispatchEvent(new Event("visibilitychange"));
+	});
+	const positions = await eyes.evaluateAll((elements) =>
+		elements.map((eye) => {
+			for (const animation of eye.getAnimations()) {
+				animation.pause();
+				animation.currentTime = 1610;
+			}
+
+			return parseFloat(getComputedStyle(eye).translate);
+		}),
+	);
+	expect(positions.every((position) => position > 6)).toBe(true);
+	await page.getByRole("button", { name: "Skip intro" }).click();
+	await expect(page.getByRole("textbox", { name: "Email", exact: true })).toBeVisible();
+});
+
 test("letters fall independently, eyes glance left and right, then face the viewer and wink", async ({ page }) => {
 	await page.goto("/login");
 	await expect(page.getByRole("dialog", { name: "Welcome to Chatty" })).toBeVisible();

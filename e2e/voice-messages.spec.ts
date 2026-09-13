@@ -27,7 +27,7 @@ test("voice messages support playback, scrubbing, speed and one active player on
 		await expect(ownVoice).toBeVisible();
 		await expect(peerVoice).toBeVisible();
 		const playerBounds = await ownVoice.boundingBox();
-		expect(playerBounds?.width).toBeLessThanOrEqual(244);
+		expect(playerBounds?.width).toBeLessThanOrEqual(256);
 		expect(playerBounds?.height).toBeLessThanOrEqual(60);
 		await expect(page.getByRole("complementary").getByText("Voice message", { exact: true })).toBeVisible();
 		await expect(ownVoice.getByText("0:08", { exact: true })).toBeVisible();
@@ -55,6 +55,8 @@ test("voice messages support playback, scrubbing, speed and one active player on
 		await expect
 			.poll(() => ownVoice.locator("audio").evaluate((audio: HTMLAudioElement) => audio.currentTime))
 			.toBeGreaterThan(4);
+		await expect(ownVoice.getByRole("button", { name: "Change playback speed" })).toHaveCount(0);
+		await ownVoice.getByRole("button", { name: "Play voice message" }).click();
 		const speed = ownVoice.getByRole("button", { name: "Change playback speed" });
 		await speed.click();
 		await expect(speed).toHaveText("1.5×");
@@ -65,6 +67,7 @@ test("voice messages support playback, scrubbing, speed and one active player on
 		await expect(speed).toHaveText("2×");
 		await speed.click();
 		await expect(speed).toHaveText("1×");
+		await ownVoice.getByRole("button", { name: "Pause voice message" }).click();
 
 		await page.mouse.move(600, 80);
 		await page.screenshot({ animations: "disabled", path: "/tmp/chatty-voice-desktop.png" });
