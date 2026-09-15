@@ -31,7 +31,10 @@ export function ConversationList({
 	paging,
 }: ConversationListProps) {
 	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(paging.hasMore, paging.isLoadingMore, paging.loadMore);
-	const draftPreviews = useDraftPreviews(conversations.map((conversation) => conversation.id));
+	const draftPreviews = useDraftPreviews(
+		currentUserId,
+		conversations.map((conversation) => conversation.id),
+	);
 
 	if (conversations.length === 0) {
 		return (

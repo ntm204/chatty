@@ -746,6 +746,30 @@ export async function editMessage(
 		});
 		await transaction.messageLink.deleteMany({ where: { messageId } });
 		await transaction.messageMention.deleteMany({ where: { messageId } });
+		// Derive edit mentions from current membership under the conversation lock.
+		// Editing does not emit message:new, so this cannot replay arrival alerts.
+		const conversation = await transaction.conversation.findUniqueOrThrow({
+			where: { id: conversationId },
+			select: { isGroup: true },
+		});
+		if (conversation.isGroup) {
+			const handles = [
+				...new Set(
+					[...content.matchAll(/(?:^|\s)@([a-z0-9_.-]+)(?=\s|$)/giu)].map((match) => match[1]!.toLowerCase()),
+				),
+			];
+			const mentions = handles.length
+				? await transaction.conversationParticipant.findMany({
+						where: { conversationId, user: { handle: { in: handles } } },
+						select: { userId: true },
+					})
+				: [];
+			if (mentions.length > 50) throw new ValidationError("A message can mention up to 50 participants");
+			if (mentions.length)
+				await transaction.messageMention.createMany({
+					data: mentions.map(({ userId }) => ({ messageId, userId })),
+				});
+		}
 		const links = extractLinks(content);
 		if (links.length > 0) {
 			await transaction.messageLink.createMany({
@@ -774,7 +798,7 @@ export async function listMessageEdits(
 ): Promise<MessageEditDTO[]> {
 	await assertParticipant(currentUserId, conversationId);
 	const message = await prisma.message.findFirst({
-		where: { id: messageId, conversationId, hiddenFor: { none: { userId: currentUserId } } },
+		where: { id: messageId, conversationId, deletedAt: null, hiddenFor: { none: { userId: currentUserId } } },
 		select: { edits: { orderBy: { editedAt: "desc" }, select: { id: true, content: true, editedAt: true } } },
 	});
 	if (!message) throw new NotFoundError("Message not found");
@@ -813,6 +837,9 @@ export async function deleteMessage(
 ): Promise<MessageDTO> {
 	const { deleted, removedAttachmentIds, wasAlreadyDeleted } = await prisma.$transaction(async (transaction) => {
 		const message = await loadEditableMessage(transaction, currentUserId, conversationId, messageId);
+
+		// Also clean pre-fix tombstones when an old delete is replayed.
+		await transaction.messageEdit.deleteMany({ where: { messageId } });
 
 		if (message.deletedAt) {
 			const unchanged = await transaction.message.findUniqueOrThrow({

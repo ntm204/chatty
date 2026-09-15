@@ -1,3 +1,4 @@
+import { retractCachedMessage } from "@/lib/local-chat-store";
 import type {
 	ConversationDTO,
 	ConversationLeftEvent,
@@ -7,7 +8,7 @@ import type {
 	MessageDTO,
 	PinnedMessageDTO,
 } from "@chatty/shared-types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { cacheConversationPage, readConversationPage } from "@/lib/local-chat-store";
 import type { ConversationPaging } from "../types/conversation-paging";
@@ -60,13 +61,19 @@ export function useConversationList(
 	const [loadedCacheScope, setLoadedCacheScope] = useState<string | null>(null);
 	const cacheScope = currentUserId ? `${currentUserId}:${isShowingArchived ? "archived" : "active"}` : null;
 
+	const scopeRef = useRef({ key: cacheScope });
+	if (scopeRef.current.key !== cacheScope) scopeRef.current = { key: cacheScope };
+	const pendingRowsRef = useRef(new Map<string, object>());
+
 	usePresenceLastSeenSync(setConversations);
 
 	const refresh = useCallback(() => {
 		if (!currentUserId) return;
+		const scope = scopeRef.current;
 		void api
 			.listConversations(isShowingArchived)
 			.then((page) => {
+				if (scopeRef.current !== scope) return;
 				setConversations(page.items);
 				setHasMore(page.hasMore);
 			})
@@ -86,6 +93,7 @@ export function useConversationList(
 		}
 
 		let isCurrent = true;
+		setIsLoadingMore(false);
 		setConversations([]);
 		setHasMore(false);
 		setLoadedCacheScope(null);
@@ -122,10 +130,12 @@ export function useConversationList(
 		const cursor = [...conversations].reverse().find((conversation) => !conversation.isPinned);
 		if (!cursor || isLoadingMore) return;
 
+		const scope = scopeRef.current;
 		setIsLoadingMore(true);
 		void api
 			.listConversations(isShowingArchived, cursor.id)
 			.then((page) => {
+				if (scopeRef.current !== scope) return;
 				setConversations((current) => {
 					// De-duplicated by id rather than trusted: while this request was in
 					// flight a message could have moved one of these rows to the top,
@@ -139,13 +149,16 @@ export function useConversationList(
 			.catch(() => {
 				// Keep the accumulated local page when pagination loses the network.
 			})
-			.finally(() => setIsLoadingMore(false));
+			.finally(() => {
+				if (scopeRef.current === scope) setIsLoadingMore(false);
+			});
 	}, [conversations, isLoadingMore, isShowingArchived]);
 
 	useSocketEvent(
 		"message:new",
 		useCallback(
 			(message: MessageDTO) => {
+				const scope = scopeRef.current;
 				setConversations((current) => {
 					// A conversation the sidebar has not paged to yet. Before paging this
 					// could not happen — the list held everything — and re-listing to
@@ -153,16 +166,23 @@ export function useConversationList(
 					// objection that kept item 80 shut. Fetch the one row instead and put
 					// it where the activity says it belongs.
 					if (!current.some((conversation) => conversation.id === message.conversationId)) {
+						if (pendingRowsRef.current.get(message.conversationId) === scope) return current;
+						pendingRowsRef.current.set(message.conversationId, scope);
 						void api
 							.getConversation(message.conversationId)
 							.then((row) => {
+								if (scopeRef.current !== scope || row.isArchived !== isShowingArchived) return;
 								setConversations((latest) =>
 									latest.some((conversation) => conversation.id === row.id)
 										? latest
 										: orderConversationRows([row, ...latest]),
 								);
 							})
-							.catch(() => undefined);
+							.catch(() => undefined)
+							.finally(() => {
+								if (pendingRowsRef.current.get(message.conversationId) === scope)
+									pendingRowsRef.current.delete(message.conversationId);
+							});
 
 						return current;
 					}
@@ -182,32 +202,39 @@ export function useConversationList(
 					return orderConversationRows(next);
 				});
 			},
-			[currentUserId],
+			[currentUserId, isShowingArchived],
 		),
 	);
 
 	useSocketEvent(
 		"message:updated",
-		useCallback((message: MessageDTO) => {
-			setConversations((current) =>
-				current.map((conversation) =>
-					conversation.id === message.conversationId
-						? {
-								...conversation,
-								lastMessage:
-									conversation.lastMessage?.id === message.id ? message : conversation.lastMessage,
-								pinnedMessages: conversation.pinnedMessages
-									.filter((pin) => pin.messageId !== message.id || !message.deletedAt)
-									.map((pin) =>
-										pin.messageId === message.id
-											? { ...pin, content: message.content, message }
-											: pin,
-									),
-							}
-						: conversation,
-				),
-			);
-		}, []),
+		useCallback(
+			(message: MessageDTO) => {
+				if (currentUserId && message.deletedAt)
+					void retractCachedMessage(currentUserId, message).catch(() => undefined);
+				setConversations((current) =>
+					current.map((conversation) =>
+						conversation.id === message.conversationId
+							? {
+									...conversation,
+									lastMessage:
+										conversation.lastMessage?.id === message.id
+											? message
+											: conversation.lastMessage,
+									pinnedMessages: conversation.pinnedMessages
+										.filter((pin) => pin.messageId !== message.id || !message.deletedAt)
+										.map((pin) =>
+											pin.messageId === message.id
+												? { ...pin, content: message.content, message }
+												: pin,
+										),
+								}
+							: conversation,
+					),
+				);
+			},
+			[currentUserId],
+		),
 	);
 
 	useSocketEvent(

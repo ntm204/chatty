@@ -1,6 +1,50 @@
 import { expect, test } from "@playwright/test";
 import { makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
 
+test("signing out removes private drafts before another participant uses the same browser", async ({ browser }) => {
+	const writer = makeUser("PrivateWriter");
+	const reader = makeUser("PrivateReader");
+	const context = await browser.newContext({ reducedMotion: "reduce" });
+	const peerContext = await browser.newContext({ reducedMotion: "reduce" });
+	try {
+		const page = await context.newPage();
+		const peerPage = await peerContext.newPage();
+		await register(peerPage, reader);
+		await register(page, writer);
+		await startDirectChat(page, reader);
+		await page.getByLabel("Message", { exact: true }).fill("Private unsent words");
+		await page.getByLabel("Sign out").click();
+		await page.getByLabel("Email").fill(reader.email);
+		await page.getByLabel("Password").fill(reader.password);
+		await page.getByRole("button", { name: "Sign in", exact: true }).click();
+		await openConversationWith(page, writer);
+		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("");
+		await expect(page.getByText("Private unsent words")).toHaveCount(0);
+		expect(
+			await page.evaluate(() =>
+				Object.keys(localStorage)
+					.filter((key) => key.startsWith("chatty:user-draft:"))
+					.map((key) => localStorage.getItem(key))
+					.join(""),
+			),
+		).not.toContain("Private unsent words");
+		const input = page.getByLabel("Message", { exact: true });
+		await input.fill("First line");
+		await input.press("Shift+Enter");
+		await input.pressSequentially("Second line");
+		await expect(input).toHaveValue("First line\nSecond line");
+		await input.press("Enter");
+		await expect(input).toHaveValue("");
+		await page.setViewportSize({ width: 375, height: 760 });
+		await input.fill(Array.from({ length: 20 }, () => "Long multiline draft").join("\n"));
+		expect((await input.boundingBox())?.height).toBeLessThanOrEqual(160);
+		await expect(page.getByRole("button", { name: "Send message" })).toBeInViewport();
+	} finally {
+		await context.close();
+		await peerContext.close();
+	}
+});
+
 test("keeps separate composer drafts across switching, mobile back and reload", async ({ browser }) => {
 	const writer = makeUser("DraftWriter");
 	const firstPeer = makeUser("DraftFirst");

@@ -31,7 +31,8 @@
 		"verify": "npm run version:check && npm run typecheck && npm run lint && npm run format:check && npm run test:changed && npm run verify:audit",
 		"verify:full": "npm run version:check && npm run typecheck && npm run lint && npm run format:check && npm run test && npm run verify:audit",
 		"verify:audit": "node scripts/run-audit.mjs --gate",
-		"version:check": "node scripts/check-version.mjs"
+		"version:check": "node scripts/check-version.mjs",
+		"test:e2e:built": "playwright test --config playwright.built.config.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.15.0",

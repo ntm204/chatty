@@ -24,6 +24,35 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 - Conversation details now dock beside chat on wide screens and become a dedicated view on smaller screens, with clearer shared-content navigation and keyboard focus restoration.
 
+### Mentions, forwarding and bookmarks
+
+- Confirm successful forwards with the destination name; report a retracted source without sending.
+- Scope file drops to the composer and ignore drops behind a modal, preventing unintended attachment sends.
+
+- Center global-search previews on the matching text and highlight accent-insensitive Vietnamese matches.
+
+- Rebuild mentions and links transactionally when a group message is edited; edits do not replay arrival alerts.
+
+- Complete group mentions at the caret, preserving suffix text, with arrow/Enter/Escape navigation.
+- Search paginated forward destinations on the server, including archived conversations; retain the send
+  identity when retrying an interrupted forward and show participant handles beside destination names.
+- Add an account-wide Bookmarked messages list and a Bookmark message action, with source navigation,
+  remove/error feedback, pagination and refresh after observed retraction, hiding or membership loss.
+
+### Recovery and unread follow-up
+
+- Show pending/error feedback beside messages for delete, hide, reaction and pin; block overlapping writes
+  and avoid automatic reaction retries.
+
+- Keep failed edits and sticker sends available with inline errors and pending controls; failed sticker
+  deletion retains its tile. Group mentions stay group-only, so typing a handle in a DM no longer causes a 400.
+- Warn when the local outbox cannot be saved; coalesce retries and retain file/voice/sticker send identities.
+  Stop deferred sends and stale local writes after logout, even when localStorage cleanup is blocked.
+- Mark visible messages as read, preserve global search results/scroll on return, and resolve mute/restrict
+  for popup and sound alerts outside loaded sidebar pages. Drop alerts whose policy changes during lookup.
+- Keep archived message arrivals out of the active sidebar and ignore pages from an earlier sidebar scope.
+- Restore the details resize handle; prevent cached media placeholders from offering bogus downloads.
+
 ### Changed
 
 - Balance sidebar rows with name/time on the first line and preview/unread below; give the actions
@@ -47,6 +76,15 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
   draft; keep failed uploads available for retry or removal.
 
 ### Fixed
+
+- Separate composer drafts and sidebar previews by account; invalidate pending writes during logout
+  or account deletion, discard ownerless legacy drafts and explain unavailable local storage.
+- Retract message edit history transactionally, block tombstone history reads and migrate legacy rows;
+  clear open history, embedded quotes and cached content on received retractions.
+- Support a bounded multiline composer, Shift+Enter, composition-safe Enter and empty-composer editing.
+- Keep failed text in its retryable row without restoring it over the next composer draft.
+- Permit local image/voice blob previews under the production CSP and keep offline voice placeholders inert.
+
 
 - Align sidebar preview text and smaller timestamps on a shared baseline.
 
@@ -82,6 +120,11 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 ## [0.2.0-rc.1] — 2026-09-05
 
 ### Added
+
+- Add account-wide message search with archived/unloaded-conversation navigation, stale-page
+  protection, explicit retry and live retraction of results.
+- Add a built-web browser gate for production-CSP image and voice previews against the real test API.
+
 
 - Durable IndexedDB conversation snapshots and an idempotent offline message outbox.
 - Owner/admin/member group controls and owner-selectable invitation policy.

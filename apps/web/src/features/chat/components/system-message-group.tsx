@@ -16,12 +16,20 @@ export function SystemMessageGroup({ messages }: SystemMessageGroupProps) {
 
 	if (messages.length < SYSTEM_MESSAGE_COLLAPSE_THRESHOLD) {
 		return messages.map((message) => (
-			<SystemMessage key={message.id} content={message.content} createdAt={message.createdAt} />
+			<SystemMessage
+				key={message.id}
+				messageId={message.id}
+				content={message.content}
+				createdAt={message.createdAt}
+			/>
 		));
 	}
 
 	return (
-		<div className="w-full py-2 text-xs text-ink-faint">
+		<div
+			id={!isOpen && messages.length ? `message-${messages[messages.length - 1]!.id}` : undefined}
+			className="w-full py-2 text-xs text-ink-faint"
+		>
 			<Button
 				variant="ghost"
 				aria-expanded={isOpen}
@@ -37,7 +45,12 @@ export function SystemMessageGroup({ messages }: SystemMessageGroupProps) {
 			</Button>
 			<div id={contentId} hidden={!isOpen}>
 				{messages.map((message) => (
-					<SystemMessage key={message.id} content={message.content} createdAt={message.createdAt} />
+					<SystemMessage
+						key={message.id}
+						messageId={message.id}
+						content={message.content}
+						createdAt={message.createdAt}
+					/>
 				))}
 			</div>
 		</div>

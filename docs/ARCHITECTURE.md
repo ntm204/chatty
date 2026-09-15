@@ -219,3 +219,85 @@ Three rules matter enough to repeat here; the full set lives in [`conventions/`]
 | [conventions/backend.md](conventions/backend.md) | Node / Express / Prisma rules for `apps/server` |
 | [conventions/git-and-workflow.md](conventions/git-and-workflow.md) | Commits, branches, PR checklist |
 | [`../CLAUDE.md`](../CLAUDE.md) | The conventions block those files resolve against |
+
+## September 15 acceptance boundaries
+
+Composer drafts use account/conversation keys. Synchronous generation invalidation precedes
+asynchronous account cleanup, so unmount/pagehide/debounce cannot rewrite a signed-out user's draft.
+Legacy keys have no owner and are discarded. Draft storage failure is visible in the composer.
+
+Message retraction removes MessageEdit rows in the transaction already serialized by the
+conversation lock. History reads reject tombstones; a data migration cleans pre-fix history.
+Realtime retraction updates embedded quotes, open history, search results and cached snapshots,
+including conversations that are not open. An offline device cannot receive a retraction until it
+reconnects; this does not erase external copies or independent forwards.
+
+Global message search reuses the existing account-scoped endpoint. It resolves a full conversation
+before navigation so an archived or unpaged conversation can open. Search generations invalidate
+both initial and paginated responses; server cursors remain separate from results removed live.
+
+Built-web browser acceptance runs through `npm run test:e2e:built`. It uses Vite preview with the
+CSP extracted from the production nginx template and the isolated real test API, not the Vite dev
+server. Image/voice blob previews are allowed only by img-src/media-src; script-src is unchanged.
+Cached voice placeholders have no audio src and cannot be played until real media URLs return.
+
+
+### Recovery and read boundaries — September 15 continuation
+
+Text/image outbox failures remain visible in the thread and are flagged when the local commit fails.
+A synchronous account generation invalidates queued writes before the IndexedDB transaction begins;
+localStorage failure cannot short-circuit IndexedDB cleanup. Deferred preparation/network dispatch checks
+that the same account session is still active. One draft has at most one delivery request per hook at a time;
+in-flight discard is refused because removing a local row cannot undo an already committed server send.
+
+File, voice and sticker sends use the existing author-scoped `clientId` contract. In-memory retry identities
+survive failure and are cleared on confirmed success; a subsequent intentional send gets a new identity.
+Files/recordings use weak object keys. These media attempts are not a durable cross-reload outbox.
+Composer instances are scoped to account/conversation so a recording or upload preview cannot migrate
+into a different thread. A pending server request may still complete for its original destination.
+
+Read selection lives beside the scroll container. A non-draft message qualifies when a readable portion
+(at least 48px, or its full height for short rows) is visible. Selection is frame-coalesced, monotonic within
+the conversation, and paused while hidden or viewing a historical search window with potentially skipped
+messages. This remains a read cursor, not a claim that a person read every word of a long message.
+
+Sound and popup alerts share bounded in-flight metadata lookups, then apply per-viewer mute and DM
+restriction. Failed/unknown metadata and policy changes during lookup suppress alerts. Group membership
+is distinct from direct-chat restriction. Global search retains query/results/scroll in the mounted chat
+session; it does not persist those results across logout or reload.
+
+Message-row mutations await their HTTP result for pending/error feedback, while socket events remain
+the source of rendered message/pin state. One row permits one mutation at a time. Failures are caught
+after the menu closes and do not affect the composer. A failed response does not prove rollback, so
+reaction toggles are never replayed automatically; users are prompted to check the current state.
+
+
+### Forward destinations and personal bookmarks
+
+`GET /conversations/search` is authenticated and filters by the caller's current membership before
+matching group names or other participants' display names, handles and shared nicknames. It includes
+archived memberships, caps pages at 50 (20 by default), and uses descending conversation ids as a
+stable cursor. It returns the existing viewer-specific DTO projection. Forward sends still use the
+message endpoint's membership checks and author-scoped clientId; the panel retains identities on failure.
+
+Personal bookmarks reuse `/me/saved` and the idempotent PUT/DELETE message `star` endpoints. They remain
+references to originals, distinct from the self-conversation used for notes. The mounted bookmark list
+invalidates old page generations and clears its rows on observed retraction, hide, or membership loss;
+reloading from page one avoids a cursor pointing at a removed bookmark. Separate tabs do not yet receive
+bookmark add/remove events. Opening the list always fetches current server state.
+
+Mention completion follows the textarea selection and updates the caret in a layout effect after its
+controlled value renders; it never mutates the text after the completed handle. Composition guards stay
+in the composer so IME Enter cannot pick a suggestion or submit prematurely.
+
+Group-message edits rebuild mentions from current participant handles and rebuild links in the same
+transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
+`message:updated`, so adding a mention while editing does not replay new-message popup/sound alerts.
+
+Search snippets map normalized matching offsets back to the original Unicode text, including decomposed
+marks and Vietnamese đ. They render text/mark nodes, never HTML from the query or message. Previews are
+bounded around the first match and avoid splitting surrogate pairs at their boundaries.
+
+The global drag listeners prevent browser file navigation, but only accept drops whose target is inside
+the mounted composer and while no modal dialog covers it. Outside drops do not mutate the draft or send
+files. Paste remains a textarea handler, so a clipboard event has only one attachment consumer.

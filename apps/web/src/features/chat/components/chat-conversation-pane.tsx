@@ -1,6 +1,7 @@
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import type { ComponentProps } from "react";
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import type { MessageSearchSession } from "../types/message-search";
@@ -28,10 +29,11 @@ interface ChatConversationPaneProps {
 	onSelectSearchResult: (session: MessageSearchSession) => void;
 	onClearSearchResult: () => void;
 	forwardingMessage: MessageDTO | null;
-	conversations: ConversationDTO[];
 	onCloseForward: () => void;
 	onOpenMessage: (messageId: string) => void;
+	onReturnToGlobalSearch?: (() => void) | undefined;
 	loadError: string;
+	hasUnsavedMessages?: boolean;
 	onRetryLoad: () => void;
 	messageListProps: ComponentProps<typeof MessageList>;
 	messageInputProps: ComponentProps<typeof MessageInput>;
@@ -51,10 +53,11 @@ export function ChatConversationPane({
 	onSelectSearchResult,
 	onClearSearchResult,
 	forwardingMessage,
-	conversations,
 	onCloseForward,
 	onOpenMessage,
+	onReturnToGlobalSearch,
 	loadError,
+	hasUnsavedMessages = false,
 	onRetryLoad,
 	messageListProps,
 	messageInputProps,
@@ -79,7 +82,7 @@ export function ChatConversationPane({
 			{forwardingMessage && (
 				<ForwardMessagePanel
 					message={forwardingMessage}
-					conversations={conversations}
+					key={forwardingMessage.id}
 					currentUserId={currentUserId}
 					onClose={onCloseForward}
 				/>
@@ -113,6 +116,11 @@ export function ChatConversationPane({
 							onOpenMessage={onOpenMessage}
 						/>
 
+						{onReturnToGlobalSearch && (
+							<Button variant="ghost" onClick={onReturnToGlobalSearch} className="mx-3 my-1 text-xs">
+								Back to search results
+							</Button>
+						)}
 						{isSearchOpen && (
 							<ConversationMessageSearch
 								conversationId={conversation.id}
@@ -136,7 +144,17 @@ export function ChatConversationPane({
 							/>
 						)}
 					</div>
-					<MessageInput {...messageInputProps} isDisabled={isBlocked} />
+					{hasUnsavedMessages && (
+						<p role="status" className="shrink-0 px-4 py-2 text-xs text-signal">
+							Some unsent messages could not be saved on this device. Keep this page open until they are
+							sent.
+						</p>
+					)}
+					<MessageInput
+						key={`${currentUserId}:${conversation.id}`}
+						{...messageInputProps}
+						isDisabled={isBlocked}
+					/>
 				</section>
 				{isManagingDetails && (
 					<ConversationVaultPanel

@@ -19,4 +19,5 @@ export type MessageDeliveryState = "pending" | "failed";
  */
 export interface ThreadMessage extends MessageDTO {
 	deliveryState?: MessageDeliveryState;
+	hasLocalStorageError?: boolean;
 }

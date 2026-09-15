@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../../middlewares/require-auth.js";
 import { uploadConversationAvatar } from "../../middlewares/upload-image.js";
 import {
+	searchConversationsController,
 	addParticipantController,
 	archiveConversationController,
 	createConversationController,
@@ -32,6 +33,7 @@ conversationsRouter.get("/:conversationId/avatar", getConversationAvatarControll
 
 conversationsRouter.use(requireAuth);
 conversationsRouter.get("/", listConversationsController);
+conversationsRouter.get("/search", searchConversationsController);
 conversationsRouter.post("/", createConversationController);
 // One row, for the case pagination creates: a message arrives for a conversation
 // the client has not loaded, so there is nothing in the sidebar to patch.

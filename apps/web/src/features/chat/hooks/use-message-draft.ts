@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getMessageDraftGeneration, readMessageDraft, writeMessageDraft } from "@/lib/message-drafts";
 import { announceDraftPreview } from "../utils/draft-preview";
 
 interface MessageDraft {
@@ -7,12 +8,15 @@ interface MessageDraft {
 }
 
 interface DraftSession {
+	userId: string;
 	conversationId: string;
+	generation: number;
 	draft: MessageDraft;
 	timer?: ReturnType<typeof setTimeout>;
 }
 
 interface UseMessageDraftOptions {
+	userId: string;
 	conversationId: string;
 	content: string;
 	replyToId: string | null;
@@ -20,26 +24,29 @@ interface UseMessageDraftOptions {
 	isPaused?: boolean;
 }
 
-function persistDraft(session: DraftSession) {
-	announceDraftPreview(session.conversationId, session.draft.content, session.draft.replyToId);
+function persistDraft(session: DraftSession): boolean {
+	if (session.generation !== getMessageDraftGeneration(session.userId)) return true;
+	announceDraftPreview(session.userId, session.conversationId, session.draft.content, session.draft.replyToId);
 	try {
-		const key = `chatty:draft:${session.conversationId}`;
-		if (session.draft.content || session.draft.replyToId) localStorage.setItem(key, JSON.stringify(session.draft));
-		else localStorage.removeItem(key);
+		writeMessageDraft(session.userId, session.conversationId, session.draft);
+
+		return true;
 	} catch {
-		// Storage may be unavailable or full; keep the current composer usable.
+		return false;
 	}
 }
 
-/** Device-local by design: unsent words are not silently synchronized to another session. */
+/** Drafts stay on this device, separated by account and protected from logout cleanups. */
 export function useMessageDraft({
+	userId,
 	conversationId,
 	content,
 	replyToId,
 	onRestore,
 	isPaused = false,
 }: UseMessageDraftOptions) {
-	const [restoredConversationId, setRestoredConversationId] = useState<string | null>(null);
+	const [restoredSession, setRestoredSession] = useState<DraftSession | null>(null);
+	const [hasStorageError, setHasStorageError] = useState(false);
 	const onRestoreRef = useRef(onRestore);
 	const sessionRef = useRef<DraftSession | null>(null);
 	onRestoreRef.current = onRestore;
@@ -47,29 +54,24 @@ export function useMessageDraft({
 	useEffect(() => {
 		let draft: MessageDraft = { content: "", replyToId: null };
 		try {
-			const raw = localStorage.getItem(`chatty:draft:${conversationId}`);
-			const parsed: unknown = raw ? JSON.parse(raw) : null;
-			if (
-				parsed &&
-				typeof parsed === "object" &&
-				"content" in parsed &&
-				typeof parsed.content === "string" &&
-				"replyToId" in parsed &&
-				(parsed.replyToId === null || typeof parsed.replyToId === "string")
-			)
-				draft = { content: parsed.content, replyToId: parsed.replyToId };
-		} catch {
-			// Malformed or unavailable storage is an empty draft, not a broken input.
+			draft = readMessageDraft(userId, conversationId);
+			setHasStorageError(false);
+		} catch (error) {
+			// Malformed data is an empty draft; unavailable storage deserves an explanation.
+			setHasStorageError(!(error instanceof SyntaxError));
 		}
-		// Each cleanup owns its conversation's committed draft. Never copy props
-		// into this ref during render: they may belong to the next conversation.
-		const session: DraftSession = { conversationId, draft };
+		const session: DraftSession = {
+			userId,
+			conversationId,
+			generation: getMessageDraftGeneration(userId),
+			draft,
+		};
 		sessionRef.current = session;
 		onRestoreRef.current(draft);
-		setRestoredConversationId(conversationId);
+		setRestoredSession(session);
 		const flush = () => {
 			clearTimeout(session.timer);
-			persistDraft(session);
+			setHasStorageError(!persistDraft(session));
 		};
 		const handleVisibility = () => {
 			if (document.visibilityState === "hidden") flush();
@@ -80,27 +82,30 @@ export function useMessageDraft({
 		return () => {
 			window.removeEventListener("pagehide", flush);
 			document.removeEventListener("visibilitychange", handleVisibility);
-			flush();
+			clearTimeout(session.timer);
+			persistDraft(session);
 		};
-	}, [conversationId]);
+	}, [userId, conversationId]);
 
 	useEffect(() => {
 		const session = sessionRef.current;
-		// Restoration schedules a render. The initial empty props must not be
-		// saved before that render, including StrictMode's setup/cleanup replay.
-		if (!session || restoredConversationId !== conversationId || isPaused) return;
+		// Restoration must render before props from the previous account/thread can be saved.
+		if (!session || restoredSession !== session || isPaused) return;
+		if (session.generation !== getMessageDraftGeneration(userId)) return;
 		session.draft = { content, replyToId };
-		announceDraftPreview(conversationId, content, replyToId);
-		session.timer = setTimeout(() => persistDraft(session), 250);
+		announceDraftPreview(userId, conversationId, content, replyToId);
+		session.timer = setTimeout(() => setHasStorageError(!persistDraft(session)), 250);
 
 		return () => clearTimeout(session.timer);
-	}, [conversationId, restoredConversationId, content, replyToId, isPaused]);
+	}, [userId, conversationId, restoredSession, content, replyToId, isPaused]);
 
-	return () => {
+	function clearDraft() {
 		const session = sessionRef.current;
-		if (!session || session.conversationId !== conversationId) return;
+		if (!session || session.userId !== userId || session.conversationId !== conversationId) return;
 		clearTimeout(session.timer);
 		session.draft = { content: "", replyToId: null };
-		persistDraft(session);
-	};
+		setHasStorageError(!persistDraft(session));
+	}
+
+	return { clearDraft, hasStorageError };
 }

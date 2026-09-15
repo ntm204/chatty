@@ -30,6 +30,7 @@ import { assertDirectContactAvailable, isDirectConversationBlockedInTransaction 
 import { isDirectConversationRestricted } from "../restrictions/restrictions.service.js";
 import { toUserDTO, userSelect, type UserRow } from "../users/users.mapper.js";
 import type {
+	SearchConversationsQuery,
 	AddParticipantInput,
 	ArchiveConversationInput,
 	CreateConversationInput,
@@ -618,6 +619,52 @@ export async function listConversationsForUser(
 			toConversationDTO(conversation, unreadCounts.get(conversation.id) ?? 0, userId),
 		),
 		hasMore,
+	};
+}
+
+/** Search membership-scoped destinations, including archived rows, with a stable id cursor. */
+export async function searchConversationsForUser(
+	userId: string,
+	query: SearchConversationsQuery,
+): Promise<ConversationPageDTO> {
+	const text = { contains: query.q, mode: "insensitive" as const };
+	const rows = await prisma.conversation.findMany({
+		where: {
+			participants: { some: { userId } },
+			...(query.before ? { id: { lt: query.before } } : {}),
+			...(query.q
+				? {
+						OR: [
+							{ name: text },
+							{
+								participants: {
+									some: {
+										userId: { not: userId },
+										OR: [
+											{ nickname: text },
+											{ user: { displayName: text } },
+											{ user: { handle: text } },
+										],
+									},
+								},
+							},
+						],
+					}
+				: {}),
+		},
+		orderBy: { id: "desc" },
+		take: query.limit + 1,
+		include: conversationIncludeForUser(userId),
+	});
+	const selected = rows.slice(0, query.limit);
+	const unreadCounts = await countUnreadByConversation(
+		userId,
+		selected.map((row) => row.id),
+	);
+
+	return {
+		items: selected.map((row) => toConversationDTO(row, unreadCounts.get(row.id) ?? 0, userId)),
+		hasMore: rows.length > query.limit,
 	};
 }
 

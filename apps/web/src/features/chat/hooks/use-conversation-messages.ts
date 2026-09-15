@@ -1,5 +1,7 @@
+import { applyMessageRetractions } from "@/utils/apply-message-update";
 import type { MessageDTO, ReactionEmoji } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getMessageDraftGeneration } from "@/lib/message-drafts";
 import { api } from "@/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -18,6 +20,7 @@ import { mergeReloadedMessages } from "../utils/merge-messages";
 import { optimizeImagesForUpload } from "../utils/optimize-image-upload";
 import { toReplyQuote } from "../utils/reply-quote";
 import { useMessageActions } from "./use-message-actions";
+import { useSessionMessageSends } from "./use-session-message-sends";
 import { useSocketEvent } from "./use-socket-event";
 
 /**
@@ -32,6 +35,15 @@ import { useSocketEvent } from "./use-socket-event";
 interface PendingUpload {
 	filesPromise: Promise<File[]>;
 	urls: string[];
+}
+
+// Optimization can fail while IndexedDB is still committing the original bytes.
+// Attach a handler immediately; deliver still receives the original rejection.
+function prepareImageFiles(files: File[]): Promise<File[]> {
+	const prepared = optimizeImagesForUpload(files);
+	void prepared.catch(() => undefined);
+
+	return prepared;
 }
 
 interface LoadingMessageChanges {
@@ -68,6 +80,7 @@ interface ConversationMessages {
 	isLoadingThread: boolean;
 	/** Why the first page could not be fetched, or "" when it could. */
 	loadError: string;
+	hasUnsavedMessages: boolean;
 	/** Fetches the first page again after `loadError`. */
 	retryLoad: () => void;
 	loadOlder: () => void;
@@ -109,10 +122,10 @@ interface ConversationMessages {
 	 * bottom and will not notice.
 	 */
 	trimHistory: () => void;
-	editMessage: (messageId: string, content: string) => void;
-	deleteMessage: (messageId: string) => void;
-	toggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
-	hideMessage: (messageId: string) => void;
+	editMessage: (messageId: string, content: string) => Promise<void>;
+	deleteMessage: (messageId: string) => Promise<void>;
+	toggleReaction: (messageId: string, emoji: ReactionEmoji) => Promise<void>;
+	hideMessage: (messageId: string) => Promise<void>;
 	targetMessageId: string | null;
 }
 
@@ -148,7 +161,9 @@ export function useConversationMessages(
 	const [loadedCacheScope, setLoadedCacheScope] = useState<string | null>(null);
 	const [restoredDraftIds, setRestoredDraftIds] = useState<string[]>([]);
 	const pendingUploadsRef = useRef(new Map<string, PendingUpload>());
+	const sendingDraftIdsRef = useRef(new Set<string>());
 	const currentUserId = useAuth((state) => state.currentUser?.id);
+	const { sendSticker, sendFile, sendVoice } = useSessionMessageSends(conversationId, currentUserId);
 	const cacheScope = currentUserId && conversationId ? `${currentUserId}:${conversationId}` : null;
 	const deliverRef = useRef<(draft: ThreadMessage) => Promise<void>>(async () => undefined);
 	const navigationGenerationRef = useRef(0);
@@ -157,6 +172,10 @@ export function useConversationMessages(
 	// Keep requiring the server across retries until that navigation succeeds.
 	const requiresServerPageRef = useRef(false);
 	const loadingChangesRef = useRef<LoadingMessageChanges | null>(null);
+	const retractionsRef = useRef(new Map<string, MessageDTO>());
+	useEffect(() => {
+		retractionsRef.current.clear();
+	}, [conversationId, currentUserId]);
 	const olderRequestRef = useRef<number | null>(null);
 	const newerRequestRef = useRef<number | null>(null);
 	const resyncRequestRef = useRef<number | null>(null);
@@ -177,9 +196,9 @@ export function useConversationMessages(
 
 	const { editMessage, deleteMessage, toggleReaction } = useMessageActions(conversationId, setMessages);
 	const hideMessage = useCallback(
-		(messageId: string) => {
+		async (messageId: string) => {
 			if (!conversationId) return;
-			void api.hideMessage(conversationId, messageId);
+			await api.hideMessage(conversationId, messageId);
 		},
 		[conversationId],
 	);
@@ -227,12 +246,17 @@ export function useConversationMessages(
 
 			// Updates replace messages in the fetched window; an edit elsewhere in
 			// history must not append that message outside the page's cursors.
-			return [...page, ...arrived]
-				.filter((message) => !loadingChanges.hiddenIds.has(message.id))
-				.map(
-					(message) =>
-						loadingChanges.updates.get(message.id) ?? loadingChanges.arrivals.get(message.id) ?? message,
-				);
+			return applyMessageRetractions(
+				[...page, ...arrived]
+					.filter((message) => !loadingChanges.hiddenIds.has(message.id))
+					.map(
+						(message) =>
+							loadingChanges.updates.get(message.id) ??
+							loadingChanges.arrivals.get(message.id) ??
+							message,
+					),
+				retractionsRef.current,
+			);
 		};
 
 		const request = requestedMessageId
@@ -259,7 +283,7 @@ export function useConversationMessages(
 				for (const item of restored) {
 					if (item.files.length === 0) continue;
 					pendingUploadsRef.current.set(item.draft.id, {
-						filesPromise: optimizeImagesForUpload(item.files),
+						filesPromise: prepareImageFiles(item.files),
 						urls: item.urls,
 					});
 				}
@@ -379,7 +403,7 @@ export function useConversationMessages(
 					// No overlap means the disconnected interval exceeded one page.
 					if (merged[0]?.id !== current[0]?.id) setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
 
-					return merged;
+					return applyMessageRetractions(merged, retractionsRef.current);
 				});
 			})
 			.catch(() => {
@@ -407,7 +431,10 @@ export function useConversationMessages(
 				setMessages((current) => {
 					const knownIds = new Set(current.map((message) => message.id));
 
-					return [...[...page].reverse().filter((message) => !knownIds.has(message.id)), ...current];
+					return applyMessageRetractions(
+						[...[...page].reverse().filter((message) => !knownIds.has(message.id)), ...current],
+						retractionsRef.current,
+					);
 				});
 				setHasMoreOlder(page.length === MESSAGE_PAGE_SIZE);
 			})
@@ -443,7 +470,10 @@ export function useConversationMessages(
 							left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
 					);
 
-					return [...ordered, ...current.filter((message) => isDraftId(message.id))];
+					return applyMessageRetractions(
+						[...ordered, ...current.filter((message) => isDraftId(message.id))],
+						retractionsRef.current,
+					);
 				});
 				setHasMoreNewer(page.length === MESSAGE_PAGE_SIZE);
 			})
@@ -473,9 +503,22 @@ export function useConversationMessages(
 	 * survives the failure, so the second attempt finds the same bytes.
 	 */
 	const deliver = useCallback(async (draft: ThreadMessage) => {
+		if (sendingDraftIdsRef.current.has(draft.id)) return;
+		sendingDraftIdsRef.current.add(draft.id);
+		const authorId = draft.author?.id;
+		const generation = authorId ? getMessageDraftGeneration(authorId) : -1;
 		try {
 			const pendingUpload = pendingUploadsRef.current.get(draft.id);
 			const files = pendingUpload ? await pendingUpload.filesPromise : undefined;
+			if (
+				!authorId ||
+				useAuth.getState().currentUser?.id !== authorId ||
+				getMessageDraftGeneration(authorId) !== generation
+			) {
+				releaseUpload(pendingUploadsRef.current, draft.id);
+
+				return;
+			}
 			const sent = await api.sendMessage(
 				draft.conversationId,
 				draft.content,
@@ -506,6 +549,8 @@ export function useConversationMessages(
 				current.map((message) => (message.id === draft.id ? { ...message, deliveryState: "failed" } : message)),
 			);
 			throw error;
+		} finally {
+			sendingDraftIdsRef.current.delete(draft.id);
 		}
 	}, []);
 
@@ -542,11 +587,20 @@ export function useConversationMessages(
 			if (!conversationId) return;
 			const author = useAuth.getState().currentUser;
 			if (!author) return;
+			const sessionGeneration = getMessageDraftGeneration(author.id);
+			const isCurrentSession = () =>
+				useAuth.getState().currentUser?.id === author.id &&
+				getMessageDraftGeneration(author.id) === sessionGeneration;
 
 			// Awaited before the bubble goes up rather than alongside it: a few
 			// milliseconds of decoding buys a gallery that never resizes, and the
 			// composer has already emptied so nothing is waiting on this.
 			const local = attachments.length > 0 ? await toDraftAttachments(attachments) : [];
+			if (!isCurrentSession()) {
+				for (const attachment of local) URL.revokeObjectURL(attachment.url);
+
+				return;
+			}
 			const draft = {
 				...buildDraftMessage(conversationId, author, content, replyTo ? toReplyQuote(replyTo) : null, local),
 				mentionedUserIds,
@@ -555,55 +609,46 @@ export function useConversationMessages(
 				pendingUploadsRef.current.set(draft.id, {
 					// Begin after the draft has its dimensions, but do not await it:
 					// the bubble appears now while the browser prepares smaller bytes.
-					filesPromise: optimizeImagesForUpload(attachments),
+					filesPromise: prepareImageFiles(attachments),
 					urls: local.map((attachment) => attachment.url),
 				});
 			}
-			setMessages((current) => [...current, draft]);
+			if (activeCacheScopeRef.current === `${author.id}:${conversationId}`)
+				setMessages((current) => [...current, draft]);
 			// The local commit deliberately precedes the network call. Once a bubble is
 			// visible, closing the tab or losing power must not be able to erase it.
 			await toLocalOutboxMessage(draft, author.id, attachments)
-				.then(enqueueLocalMessage)
-				.catch(() => undefined);
+				.then((queued) => {
+					if (!isCurrentSession()) throw new Error("The account session changed");
 
+					return enqueueLocalMessage(queued, sessionGeneration);
+				})
+				.catch(() => {
+					setMessages((current) =>
+						current.map((message) =>
+							message.id === draft.id ? { ...message, hasLocalStorageError: true } : message,
+						),
+					);
+				});
+
+			if (!isCurrentSession()) {
+				releaseUpload(pendingUploadsRef.current, draft.id);
+
+				return;
+			}
 			await deliver(draft);
 		},
 		[conversationId, deliver],
 	);
 
-	const sendSticker = useCallback(
-		async (stickerId: string, replyTo: MessageDTO | null) => {
-			if (!conversationId) return;
-
-			await api.sendSticker(conversationId, stickerId, replyTo?.id);
-		},
-		[conversationId],
-	);
-
-	const sendFile = useCallback(
-		async (file: File, content: string, replyTo: MessageDTO | null, onProgress?: (percent: number) => void) => {
-			if (!conversationId) return;
-			await api.sendFile(conversationId, file, content, onProgress, replyTo?.id);
-		},
-		[conversationId],
-	);
-
-	const sendVoice = useCallback(
-		async (recording: Blob, onProgress?: (percent: number) => void) => {
-			if (!conversationId) return;
-			await api.sendVoice(conversationId, recording, onProgress);
-		},
-		[conversationId],
-	);
-
 	const retrySend = useCallback(
 		(draftId: string) => {
 			const draft = messages.find((message) => message.id === draftId);
-			if (!draft) return;
+			if (!draft || draft.deliveryState !== "failed" || sendingDraftIdsRef.current.has(draftId)) return;
 
 			const retried: ThreadMessage = { ...draft, deliveryState: "pending" };
 			setMessages((current) => current.map((message) => (message.id === draftId ? retried : message)));
-			void deliver(retried);
+			void deliver(retried).catch(() => undefined);
 		},
 		[messages, deliver],
 	);
@@ -628,6 +673,8 @@ export function useConversationMessages(
 	}, [messages]);
 
 	const discardDraft = useCallback((draftId: string) => {
+		// Removing an in-flight request cannot undo a commit on the server.
+		if (sendingDraftIdsRef.current.has(draftId)) return;
 		// Before the row goes, not after: once it is out of the array there is
 		// nothing left holding the URLs, and a `blob:` that is never revoked
 		// keeps its file in memory for the life of the tab.
@@ -642,6 +689,7 @@ export function useConversationMessages(
 			(message: MessageDTO) => {
 				if (message.conversationId === conversationId) {
 					loadingChangesRef.current?.updates.set(message.id, message);
+					if (message.deletedAt) retractionsRef.current.set(message.id, message);
 				}
 			},
 			[conversationId],
@@ -701,6 +749,7 @@ export function useConversationMessages(
 		loadNewer,
 		isLoadingThread,
 		loadError,
+		hasUnsavedMessages: messages.some((message) => message.hasLocalStorageError),
 		retryLoad,
 		resync,
 		sendMessage,

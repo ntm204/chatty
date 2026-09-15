@@ -47,3 +47,5 @@ export { PanelResizeHandle } from "./panel-resize-handle";
 
 export { PinnedMessagesDialog } from "./pinned-messages-dialog";
 export { PinnedMessagesList } from "./pinned-messages-list";
+
+export { GlobalMessageSearch } from "./global-message-search";

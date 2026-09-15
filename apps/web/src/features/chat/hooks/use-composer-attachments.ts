@@ -1,4 +1,4 @@
-import type { ChangeEvent, ClipboardEvent, Dispatch, SetStateAction } from "react";
+import type { ChangeEvent, ClipboardEvent, Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useState } from "react";
 import {
 	MAX_ATTACHMENTS_PER_MESSAGE,
@@ -8,6 +8,7 @@ import {
 } from "../constants/attachment";
 
 interface UseComposerAttachmentsOptions {
+	dropTargetRef: RefObject<HTMLElement>;
 	setError: Dispatch<SetStateAction<string>>;
 	isDisabled: boolean;
 	selectedFile: File | null;
@@ -15,6 +16,7 @@ interface UseComposerAttachmentsOptions {
 }
 
 export function useComposerAttachments({
+	dropTargetRef,
 	setError,
 	isDisabled,
 	selectedFile,
@@ -97,11 +99,19 @@ export function useComposerAttachments({
 			return [...(event.dataTransfer?.types ?? [])].includes("Files");
 		}
 
+		function canAcceptDrop(event: DragEvent) {
+			return (
+				!isDisabled &&
+				event.target instanceof Node &&
+				Boolean(dropTargetRef.current?.contains(event.target)) &&
+				!document.querySelector('[role="dialog"][aria-modal="true"]')
+			);
+		}
+
 		function handleDragOver(event: DragEvent) {
 			if (!hasFiles(event)) return;
 			event.preventDefault();
-			if (isDisabled) return;
-			setIsDragActive(true);
+			setIsDragActive(canAcceptDrop(event));
 		}
 
 		function handleDragLeave(event: DragEvent) {
@@ -112,6 +122,7 @@ export function useComposerAttachments({
 			if (!hasFiles(event)) return;
 			event.preventDefault();
 			setIsDragActive(false);
+			if (!canAcceptDrop(event)) return;
 			const files = [...(event.dataTransfer?.files ?? [])];
 			if (files.every((file) => file.type.startsWith("image/"))) addImages(files);
 			else if (files.length === 1 && files[0]) selectDocument(files[0]);
@@ -127,7 +138,7 @@ export function useComposerAttachments({
 			window.removeEventListener("dragleave", handleDragLeave);
 			window.removeEventListener("drop", handleDrop);
 		};
-	}, [addImages, isDisabled, selectDocument, setError]);
+	}, [addImages, dropTargetRef, isDisabled, selectDocument, setError]);
 
 	function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
 		const picked = [...(event.target.files ?? [])];
@@ -143,7 +154,7 @@ export function useComposerAttachments({
 		else selectDocument(file);
 	}
 
-	function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
+	function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
 		const files = [...event.clipboardData.files];
 		if (files.length === 0) return;
 		event.preventDefault();

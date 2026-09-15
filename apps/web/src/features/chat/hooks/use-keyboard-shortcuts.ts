@@ -19,7 +19,14 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions): void {
 
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
-			if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+			if (
+				event.isComposing ||
+				event.keyCode === 229 ||
+				event.defaultPrevented ||
+				document.querySelector('[role="dialog"][aria-modal="true"]')
+			) {
+				return;
+			}
 			const currentOptions = optionsRef.current;
 			const target = event.target as HTMLElement | null;
 			const isTextField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
@@ -50,7 +57,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions): void {
 
 			if (
 				event.key === "ArrowUp" &&
-				target instanceof HTMLInputElement &&
+				(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) &&
 				target.getAttribute("aria-label") === "Message" &&
 				target.value === ""
 			) {

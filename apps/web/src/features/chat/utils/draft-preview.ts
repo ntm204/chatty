@@ -16,10 +16,15 @@ export function getDraftPreview(raw: string | null): string | null {
 	}
 }
 
-export function announceDraftPreview(conversationId: string, content: string, replyToId: string | null) {
+export function announceDraftPreview(
+	userId: string,
+	conversationId: string,
+	content: string,
+	replyToId: string | null,
+) {
 	window.dispatchEvent(
 		new CustomEvent(DRAFT_CHANGED_EVENT, {
-			detail: { conversationId, preview: getDraftPreview(JSON.stringify({ content, replyToId })) },
+			detail: { userId, conversationId, preview: getDraftPreview(JSON.stringify({ content, replyToId })) },
 		}),
 	);
 }

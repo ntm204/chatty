@@ -20,6 +20,7 @@ import type {
 	MessageContextDTO,
 	MessageEditDTO,
 	MessageSearchPageDTO,
+	SavedMessagePageDTO,
 	MessageLinkPageDTO,
 	PinnedMessageDTO,
 	ReactionEmoji,
@@ -379,9 +380,10 @@ export const api = {
 	 * is the whole message — the server refuses it alongside text or files, and a
 	 * shared signature would invite exactly that call.
 	 */
-	sendSticker(conversationId: string, stickerId: string, replyToId?: string): Promise<MessageDTO> {
+	sendSticker(conversationId: string, stickerId: string, replyToId?: string, clientId?: string): Promise<MessageDTO> {
 		return post<MessageDTO>(`/conversations/${conversationId}/messages`, {
 			stickerId,
+			...(clientId ? { clientId } : {}),
 			...(replyToId ? { replyToId } : {}),
 		});
 	},
@@ -456,6 +458,13 @@ export const api = {
 		const query = params.toString();
 
 		return get<ConversationPageDTO>(`/conversations${query ? `?${query}` : ""}`);
+	},
+
+	searchConversations(query: string, before?: string): Promise<ConversationPageDTO> {
+		const params = new URLSearchParams({ q: query });
+		if (before) params.set("before", before);
+
+		return get<ConversationPageDTO>(`/conversations/search?${params.toString()}`);
 	},
 
 	/** One row, for a conversation that got activity before the sidebar paged to it. */
@@ -624,24 +633,52 @@ export const api = {
 		content = "",
 		onProgress?: (percent: number) => void,
 		replyToId?: string,
+		clientId?: string,
 	): Promise<MessageDTO> {
 		const body = new FormData();
 		body.append(FILE_FIELD, file);
+		if (clientId) body.append("clientId", clientId);
 		if (content) body.append("content", content);
 		if (replyToId) body.append("replyToId", replyToId);
 
 		return uploadMessage(conversationId, body, onProgress, "The file upload was interrupted");
 	},
 
-	sendVoice(conversationId: string, recording: Blob, onProgress?: (percent: number) => void): Promise<MessageDTO> {
+	sendVoice(
+		conversationId: string,
+		recording: Blob,
+		onProgress?: (percent: number) => void,
+		clientId?: string,
+	): Promise<MessageDTO> {
 		const body = new FormData();
 		body.append(VOICE_FIELD, recording, "voice-message");
+		if (clientId) body.append("clientId", clientId);
 
 		return uploadMessage(conversationId, body, onProgress, "The voice upload was interrupted");
 	},
 
-	forwardMessage(conversationId: string, sourceMessageId: string): Promise<MessageDTO> {
-		return post<MessageDTO>(`/conversations/${conversationId}/messages`, { forwardOfMessageId: sourceMessageId });
+	forwardMessage(
+		conversationId: string,
+		sourceMessageId: string,
+		clientId: string = crypto.randomUUID(),
+	): Promise<MessageDTO> {
+		return post<MessageDTO>(`/conversations/${conversationId}/messages`, {
+			forwardOfMessageId: sourceMessageId,
+			clientId,
+		});
+	},
+
+	listBookmarkedMessages(before?: string): Promise<SavedMessagePageDTO> {
+		const params = new URLSearchParams({ limit: "20" });
+		if (before) params.set("before", before);
+
+		return get<SavedMessagePageDTO>(`/me/saved?${params.toString()}`);
+	},
+	saveMessage(conversationId: string, messageId: string): Promise<void> {
+		return request<void>(`/conversations/${conversationId}/messages/${messageId}/star`, { method: "PUT" });
+	},
+	removeBookmark(conversationId: string, messageId: string): Promise<void> {
+		return request<void>(`/conversations/${conversationId}/messages/${messageId}/star`, { method: "DELETE" });
 	},
 
 	listConversationMedia(

@@ -1,9 +1,14 @@
-import type { ChangeEvent, FormEvent } from "react";
+import { useAutosizeTextarea } from "@/hooks/use-autosize-textarea";
+import { isComposingKey } from "@/utils/is-composing-key";
+import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageDTO, ParticipantDTO } from "@chatty/shared-types";
 import { cn } from "@/utils/cn";
+import { getMentionedUserIds } from "../utils/mentioned-user-ids";
 import { useTypingNotifier } from "../hooks";
+import { useComposerMentions } from "../hooks/use-composer-mentions";
 import { useComposerAttachments } from "../hooks/use-composer-attachments";
+import { useComposerStickerSend } from "../hooks/use-composer-sticker-send";
 import { useComposerFileSend } from "../hooks/use-composer-file-send";
 import { useMessageDraft } from "../hooks/use-message-draft";
 import { ComposerControls } from "./composer-controls";
@@ -16,6 +21,7 @@ interface MessageInputProps {
 	conversationId: string;
 	participants: ParticipantDTO[];
 	currentUserId: string;
+	isGroup?: boolean;
 	/** Only true for the caller's own direct block, never the reverse direction. */
 	isDisabled?: boolean;
 	/** The message being answered, or null for an ordinary send. */
@@ -43,6 +49,7 @@ export function MessageInput({
 	conversationId,
 	participants,
 	currentUserId,
+	isGroup = false,
 	isDisabled = false,
 	replyTo,
 	onCancelReply,
@@ -57,9 +64,10 @@ export function MessageInput({
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const [isStickerTrayOpen, setIsStickerTrayOpen] = useState(false);
 	const [isVoiceActive, setIsVoiceActive] = useState(false);
-	const fieldRef = useRef<HTMLInputElement>(null);
-	const contentRef = useRef(content);
-	contentRef.current = content;
+	const fieldRef = useRef<HTMLTextAreaElement>(null);
+	const composerRef = useRef<HTMLDivElement>(null);
+	const isComposingRef = useRef(false);
+	useAutosizeTextarea(fieldRef, content);
 	const { notifyTyping, stopTyping } = useTypingNotifier(conversationId);
 	const { selectedFile, isSending, uploadProgress, sendFile, removeFile } = useComposerFileSend({
 		isDisabled: isDisabled || isVoiceActive,
@@ -81,12 +89,14 @@ export function MessageInput({
 		handlePaste,
 		removeAttachment,
 	} = useComposerAttachments({
+		dropTargetRef: composerRef,
 		setError,
 		selectedFile,
 		isDisabled: isDisabled || isSending || isVoiceActive,
 		onFileSelected: sendFile,
 	});
-	const clearDraft = useMessageDraft({
+	const { clearDraft, hasStorageError } = useMessageDraft({
+		userId: currentUserId,
 		conversationId,
 		content,
 		replyToId: replyTo?.id ?? null,
@@ -98,18 +108,22 @@ export function MessageInput({
 			[onRestoreReply],
 		),
 	});
-	const mentionMatch = content.match(/(?:^|\s)@([a-z0-9_.-]*)$/iu);
-	const mentionQuery = mentionMatch?.[1]?.toLowerCase();
-	const mentionSuggestions = mentionMatch
-		? participants
-				.filter(
-					(participant) =>
-						participant.id !== currentUserId &&
-						(participant.handle.includes(mentionQuery ?? "") ||
-							participant.displayName.toLowerCase().includes(mentionQuery ?? "")),
-				)
-				.slice(0, 5)
-		: [];
+	const sendSticker = useComposerStickerSend({
+		isDisabled: isDisabled || isSending || isVoiceActive,
+		replyTo,
+		onSend: onSendSticker,
+		onCancelReply,
+		stopTyping,
+	});
+	const mentions = useComposerMentions({
+		content,
+		setContent,
+		fieldRef,
+		participants,
+		currentUserId,
+		isEnabled: isGroup && !isDisabled && !isVoiceActive,
+		onInsert: notifyTyping,
+	});
 
 	// A message is allowed to be pictures with nothing written on them.
 	const hasSomethingToSend = Boolean(content.trim()) || attachments.length > 0;
@@ -122,18 +136,12 @@ export function MessageInput({
 		setIsStickerTrayOpen(false);
 	}, [isDisabled, stopTyping]);
 
-	function handleChange(event: ChangeEvent<HTMLInputElement>) {
+	function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
 		if (isDisabled) return;
 		setContent(event.target.value);
+		mentions.syncSelection(event.target);
 		if (event.target.value.trim()) notifyTyping();
 		else stopTyping();
-	}
-
-	function insertMention(participant: ParticipantDTO) {
-		if (!mentionMatch || mentionMatch.index === undefined) return;
-		const leadingSpace = mentionMatch[0].startsWith(" ") ? " " : "";
-		setContent(`${content.slice(0, mentionMatch.index)}${leadingSpace}@${participant.handle} `);
-		requestAnimationFrame(() => fieldRef.current?.focus());
 	}
 
 	/** Inserts at the caret and restores focus after the controlled field renders. */
@@ -151,21 +159,17 @@ export function MessageInput({
 		});
 	}
 
-	function sendSticker(stickerId: string) {
-		if (isDisabled) return;
-		// A sticker is the whole message, so its tray must not cover what was just sent.
-		setIsStickerTrayOpen(false);
-		stopTyping();
-		const target = replyTo;
-		void onSendSticker(stickerId, target).then(() => {
-			// Sending a sticker consumes the reply, not the text still in the field.
-			onCancelReply();
-		});
+	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+		if (isComposingKey(event) || isComposingRef.current) return;
+		if (mentions.handleKeyDown(event)) return;
+		if (event.key !== "Enter" || event.shiftKey) return;
+		event.preventDefault();
+		if (!event.repeat) event.currentTarget.form?.requestSubmit();
 	}
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (isDisabled || isSending || !hasSomethingToSend) return;
+		if (isDisabled || isSending || isVoiceActive || isComposingRef.current || !hasSomethingToSend) return;
 
 		// Retract before the request: a slow network must not leave "typing…" behind.
 		stopTyping();
@@ -173,34 +177,10 @@ export function MessageInput({
 
 		const draftContent = content.trim();
 		const draftReplyTo = replyTo;
-		const mentionedUserIds = participants
-			.filter((participant) =>
-				new RegExp(`(^|\\s)@${participant.handle.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?=\\s|$)`, "iu").test(
-					draftContent,
-				),
-			)
-			.map((participant) => participant.id);
+		const mentionedUserIds = isGroup ? getMentionedUserIds(draftContent, participants) : [];
 
-		// Empty text before the round trip; the optimistic bubble owns any failure.
-		if (attachments.length === 0) {
-			localStorage.setItem(
-				`chatty:draft:${conversationId}`,
-				JSON.stringify({ content: draftContent, replyToId: draftReplyTo?.id ?? null }),
-			);
-			setContent("");
-			try {
-				await onSend(draftContent, [], draftReplyTo, mentionedUserIds);
-				if (contentRef.current === "") clearDraft();
-				onCancelReply();
-			} catch (sendError) {
-				setContent(draftContent);
-				setError(sendError instanceof Error ? sendError.message : "The message could not be sent");
-			}
-
-			return;
-		}
-
-		// Pictures also empty optimistically; their bubble owns the retry state.
+		// The thread's optimistic row owns retry for both text and images. A failed
+		// request must never restore an old message over words typed after sending.
 		setContent("");
 		setAttachments([]);
 		clearDraft();
@@ -208,17 +188,23 @@ export function MessageInput({
 		try {
 			await onSend(draftContent, attachments, draftReplyTo, mentionedUserIds);
 		} catch {
-			// Swallowed on purpose: the draft in the thread is already showing
-			// "Not sent" with a retry beside it, and a second copy of the same
-			// news in a composer the sender has moved on from is noise.
+			// The row remains visible with Retry. Do not create a second composer copy.
 		}
 	}
 
 	return (
-		<div className="message-composer shrink-0 border-t border-rule-soft bg-paper-raised px-3 py-2.5 sm:px-4 md:px-5">
+		<div
+			ref={composerRef}
+			className="message-composer shrink-0 border-t border-rule-soft bg-paper-raised px-3 py-2.5 sm:px-4 md:px-5"
+		>
 			{isDisabled && (
 				<p role="status" className="mb-2 rounded-control bg-signal-soft px-3 py-2 text-[13px] text-signal">
 					You blocked this person. Unblock them to send a message.
+				</p>
+			)}
+			{hasStorageError && (
+				<p role="status" className="mb-2 text-xs text-signal">
+					This draft cannot be saved on this device. Keep this page open to avoid losing it.
 				</p>
 			)}
 			<form
@@ -244,7 +230,12 @@ export function MessageInput({
 					onRemoveFile={removeFile}
 				/>
 
-				<ComposerMentionSuggestions participants={mentionSuggestions} onPick={insertMention} />
+				<ComposerMentionSuggestions
+					participants={mentions.suggestions}
+					onPick={mentions.insertMention}
+					listId={mentions.listId}
+					selectedIndex={mentions.selectedIndex}
+				/>
 
 				<ComposerControls
 					isDisabled={isDisabled}
@@ -269,15 +260,29 @@ export function MessageInput({
 					onInsertEmoji={insertEmoji}
 					onPickSticker={sendSticker}
 					field={
-						<input
+						<textarea
 							ref={fieldRef}
+							rows={1}
+							onKeyDown={handleKeyDown}
+							onCompositionStart={() => {
+								isComposingRef.current = true;
+							}}
+							onCompositionEnd={() => {
+								isComposingRef.current = false;
+							}}
 							value={content}
 							onChange={handleChange}
+							onSelect={(event) => mentions.syncSelection(event.currentTarget)}
+							aria-controls={mentions.suggestions.length ? mentions.listId : undefined}
+							aria-activedescendant={
+								mentions.suggestions.length ? `${mentions.listId}-${mentions.selectedIndex}` : undefined
+							}
+							aria-autocomplete={isGroup ? "list" : undefined}
 							onPaste={handlePaste}
 							disabled={isDisabled || isVoiceActive}
 							placeholder="Write a message"
 							aria-label="Message"
-							className="min-w-0 flex-1 bg-transparent px-2.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint"
+							className="max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint"
 						/>
 					}
 					voiceRecorder={

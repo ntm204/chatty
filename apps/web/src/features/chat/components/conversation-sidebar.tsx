@@ -1,6 +1,6 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { Archive, ArrowLeft, LogOut, Settings } from "lucide-react";
+import { Archive, ArrowLeft, LogOut, Search, Settings } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -9,6 +9,7 @@ import type { ConversationPaging } from "../types/conversation-paging";
 import { PanelResizeHandle } from "./panel-resize-handle";
 import { ConversationList } from "./conversation-list";
 import { NewConversationPanel } from "./new-conversation-panel";
+import { BookmarksShortcut } from "./bookmarks-shortcut";
 import { SavedMessagesShortcut } from "./saved-messages-shortcut";
 import { isSavedConversation } from "../utils/is-saved-conversation";
 
@@ -20,6 +21,8 @@ interface ConversationSidebarProps {
 	onSelect: (conversationId: string) => void;
 	onConversationStarted: (conversationId: string, conversation?: ConversationDTO) => void;
 	onSignOut: () => void;
+	onOpenMessageSearch: () => void;
+	onOpenBookmarkedMessage: (conversation: ConversationDTO, messageId: string) => void;
 	isShowingArchived: boolean;
 	onToggleArchived: () => void;
 	typingByConversation: Record<string, string[]>;
@@ -43,6 +46,8 @@ export function ConversationSidebar({
 	onSelect,
 	onConversationStarted,
 	onSignOut,
+	onOpenMessageSearch,
+	onOpenBookmarkedMessage,
 	isShowingArchived,
 	onToggleArchived,
 	typingByConversation,
@@ -91,7 +96,18 @@ export function ConversationSidebar({
 			</div>
 
 			<NewConversationPanel onConversationStarted={onConversationStarted} />
+			<div className="px-4">
+				<Button
+					variant="ghost"
+					onClick={onOpenMessageSearch}
+					className="w-full justify-start px-2 py-2 text-xs"
+				>
+					<Search className="size-4" />
+					Search all messages
+				</Button>
+			</div>
 			<SavedMessagesShortcut userId={currentUser.id} onOpen={onConversationStarted} />
+			<BookmarksShortcut currentUserId={currentUser.id} onSelectMessage={onOpenBookmarkedMessage} />
 
 			<div className="sidebar-list-label">
 				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "Your conversations"}</span>

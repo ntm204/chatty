@@ -10,6 +10,8 @@ import { MessageActionsMenu } from "./message-actions-menu";
 import { ReactionBar } from "./reaction-bar";
 
 interface MessageActionsProps {
+	isPending?: boolean;
+	onBookmark?: (() => void) | undefined;
 	onEdit?: () => void;
 	onDeleteForEveryone?: () => void;
 	onDeleteForMe: () => void;
@@ -43,6 +45,8 @@ interface MessageActionsProps {
  * how you end up with both drawn on top of each other after a fast click.
  */
 export function MessageActions({
+	isPending = false,
+	onBookmark,
 	onEdit,
 	onDeleteForEveryone,
 	onDeleteForMe,
@@ -62,6 +66,10 @@ export function MessageActions({
 		() => !authorActionExpiresAt || Date.parse(authorActionExpiresAt) <= Date.now(),
 	);
 	const rootRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (isPending) setOpenPanel(null);
+	}, [isPending]);
 
 	useEffect(() => {
 		if (!authorActionExpiresAt) {
@@ -167,6 +175,7 @@ export function MessageActions({
 				<Button
 					variant="ghost"
 					onClick={() => toggle("reactions")}
+					disabled={isPending}
 					aria-label="React to message"
 					aria-haspopup="menu"
 					aria-expanded={openPanel === "reactions"}
@@ -193,6 +202,7 @@ export function MessageActions({
 			<Button
 				variant="ghost"
 				onClick={() => toggle("menu")}
+				disabled={isPending}
 				aria-label="Message actions"
 				aria-haspopup="menu"
 				aria-expanded={openPanel === "menu"}
@@ -204,7 +214,7 @@ export function MessageActions({
 				<MoreHorizontal className="size-4" />
 			</Button>
 
-			{openPanel === "reactions" && onToggleReaction && (
+			{!isPending && openPanel === "reactions" && onToggleReaction && (
 				<ReactionBar
 					myEmoji={myReaction}
 					align={align}
@@ -215,7 +225,7 @@ export function MessageActions({
 				/>
 			)}
 
-			{openPanel === "menu" && (
+			{!isPending && openPanel === "menu" && (
 				<div
 					role="menu"
 					aria-label="Message actions"
@@ -226,6 +236,7 @@ export function MessageActions({
 					)}
 				>
 					<MessageActionsMenu
+						onBookmark={onBookmark}
 						isChoosingDeleteScope={isChoosingDeleteScope}
 						setIsChoosingDeleteScope={setIsChoosingDeleteScope}
 						onClose={() => setOpenPanel(null)}

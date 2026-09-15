@@ -36,7 +36,7 @@ describe("useKeyboardShortcuts", () => {
 
 	it("edits the last message only from an empty composer", () => {
 		const callbacks = options();
-		const composer = document.createElement("input");
+		const composer = document.createElement("textarea");
 		composer.setAttribute("aria-label", "Message");
 		document.body.append(composer);
 		renderHook(() => useKeyboardShortcuts(callbacks));
@@ -45,6 +45,9 @@ describe("useKeyboardShortcuts", () => {
 		expect(callbacks.onEditLast).toHaveBeenCalledOnce();
 		composer.value = "draft";
 		fireEvent.keyDown(composer, { key: "ArrowUp" });
+		expect(callbacks.onEditLast).toHaveBeenCalledOnce();
+		composer.value = "";
+		fireEvent.keyDown(composer, { key: "ArrowUp", isComposing: true });
 		expect(callbacks.onEditLast).toHaveBeenCalledOnce();
 	});
 

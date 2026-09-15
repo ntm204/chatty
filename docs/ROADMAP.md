@@ -73,9 +73,82 @@ notifications, search, Saved, media, navigation and accessibility. Task status a
 live in that plan; these entries are planned work, not additional completed phases.
 
 The owner's immediate interface and voice feedback is completed in phases 47–50 below. The remaining backlog
-starts with account-scoped drafts (`XP-01`) and retraction of edit history (`XP-11`), then multiline
-composition and IME-safe input. Public launch and large product additions are deferred by the current
+continues from the September 15 account-scoped drafts, edit-history retraction and multiline work
+recorded below; the plan ledger separates verified behaviour from remaining device acceptance. Public launch and large product additions are deferred by the current
 product choice. Record completed outcomes here as each implementation is verified.
+
+---
+
+## September 15 — account-safe drafts, retraction and everyday composition
+
+The implementation note is [the product assessment](plans/product-assessment-2026-09-15.md).
+
+- Draft persistence and sidebar events now carry the account identity. Logout/account deletion
+  invalidates pending writes before asynchronous cleanup; legacy ownerless drafts are discarded.
+  Storage failures are explained without preventing typing.
+- Message retraction deletes edit history in the conversation transaction, rejects history reads,
+  and migrates legacy tombstone history. Received retractions clear open history and embedded quotes,
+  search results and local snapshots, including threads not currently open. In-flight search/history
+  pages cannot revive an observed retraction. External copies and offline devices remain outside
+  the immediate retraction guarantee.
+- The composer grows to a 160px ceiling. Enter sends, Shift+Enter adds a line, composition and
+  repeated Enter do not submit, and Enter completes an active mention first. Empty-composer ArrowUp
+  still opens editing. Text/image failures remain in their retryable row and do not replace a new draft.
+- Search all messages now has a sidebar entry, explicit loading/error/retry and account-wide results.
+  Opening a result resolves the conversation, including archived/unloaded sidebar rows. Pagination
+  ignores older query responses and retains a server cursor when a result is retracted.
+- Built-web acceptance extracts the CSP from nginx and exercises preview/send/reload against the real
+  isolated API. Image/audio blob sources are allowed; script policy is unchanged. Cached voice metadata
+  has no playable src until HTTP supplies the actual media. The release browser gate runs this check too.
+
+Validation: all 485 backend and 470 frontend tests pass; version/typecheck/lint/format/audit pass. Chromium covers account switching,
+multiline, draft reload/mobile navigation, send/retry, live edit/history retraction and global archived
+search. Built-web image/voice CSP acceptance passes. Full verification is recorded in the plan ledger.
+Physical IME/mobile keyboard and Safari acceptance remain separate from synthetic/Chromium coverage.
+
+---
+
+## September 15 continuation — recovery, unread and navigation
+
+- Local outbox errors have a visible warning; retry dispatch is coalesced and in-flight discard is refused.
+  Account-generation checks stop late local writes and deferred sends after logout. Blocked localStorage
+  no longer prevents IndexedDB cleanup.
+- File, voice and sticker retries reuse the existing server idempotency contract within the session.
+  The sticker tray keeps failed sends/removals visible. Composer media state is isolated when switching threads.
+- Delete/hide/reaction/pin mutations show pending and errors at the row, block overlapping requests, and
+  require deliberate retries. Saved/bookmark behavior remains outside this change.
+- Failed edits keep their text and error beside the editor; duplicate saves are blocked. Direct-chat handles
+  no longer produce invalid group mentions.
+- Read markers follow visible rows, pausing for historical search windows. Back to global search restores
+  the query, loaded results and position, including paginated archived results.
+- Popup/sound resolve missing conversation metadata, honor mute and DM restriction, and suppress stale
+  policy lookups. Archived arrivals stay outside the active sidebar; stale sidebar scope responses are ignored.
+- Cached image/file placeholders cannot be downloaded as originals. Details resizing again uses the shared
+  mouse/keyboard divider; resize-sensitive browser checks wait for layout to settle before a separate gesture.
+
+Verification and remaining scope are recorded in the [implementation ledger](plans/product-assessment-2026-09-15.md).
+Physical device/Safari acceptance, complete background outbox replay and Web Push remain later work.
+
+---
+
+## September 15 — mentions, forward search and bookmarks
+
+Global-search snippets center around the first match and highlight original text using accent-insensitive matching.
+Group mention suggestions follow the caret, preserve suffix text, and support arrows/Enter/Escape.
+Forward destinations come from membership-scoped server search rather than loaded sidebar rows,
+including archives; pages use a descending id cursor and each retry retains the original clientId.
+Participant handles distinguish destination names. The forward panel traps focus, displays source text,
+and confirms the destination on success; a retracted source fails visibly. File drops stay within the composer
+and are ignored beneath modal dialogs; deliberate repeated drops remain separate attachments.
+Bookmarked messages is separate from personal Saved messages: add from the message menu, browse across
+conversations, remove without deleting the original, or open its source. Observed retraction/hiding and
+membership loss invalidate in-flight bookmark pages and reload the authoritative list.
+
+Group-message edits rebuild mentions from current participant handles and rebuild links in the same
+transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
+`message:updated`, so adding a mention while editing does not replay new-message popup/sound alerts.
+
+Acceptance and remaining limitations are recorded in the product assessment and XP ledger.
 
 ---
 
@@ -3420,8 +3493,8 @@ Unread/mention badges remain visible, while the old message's author and time ar
 previews. Draft updates never reorder conversations or create server messages. Clearing/sending removes
 the indicator; restored text after failure brings it back. Ordinary files and stickers preserve
 unrelated text. Same-tab edits update immediately, reload reads stored drafts, and storage events refresh
-sidebar previews without overwriting an active input in another tab. Account-scoped draft migration
-and durable attachment drafts remain separate work (XP-01); this does not mark those complete.
+sidebar previews without overwriting an active input in another tab. Account-scoped draft migration was completed in the September 15 follow-up above. Durable attachment
+drafts remain separate work; this historical entry does not promise them.
 
 Validation includes restored, live, reply-only, whitespace, typing/unread precedence, malformed data,
 other-conversation events and storage clears. The Chromium draft scenario covers two conversations,

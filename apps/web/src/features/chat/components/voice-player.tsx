@@ -1,3 +1,4 @@
+import { OFFLINE_BINARY_URL } from "@/constants/offline-media";
 import type { AttachmentDTO, ConversationTheme } from "@chatty/shared-types";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/button";
@@ -17,6 +18,7 @@ interface VoicePlayerProps {
 
 export function VoicePlayer({ attachment, isMine = false, themeColor = null, className }: VoicePlayerProps) {
 	const theme = getConversationThemeClasses(themeColor);
+	const isOffline = attachment.url === OFFLINE_BINARY_URL;
 	const {
 		audioRef,
 		isPlaying,
@@ -28,7 +30,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 		togglePlayback,
 		cyclePlaybackRate,
 		seek,
-	} = useVoicePlayer({ sourceUrl: attachment.url, durationMs: attachment.durationMs ?? 0 });
+	} = useVoicePlayer({ sourceUrl: isOffline ? undefined : attachment.url, durationMs: attachment.durationMs ?? 0 });
 	const playedFraction = durationMs > 0 ? Math.min(1, elapsedMs / durationMs) : 0;
 	const elapsedLabel = formatDuration(Math.min(elapsedMs, durationMs));
 	const durationLabel = formatDuration(durationMs);
@@ -43,11 +45,13 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 				className,
 			)}
 		>
-			<audio ref={audioRef} src={attachment.url} preload="none" />
+			<audio ref={audioRef} src={isOffline ? undefined : attachment.url} preload="none" />
 			<div className="flex items-center gap-2">
 				<Button
 					variant="ghost"
 					onClick={() => void togglePlayback()}
+					disabled={isOffline}
+					title={isOffline ? "Connect to download this voice message" : undefined}
 					aria-label={
 						error ? "Retry voice message" : isPlaying ? "Pause voice message" : "Play voice message"
 					}
@@ -99,7 +103,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 							max={Math.max(1, durationMs / 1000)}
 							step={0.1}
 							value={Math.min(elapsedMs, durationMs) / 1000}
-							disabled={durationMs <= 0}
+							disabled={isOffline || durationMs <= 0}
 							onChange={(event) => seek((Number(event.target.value) * 1000) / durationMs)}
 							aria-label="Seek voice message"
 							aria-valuetext={`${elapsedLabel} of ${durationLabel}`}
@@ -130,6 +134,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 					</Button>
 				</div>
 			</div>
+			{isOffline && <p className="mt-2 text-xs">Connect to download this voice message.</p>}
 			{isLoading && (
 				<span role="status" className="sr-only">
 					Loading audio

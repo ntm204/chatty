@@ -221,10 +221,52 @@ are named, larger groups are counted, and your own typing is excluded. Sending, 
 offline presence and disconnect retract typing; idle and missing-stop timers provide a fallback.
 Reduced motion keeps the dots still. Typing is never stored or counted as a new message.
 
-Unsent text drafts are saved on this browser and restored when reopening a conversation. Switching
-conversations keeps their drafts separate; leaving or hiding the page flushes the latest text before
+Unsent text drafts are saved on this browser per account and conversation, and restored when reopening a conversation.
+Signing out or deleting the account clears its drafts and invalidates pending writes. Legacy drafts without an
+account owner are discarded. If storage is unavailable, the composer explains that reloading may lose the draft.
+Switching conversations keeps their drafts separate; leaving or hiding the page flushes the latest text before
 the normal save delay. Drafts are not synchronized between devices, and selected files are not saved
 as composer drafts.
+
+The composer supports multiple lines, grows up to 160px and then scrolls internally. Enter sends;
+Shift+Enter inserts a newline. Composition and held Enter do not submit, and Enter completes a visible
+group mention suggestion first. Handles typed in direct chats remain ordinary text. Failed text/image sends
+stay in their retryable thread row without overwriting new words in the composer. If the outbox cannot be
+saved on this device, a warning stays visible until the affected messages are sent or discarded. Retry
+cannot dispatch twice at once; an in-flight send cannot be discarded as though the server had canceled it.
+File, voice and sticker retries reuse the same send identity within the current session. A failed sticker
+stays available in its tray. Editing keeps the text and shows the error when saving fails.
+Delete, hide, reaction and pin actions lock while pending and show failures beside the message.
+Reaction toggles are never retried automatically; check the resulting state before trying again.
+
+Group-message edits rebuild mentions from current participant handles and rebuild links in the same
+transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
+`message:updated`, so adding a mention while editing does not replay new-message popup/sound alerts.
+
+Group mentions complete at the caret without deleting the text after it. Arrow keys select a suggestion,
+Enter inserts it, and Escape dismisses the list; email addresses and URL segments do not trigger it.
+
+Forwarding searches conversations on the server, including archived destinations, with paged results and
+participant handles to distinguish matching names. Failed forwards retain their send identity for retry.
+Success names the destination and offers Done; a retracted source fails visibly. File drops are accepted
+only inside the composer, and are ignored while a modal covers it. Pasting remains scoped to the textarea.
+Bookmarked messages is a separate sidebar list of marked originals across conversations. Bookmark message
+adds an original; Remove bookmark leaves it intact. Results show their source and open the original thread.
+The Saved messages shortcut continues to open personal notes. Bookmarks refresh on observed retraction,
+hiding or loss of membership and do not provide offline media downloads.
+
+Search all messages in the sidebar searches across conversations, including archived threads. Opening
+a result fetches its conversation before jumping to the original message, even outside loaded sidebar pages.
+Search pages ignore stale responses and retract deleted results. Long-message previews center on the first
+match and highlight matching text without changing its original accents. Back to search results restores the query,
+loaded pages and scroll position while the reader remains signed in.
+
+Read markers follow visible messages in the active tab, rather than every message loaded into memory.
+Historical search windows do not advance the marker across an unloaded gap; returning to latest resumes it.
+Popup and sound alerts resolve missing conversation metadata before applying mute and restriction. Group
+mentions may override mute; restriction suppresses direct-chat alerts. Unknown or changing permissions
+suppress a pending alert. Cached file/image placeholders explain that reconnecting is required and cannot
+be downloaded as though they were the original media.
 
 The sidebar shows `Draft: <text>` immediately while composing, including the selected conversation.
 A reply without text shows `Draft: Reply`; whitespace alone does not create an indicator. Drafts take
@@ -421,14 +463,20 @@ Largest known gaps:
   instances and the tunnel scaffold provides TLS/public ingress without opening host ports. A domain
   and tunnel token are still needed to prove it end to end. Object storage is deliberately deferred:
   the shared volume is the correct $0 boundary while every API instance lives on one host.
-- **The CSP is not verified against a live API.** The web app has one as of phase 14, checked in a
-  real browser against the built image — but with no API behind it, so `img-src` and `connect-src`
-  are argued from the header's contents rather than demonstrated end to end.
+- **The CSP is verified locally against the test API, not a deployed host.** Built-web acceptance exercises image and voice preview/send/reload against the isolated API.
+  The public nginx/TLS topology still needs deployment acceptance.
 - **The message list is not virtualised.** Messages accumulate only through explicit paging, so
   reaching a DOM large enough to matter takes deliberate work — but the ceiling is real, and the two
   cheap fixes both risk the scroll-position handling that already works. See phase 19, item 76.
 - Playwright covers one browser, and `test:e2e` is not part of `verify` — it needs two servers and a
   browser download.
+
+## Built-web acceptance
+
+`npm run test:e2e:built` builds the web client, serves it locally with the exact CSP read from the nginx
+template, and tests image/voice previews and delivery against the isolated test API/database. It uses
+the same ports as ordinary E2E, so run them sequentially. This verifies browser policy and API interaction;
+it does not replace a deployment check of nginx/TLS on the real host.
 
 ## Contributing
 

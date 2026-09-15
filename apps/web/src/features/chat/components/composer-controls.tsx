@@ -22,7 +22,7 @@ interface ComposerControlsProps {
 	onFilesSelected: (event: React.ChangeEvent<HTMLInputElement>) => void;
 	onFileSelected: (event: React.ChangeEvent<HTMLInputElement>) => void;
 	onInsertEmoji: (char: string) => void;
-	onPickSticker: (stickerId: string) => void;
+	onPickSticker: (stickerId: string) => Promise<void>;
 	field: ReactNode;
 	voiceRecorder: ReactNode;
 }

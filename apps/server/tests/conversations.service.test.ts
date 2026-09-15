@@ -4,6 +4,7 @@ import { prisma } from "../src/lib/prisma.js";
 import { userRoom } from "../src/lib/socket-bus.js";
 import { sendMessage, listMessages } from "../src/modules/messages/messages.service.js";
 import {
+	searchConversationsForUser,
 	createConversation,
 	listConversationsForUser,
 	setConversationArchived,
@@ -329,5 +330,39 @@ describe("listConversationsForUser", () => {
 		const [conversation] = (await listConversationsForUser(minhId)).items;
 		const an = conversation!.participants.find((participant) => participant.id === anId);
 		expect(an!.lastSeenAt).toBeNull();
+	});
+});
+
+describe("forward destination search", () => {
+	it("finds archived conversations by name or other participant, excludes outsiders and keeps pages distinct", async () => {
+		const viewer = await createUser("search_viewer");
+		const firstPeer = await createUser("destination_one");
+		const secondPeer = await createUser("destination_two");
+		const first = await createConversation(viewer, { participantIds: [firstPeer] });
+		const second = await createConversation(viewer, { participantIds: [secondPeer] });
+		await setConversationArchived(viewer, first.id, { archived: true });
+		await createConversation(firstPeer, { participantIds: [secondPeer] });
+		const page = await searchConversationsForUser(viewer, { q: "DESTINATION", limit: 1 });
+		expect(page.items).toHaveLength(1);
+		expect(page.hasMore).toBe(true);
+		const next = await searchConversationsForUser(viewer, {
+			q: "destination",
+			limit: 1,
+			before: page.items[0]!.id,
+		});
+		expect(next.hasMore).toBe(false);
+		expect(new Set([...page.items, ...next.items].map((row) => row.id))).toEqual(new Set([first.id, second.id]));
+		expect([...page.items, ...next.items].find((row) => row.id === first.id)?.isArchived).toBe(true);
+		expect(JSON.stringify(page)).not.toContain("passwordHash");
+		expect(JSON.stringify(page)).not.toContain("@chatty.test");
+	});
+
+	it("does not match every conversation through the viewer's own display name", async () => {
+		const viewer = await createUser("unique_viewer");
+		const peer = await createUser("other_member");
+		await createConversation(viewer, { participantIds: [peer] });
+		expect((await searchConversationsForUser(viewer, { q: "unique_viewer", limit: 20 })).items).toEqual([]);
+		await prisma.conversationParticipant.deleteMany({ where: { userId: viewer } });
+		expect((await searchConversationsForUser(viewer, { q: "", limit: 20 })).items).toEqual([]);
 	});
 });

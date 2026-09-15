@@ -40,10 +40,12 @@ export function useReplyTarget(messages: ThreadMessage[]): ReplyTarget {
 		}
 	}, [messages, pendingReplyId]);
 
+	const currentReply = replyTo ? (messages.find((message) => message.id === replyTo.id) ?? replyTo) : null;
+
 	const clearReply = useCallback(() => {
 		setReplyTo(null);
 		setPendingReplyId(null);
 	}, []);
 
-	return { replyTo, setReplyTo, requestReplyTo: setPendingReplyId, clearReply };
+	return { replyTo: currentReply, setReplyTo, requestReplyTo: setPendingReplyId, clearReply };
 }

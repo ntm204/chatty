@@ -1,8 +1,8 @@
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useSoundSetting } from "@/hooks/use-sound-setting";
 import { playMessageChime } from "@/utils/play-message-chime";
-import { isConversationMuted } from "../utils/conversation-mute";
+import { useMessageAlertPolicy } from "./use-message-alert-policy";
 import { useSocketEvent } from "./use-socket-event";
 
 /**
@@ -16,6 +16,9 @@ export function useMessageSound(
 	selectedConversationId: string | null,
 ): void {
 	const isEnabled = useSoundSetting((state) => state.isEnabled);
+	const selectedRef = useRef(selectedConversationId);
+	selectedRef.current = selectedConversationId;
+	const canAlert = useMessageAlertPolicy(currentUserId, conversations);
 
 	useSocketEvent(
 		"message:new",
@@ -28,13 +31,15 @@ export function useMessageSound(
 					message.conversationId === selectedConversationId && document.visibilityState === "visible";
 				if (isOpenConversation) return;
 
-				const conversation = conversations.find((item) => item.id === message.conversationId);
-				const isMuted = conversation ? isConversationMuted(conversation) : false;
-				if (isMuted && !message.mentionedUserIds.includes(currentUserId)) return;
-
-				playMessageChime();
+				void canAlert(message).then((isAllowed) => {
+					if (!isAllowed || !useSoundSetting.getState().isEnabled) return;
+					if (message.conversationId === selectedRef.current && document.visibilityState === "visible") {
+						return;
+					}
+					playMessageChime();
+				});
 			},
-			[isEnabled, currentUserId, conversations, selectedConversationId],
+			[isEnabled, currentUserId, canAlert, selectedConversationId],
 		),
 	);
 }

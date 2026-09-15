@@ -8,7 +8,9 @@ import type { ClusterPosition } from "../types/message-cluster";
 import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
-import { bindMessageRowActions, countJumboEmoji, findMyReaction, resolveDisplayName } from "../utils";
+import { countJumboEmoji, findMyReaction, resolveDisplayName } from "../utils";
+import { useMessageRowMutations } from "../hooks/use-message-row-mutations";
+import { MessageActionFeedback } from "./message-action-feedback";
 import { MessageActions } from "./message-actions";
 import { MessageBubble } from "./message-bubble";
 import { MessageEditor } from "./message-editor";
@@ -68,6 +70,10 @@ export const MessageRow = memo(function MessageRow({
 }: MessageRowProps) {
 	// Bind only after React's shallow comparison has admitted this row's update.
 	const {
+		isPending,
+		error,
+		notice,
+		onBookmark,
 		onStartEdit,
 		onSaveEdit,
 		onCancelEdit,
@@ -82,7 +88,7 @@ export const MessageRow = memo(function MessageRow({
 		onForward,
 		onTogglePin,
 		onJumpToReplyOriginal,
-	} = bindMessageRowActions(message, isPinned, actions);
+	} = useMessageRowMutations(message, isPinned, actions);
 	const author = message.author;
 	const isDeleted = Boolean(message.deletedAt);
 	const isEdited = Boolean(message.editedAt) && !isDeleted;
@@ -232,6 +238,7 @@ export const MessageRow = memo(function MessageRow({
 							isMine={isMine}
 							themeColor={themeColor}
 							onToggle={onToggleReaction}
+							isDisabled={isPending}
 							onShowDetails={onShowReactions}
 						/>
 					)}
@@ -239,11 +246,12 @@ export const MessageRow = memo(function MessageRow({
 
 				{!isEditing && !deliveryState && (
 					<MessageActions
+						isPending={isPending}
 						{...(canModify && { onEdit: onStartEdit, onDeleteForEveryone })}
 						onDeleteForMe={onDeleteForMe}
 						// Both omitted on a tombstone: there is nothing left to answer or to
 						// mark, and the server refuses either write anyway.
-						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin })}
+						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin, onBookmark })}
 						{...(hasReactions && { onShowReactions })}
 						isPinned={isPinned}
 						myReaction={myReaction}
@@ -264,6 +272,8 @@ export const MessageRow = memo(function MessageRow({
 					onDiscardDraft={onDiscardDraft}
 				/>
 			</div>
+
+			<MessageActionFeedback isPending={isPending} error={error} notice={notice} />
 
 			<MessageSentCaption
 				createdAt={message.createdAt}

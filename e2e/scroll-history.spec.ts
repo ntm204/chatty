@@ -227,6 +227,8 @@ test("offers a quiet way back, follows incoming messages during a jump and respe
 		await expect(jump).toBeHidden();
 
 		await readerPage.setViewportSize({ width: 375, height: 760 });
+		// Let resize anchoring settle before simulating a separate scroll gesture.
+		await settledScrollPosition(history);
 		await history.evaluate((element) => {
 			element.scrollTop = element.scrollHeight - element.clientHeight - 240;
 		});

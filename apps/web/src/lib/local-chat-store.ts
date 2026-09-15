@@ -1,3 +1,6 @@
+import { OFFLINE_BINARY_URL, OFFLINE_IMAGE_URL } from "@/constants/offline-media";
+import { applyMessageUpdate } from "@/utils/apply-message-update";
+import { clearMessageDrafts, getMessageDraftGeneration } from "./message-drafts";
 import type { ConversationDTO, CurrentUserDTO, MessageDTO, MessageReplyDTO, UserDTO } from "@chatty/shared-types";
 
 const DATABASE_NAME = "chatty-local";
@@ -7,10 +10,6 @@ const PROFILE_STORE = "profiles";
 const CONVERSATION_STORE = "conversation-pages";
 const MESSAGE_STORE = "message-snapshots";
 const OUTBOX_STORE = "outbox";
-
-const OFFLINE_IMAGE_URL =
-	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 240'%3E%3Crect width='320' height='240' fill='%23e8e6e1'/%3E%3Cpath d='M88 174l48-55 31 34 22-24 43 45H88z' fill='%239c988f'/%3E%3Ccircle cx='205' cy='82' r='18' fill='%239c988f'/%3E%3C/svg%3E";
-const OFFLINE_BINARY_URL = "data:application/octet-stream;base64,";
 
 interface ConversationPageRecord {
 	key: string;
@@ -102,9 +101,14 @@ async function readRecord<T>(storeName: string, key: IDBValidKey): Promise<T | n
 	});
 }
 
-async function putRecord(storeName: string, value: unknown): Promise<void> {
+async function putRecord(storeName: string, value: unknown, canWrite?: () => boolean): Promise<void> {
 	const database = await openDatabase();
-	if (!database) return;
+	if (canWrite && !canWrite()) throw new Error("The account session changed before the message could be saved");
+	if (!database) {
+		if (storeName === OUTBOX_STORE) throw new Error("Local message storage is unavailable");
+
+		return;
+	}
 
 	return new Promise((resolve, reject) => {
 		const transaction = database.transaction(storeName, "readwrite");
@@ -219,8 +223,11 @@ export async function readMessageSnapshot(userId: string, conversationId: string
 	);
 }
 
-export async function enqueueLocalMessage(message: LocalOutboxMessage): Promise<void> {
-	await putRecord(OUTBOX_STORE, message);
+export async function enqueueLocalMessage(
+	message: LocalOutboxMessage,
+	generation = getMessageDraftGeneration(message.userId),
+): Promise<void> {
+	await putRecord(OUTBOX_STORE, message, () => getMessageDraftGeneration(message.userId) === generation);
 }
 
 export async function readLocalOutbox(userId: string, conversationId: string): Promise<LocalOutboxMessage[]> {
@@ -234,9 +241,14 @@ export async function removeLocalMessage(messageId: string): Promise<void> {
 }
 
 export async function clearLocalUserData(userId: string): Promise<void> {
+	clearMessageDrafts(userId);
 	// A slow cleanup from one account must not erase the pointer written by a
 	// different account that signed in while IndexedDB was opening.
-	if (localStorage.getItem(LAST_USER_KEY) === userId) localStorage.removeItem(LAST_USER_KEY);
+	try {
+		if (localStorage.getItem(LAST_USER_KEY) === userId) localStorage.removeItem(LAST_USER_KEY);
+	} catch {
+		// Blocked localStorage must not prevent removal of IndexedDB account data.
+	}
 	const database = await openDatabase();
 	if (!database) return;
 
@@ -255,6 +267,76 @@ export async function clearLocalUserData(userId: string): Promise<void> {
 				cursor.continue();
 			};
 		}
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
+		transaction.onabort = () => reject(transaction.error);
+	});
+}
+
+/** Retract snapshots even when their conversation is not currently mounted. */
+export async function retractCachedMessage(userId: string, message: MessageDTO): Promise<void> {
+	const database = await openDatabase();
+	if (!database || !message.deletedAt) return;
+
+	return new Promise((resolve, reject) => {
+		const transaction = database.transaction([MESSAGE_STORE, CONVERSATION_STORE, OUTBOX_STORE], "readwrite");
+		const snapshots = transaction.objectStore(MESSAGE_STORE);
+		const snapshotRequest = snapshots.get(snapshotKey(userId, message.conversationId));
+		snapshotRequest.onsuccess = () => {
+			const record = snapshotRequest.result as MessageSnapshotRecord | undefined;
+			if (record)
+				snapshots.put({
+					...record,
+					messages: record.messages.map((existing) =>
+						withoutExpiringMedia(applyMessageUpdate(existing, message)),
+					),
+				});
+		};
+		const pages = transaction.objectStore(CONVERSATION_STORE);
+		const pageRequest = pages.index("by-user").openCursor(userId);
+		pageRequest.onsuccess = () => {
+			const cursor = pageRequest.result;
+			if (!cursor) return;
+			const record = cursor.value as ConversationPageRecord;
+			cursor.update({
+				...record,
+				items: record.items.map((conversation) =>
+					conversation.id === message.conversationId
+						? {
+								...conversation,
+								lastMessage: conversation.lastMessage
+									? withoutExpiringMedia(applyMessageUpdate(conversation.lastMessage, message))
+									: null,
+								pinnedMessages: conversation.pinnedMessages.filter(
+									(pin) => pin.messageId !== message.id,
+								),
+							}
+						: conversation,
+				),
+			});
+			cursor.continue();
+		};
+		const outboxRequest = transaction
+			.objectStore(OUTBOX_STORE)
+			.index("by-thread")
+			.openCursor([userId, message.conversationId]);
+		outboxRequest.onsuccess = () => {
+			const cursor = outboxRequest.result;
+			if (!cursor) return;
+			const record = cursor.value as LocalOutboxMessage;
+			if (record.replyTo?.id === message.id)
+				cursor.update({
+					...record,
+					replyTo: {
+						...record.replyTo,
+						content: "",
+						attachmentUrl: null,
+						hasAttachment: false,
+						isDeleted: true,
+					},
+				});
+			cursor.continue();
+		};
 		transaction.oncomplete = () => resolve();
 		transaction.onerror = () => reject(transaction.error);
 		transaction.onabort = () => reject(transaction.error);

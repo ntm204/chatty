@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVisibleMessageRead } from "../hooks/use-visible-message-read";
 import { Button } from "@/components/button";
 import type { MessageListProps } from "../types/message-list";
 import { MAX_RETAINED_MESSAGES } from "../constants/pagination";
@@ -59,8 +60,7 @@ export function MessageList({
 	const isReturningToLatest = returningConversationId === conversationId;
 	const hasObservedReturnLoadRef = useRef(false);
 	const lastScrollTargetRef = useRef<string | null>(null);
-	// The scroll container lives here rather than in the page, so everything that
-	// reads or writes scroll position sits in one component.
+	// The list owns both scroll position and the visible read marker.
 	const {
 		containerRef,
 		contentRef,
@@ -78,6 +78,8 @@ export function MessageList({
 		isLoadingOlder,
 		onLoadOlder,
 	});
+	// Historical search windows can skip unread messages; resume the cursor at latest.
+	useVisibleMessageRead(containerRef, conversationId, currentUserId, messages, !isLoadingThread && !isViewingHistory);
 	// Memoised because it is a prop of the memoised `MessageRows`, and it is an
 	// object: recomputed per render it would be a new reference every time and
 	// would defeat the memo on its own. It also walks the whole thread, so not
@@ -159,10 +161,12 @@ export function MessageList({
 		? messages.find((message) => message.id === reactionsMessageId)
 		: undefined;
 
+	const editingMessageIdRef = useRef(editingMessageId);
+	editingMessageIdRef.current = editingMessageId;
 	const handleSaveEdit = useCallback(
-		(messageId: string, content: string) => {
-			cancelEdit();
-			onEditMessage(messageId, content);
+		async (messageId: string, content: string) => {
+			await onEditMessage(messageId, content);
+			if (editingMessageIdRef.current === messageId) cancelEdit();
 		},
 		[cancelEdit, onEditMessage],
 	);
@@ -272,9 +276,9 @@ export function MessageList({
 				onClick={handleJumpToLatest}
 			/>
 
-			{historyMessageId && messages[0] && (
+			{historyMessageId && messages.some((message) => message.id === historyMessageId && !message.deletedAt) && (
 				<MessageEditHistory
-					conversationId={messages[0].conversationId}
+					conversationId={conversationId}
 					messageId={historyMessageId}
 					onClose={() => setHistoryMessageId(null)}
 				/>

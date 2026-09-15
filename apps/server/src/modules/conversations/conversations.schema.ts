@@ -74,3 +74,10 @@ export const setQuickReactionSchema = z.object({
 	emoji: z.string().max(64).regex(SINGLE_RGI_EMOJI, "Must be a single emoji").nullable(),
 });
 export type SetQuickReactionInput = z.infer<typeof setQuickReactionSchema>;
+
+export const searchConversationsQuerySchema = z.object({
+	q: z.string().trim().max(100).default(""),
+	before: z.string().min(1).max(64).optional(),
+	limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+export type SearchConversationsQuery = z.infer<typeof searchConversationsQuerySchema>;

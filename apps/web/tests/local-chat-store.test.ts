@@ -1,5 +1,6 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { getMessageDraftGeneration } from "@/lib/message-drafts";
+import { describe, expect, it, vi } from "vitest";
 import {
 	cacheConversationPage,
 	cacheCurrentUser,
@@ -11,10 +12,38 @@ import {
 	readLocalOutbox,
 	readMessageSnapshot,
 	removeLocalMessage,
+	retractCachedMessage,
 } from "@/lib/local-chat-store";
 import { makeConversation, makeCurrentUser, makeMessage } from "./factories";
 
 describe("local chat store", () => {
+	it("retracts cached content and embedded quotes while another conversation is open", async () => {
+		const userId = "cached-retraction";
+		const original = makeMessage("original", "an", "private original");
+		const reply = {
+			...makeMessage("reply", userId, "answer"),
+			replyTo: {
+				id: original.id,
+				content: "private original",
+				authorName: "An",
+				hasAttachment: true,
+				attachmentUrl: "https://example.test/private",
+				isDeleted: false,
+			},
+		};
+		await cacheMessageSnapshot(userId, original.conversationId, [original, reply]);
+		await cacheConversationPage(
+			userId,
+			false,
+			[makeConversation({ id: original.conversationId, lastMessage: original })],
+			false,
+		);
+		await retractCachedMessage(userId, { ...original, content: "", deletedAt: new Date().toISOString() });
+		const snapshot = await readMessageSnapshot(userId, original.conversationId);
+		expect(JSON.stringify(snapshot)).not.toContain("private original");
+		expect(snapshot[1]?.replyTo).toMatchObject({ isDeleted: true, content: "", attachmentUrl: null });
+		expect((await readConversationPage(userId, false))?.items[0]?.lastMessage?.content).toBe("");
+	});
 	it("restores a profile, sidebar page, and recent messages without expiring media tokens", async () => {
 		const user = makeCurrentUser({ id: "offline-reader" });
 		const message = {
@@ -102,5 +131,40 @@ describe("local chat store", () => {
 		await clearLocalUserData(previous.id);
 
 		await expect(readCachedCurrentUser()).resolves.toEqual(current);
+	});
+	it("rejects a queued write from a session invalidated before the database transaction opens", async () => {
+		const userId = "late-outbox-user";
+		const generation = getMessageDraftGeneration(userId);
+		const pending = enqueueLocalMessage(
+			{
+				id: "draft:late",
+				userId,
+				conversationId: "thread",
+				author: makeCurrentUser({ id: userId }),
+				content: "private",
+				replyTo: null,
+				mentionedUserIds: [],
+				createdAt: new Date().toISOString(),
+				attachments: [],
+			},
+			generation,
+		);
+		const cleanup = clearLocalUserData(userId);
+		await expect(pending).rejects.toThrow("account session changed");
+		await cleanup;
+		await expect(readLocalOutbox(userId, "thread")).resolves.toEqual([]);
+	});
+
+	it("clears IndexedDB even when reading the localStorage account pointer throws", async () => {
+		await cacheMessageSnapshot("blocked-storage-user", "thread", [makeMessage("private", "me", "private")]);
+		const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+			throw new Error("Blocked");
+		});
+		try {
+			await clearLocalUserData("blocked-storage-user");
+		} finally {
+			getItem.mockRestore();
+		}
+		await expect(readMessageSnapshot("blocked-storage-user", "thread")).resolves.toEqual([]);
 	});
 });

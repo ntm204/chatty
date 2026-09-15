@@ -42,17 +42,17 @@ export interface MessageListProps {
 	 * updates this list — the `message:updated` broadcast does, so the author
 	 * sees their own change through the same path everyone else does.
 	 */
-	onEditMessage: (messageId: string, content: string) => void;
-	onDeleteMessage: (messageId: string) => void;
-	onHideMessage: (messageId: string) => void;
+	onEditMessage: (messageId: string, content: string) => void | Promise<void>;
+	onDeleteMessage: (messageId: string) => void | Promise<void>;
+	onHideMessage: (messageId: string) => void | Promise<void>;
 	/** Both act on a draft this tab failed to send, never on a stored message. */
 	onRetrySend: (draftId: string) => void;
 	onDiscardDraft: (draftId: string) => void;
-	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
+	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void | Promise<void>;
 	/** Puts a message in the composer's reply slot. Owned by the page, which owns the composer. */
 	onReplyToMessage: (message: MessageDTO) => void;
 	onForwardMessage: (message: MessageDTO) => void;
-	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
+	onTogglePinMessage: (messageId: string, isPinned: boolean) => void | Promise<void>;
 	pinnedMessageIds: string[];
 	onJumpToMessage: (messageId: string) => void;
 	/** Drops the oldest page once the thread outgrows what it needs — see `MAX_RETAINED_MESSAGES`. */

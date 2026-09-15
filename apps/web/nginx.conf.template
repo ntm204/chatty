@@ -31,7 +31,8 @@ server {
 	# - `img-src` includes the API origin because avatars and attachments are
 	#   served from it into an `<img>` on this origin — the same cross-origin fact
 	#   that made phase 11 set `Cross-Origin-Resource-Policy: cross-origin` there.
-	#   `data:` is for anything a library inlines.
+	#   `data:` is for anything a library inlines. `blob:` permits local image
+	#   and voice previews; script-src remains restricted to self.
 	# - `connect-src` needs the WebSocket origin *as well as* the HTTP one. A CSP
 	#   source expression matches by scheme, and `ws:` is not `http:` — so a policy
 	#   naming only the API URL would let every fetch through and silently kill the
@@ -42,7 +43,7 @@ server {
 	# - `object-src 'none'` and `base-uri 'self'` close two injection routes that
 	#   `default-src` does not: plugin content, and rewriting where every relative
 	#   URL on the page resolves to.
-	set $csp "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: ${API_ORIGIN}; media-src 'self' ${API_ORIGIN}; font-src 'self' data:; connect-src 'self' ${API_ORIGIN} ${API_WS_ORIGIN}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+	set $csp "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: ${API_ORIGIN}; media-src 'self' blob: ${API_ORIGIN}; font-src 'self' data:; connect-src 'self' ${API_ORIGIN} ${API_WS_ORIGIN}; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
 	# Held in a variable and re-added per location because `add_header` does not
 	# merge: a location that sets any header of its own discards every one

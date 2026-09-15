@@ -20,5 +20,10 @@ export function getSearchResultTitle(
 
 	const peer = conversation.participants.find((participant) => participant.id !== currentUserId);
 
-	return peer?.displayName ?? "Unknown";
+	return (
+		peer?.displayName ??
+		(conversation.participants.some((participant) => participant.id === currentUserId)
+			? "Saved messages"
+			: "Unknown")
+	);
 }

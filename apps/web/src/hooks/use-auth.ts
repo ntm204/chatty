@@ -99,8 +99,8 @@ export const useAuth = create<AuthState>((set) => ({
 		closeSocket();
 		useBlockedUsers.getState().reset();
 		useRestrictedUsers.getState().reset();
-		set({ currentUser: null });
 		if (userId) void clearLocalUserData(userId).catch(() => undefined);
+		set({ currentUser: null });
 	},
 
 	logout() {
@@ -118,8 +118,8 @@ export const useAuth = create<AuthState>((set) => ({
 		closeSocket();
 		useBlockedUsers.getState().reset();
 		useRestrictedUsers.getState().reset();
-		set({ currentUser: null });
 		if (userId) void clearLocalUserData(userId).catch(() => undefined);
+		set({ currentUser: null });
 	},
 
 	async restoreSession() {

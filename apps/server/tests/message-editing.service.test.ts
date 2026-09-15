@@ -1,10 +1,14 @@
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import sharp from "sharp";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { findAttachmentPath } from "../src/lib/attachment-storage.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../src/lib/errors.js";
 import { prisma } from "../src/lib/prisma.js";
-import { listConversationsForUser, markConversationRead } from "../src/modules/conversations/conversations.service.js";
+import {
+	createConversation,
+	listConversationsForUser,
+	markConversationRead,
+} from "../src/modules/conversations/conversations.service.js";
 import {
 	deleteMessage,
 	editMessage,
@@ -24,6 +28,89 @@ beforeEach(() => {
 });
 
 describe("message lifecycle", () => {
+	it("rebuilds group mentions and links from edited text without repeating arrival alerts", async () => {
+		const { authorId, peerId, outsiderId } = await makeConversation();
+		const { id: conversationId } = await createConversation(authorId, {
+			participantIds: [peerId, outsiderId],
+			name: "Edit mentions",
+		});
+		const peer = await prisma.user.findUniqueOrThrow({ where: { id: peerId }, select: { handle: true } });
+		const sent = await sendMessage(authorId, conversationId, {
+			content: `@${peer.handle} https://old.example/path`,
+			mentionedUserIds: [peerId],
+		});
+		fakeIO.emits.length = 0;
+		const edited = await editMessage(authorId, conversationId, sent.id, {
+			content: `Meet @${peer.handle.toUpperCase()} https://new.example/path`,
+		});
+		expect(edited.mentionedUserIds).toEqual([peerId]);
+		expect(await prisma.messageLink.findMany({ where: { messageId: sent.id }, select: { url: true } })).toEqual([
+			{ url: "https://new.example/path" },
+		]);
+		expect(fakeIO.emits.some((emit) => emit.event === "message:new")).toBe(false);
+		const cleared = await editMessage(authorId, conversationId, sent.id, {
+			content: `mail@${peer.handle} https://host/@${peer.handle}`,
+		});
+		expect(cleared.mentionedUserIds).toEqual([]);
+	});
+
+	it("does not add mentions when editing a direct message", async () => {
+		const { conversationId, authorId, peerId } = await makeConversation();
+		const peer = await prisma.user.findUniqueOrThrow({ where: { id: peerId }, select: { handle: true } });
+		const sent = await sendMessage(authorId, conversationId, { content: "original" });
+		expect(
+			(await editMessage(authorId, conversationId, sent.id, { content: `@${peer.handle}` })).mentionedUserIds,
+		).toEqual([]);
+	});
+
+	it("the cleanup migration removes legacy tombstone history while retaining live history", async () => {
+		const { conversationId, authorId } = await makeConversation();
+		const gone = await sendMessage(authorId, conversationId, { content: "gone" });
+		const live = await sendMessage(authorId, conversationId, { content: "live original" });
+		await editMessage(authorId, conversationId, live.id, { content: "live revision" });
+		await deleteMessage(authorId, conversationId, gone.id);
+		await prisma.messageEdit.create({ data: { messageId: gone.id, content: "legacy secret" } });
+		const migration = await readFile(
+			new URL("../prisma/migrations/20260915090000_retract_message_edit_history/migration.sql", import.meta.url),
+			"utf8",
+		);
+		await prisma.$executeRawUnsafe(migration);
+		expect(await prisma.messageEdit.count({ where: { messageId: gone.id } })).toBe(0);
+		expect(await listMessageEdits(authorId, conversationId, live.id)).toMatchObject([{ content: "live original" }]);
+	});
+	it("retracts previous versions and refuses history to both sender and recipient", async () => {
+		const { conversationId, authorId, peerId } = await makeConversation();
+		const sent = await sendMessage(authorId, conversationId, { content: "private original" });
+		await editMessage(authorId, conversationId, sent.id, { content: "private revision" });
+		await deleteMessage(authorId, conversationId, sent.id);
+		expect(await prisma.messageEdit.count({ where: { messageId: sent.id } })).toBe(0);
+		await expect(listMessageEdits(peerId, conversationId, sent.id)).rejects.toBeInstanceOf(NotFoundError);
+		await expect(listMessageEdits(authorId, conversationId, sent.id)).rejects.toBeInstanceOf(NotFoundError);
+	});
+
+	it("does not expose legacy history and cleans it on a repeated delete", async () => {
+		const { conversationId, authorId, peerId } = await makeConversation();
+		const sent = await sendMessage(authorId, conversationId, { content: "legacy" });
+		await deleteMessage(authorId, conversationId, sent.id);
+		await prisma.messageEdit.create({ data: { messageId: sent.id, content: "pre-fix history" } });
+		await expect(listMessageEdits(peerId, conversationId, sent.id)).rejects.toBeInstanceOf(NotFoundError);
+		await deleteMessage(authorId, conversationId, sent.id);
+		expect(await prisma.messageEdit.count({ where: { messageId: sent.id } })).toBe(0);
+	});
+
+	it("serializes editing against retraction without leaving a previous version", async () => {
+		const { conversationId, authorId } = await makeConversation();
+		const sent = await sendMessage(authorId, conversationId, { content: "original" });
+		await Promise.allSettled([
+			editMessage(authorId, conversationId, sent.id, { content: "concurrent edit" }),
+			deleteMessage(authorId, conversationId, sent.id),
+		]);
+		expect(await prisma.messageEdit.count({ where: { messageId: sent.id } })).toBe(0);
+		expect(await prisma.message.findUnique({ where: { id: sent.id } })).toMatchObject({
+			content: "",
+			deletedAt: expect.any(Date),
+		});
+	});
 	it("keeps every previous version when a message is edited", async () => {
 		const { conversationId, authorId } = await makeConversation();
 		const sent = await sendMessage(authorId, conversationId, { content: "first version" });

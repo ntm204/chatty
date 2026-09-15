@@ -63,6 +63,84 @@ const image = new File(["pretend-bytes"], "photo.png", { type: "image/png" });
 const documentFile = new File(["document-bytes"], "notes.pdf", { type: "application/pdf" });
 
 describe("MessageInput", () => {
+	it("a failed send never restores its old text over a newer draft", async () => {
+		let rejectSend!: (reason: Error) => void;
+		onSend.mockImplementation(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectSend = reject;
+				}),
+		);
+		const typist = userEvent.setup();
+		renderInput();
+		const field = screen.getByLabelText("Message");
+		await typist.type(field, "message A{Enter}");
+		await typist.type(field, "new draft B");
+		rejectSend(new Error("Network unavailable"));
+		await waitFor(() => expect(field).toHaveValue("new draft B"));
+	});
+	it("preserves multiline text with Shift+Enter and sends with Enter", async () => {
+		const typist = userEvent.setup();
+		renderInput();
+		const field = screen.getByLabelText("Message");
+		await typist.type(field, "First line{Shift>}{Enter}{/Shift}Second line");
+		expect(field).toHaveValue("First line\nSecond line");
+		expect(onSend).not.toHaveBeenCalled();
+		await typist.keyboard("{Enter}");
+		expect(onSend).toHaveBeenCalledWith("First line\nSecond line", [], null, []);
+	});
+
+	it("does not send while composing, on Safari composition Enter, or on held Enter", () => {
+		renderInput();
+		const field = screen.getByLabelText("Message");
+		fireEvent.change(field, { target: { value: "Đang nhập" } });
+		fireEvent.compositionStart(field);
+		fireEvent.keyDown(field, { key: "Enter" });
+		fireEvent.compositionEnd(field);
+		fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+		fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+		fireEvent.keyDown(field, { key: "Enter", repeat: true });
+		expect(onSend).not.toHaveBeenCalled();
+		expect(field).toHaveValue("Đang nhập");
+	});
+
+	it("completes a mention on Enter without sending the unfinished message", async () => {
+		const typist = userEvent.setup();
+		renderInput({ isGroup: true, participants: [makeParticipant("an", "An")] });
+		await typist.type(screen.getByLabelText("Message"), "Hi @an{Enter}");
+		expect(onSend).not.toHaveBeenCalled();
+		expect(screen.getByLabelText("Message")).toHaveValue("Hi @an ");
+	});
+	it("completes a mention inside existing text and keeps its suffix and caret", async () => {
+		renderInput({ isGroup: true, participants: [makeParticipant("anna", "Anna")] });
+		const field = screen.getByLabelText<HTMLTextAreaElement>("Message");
+		fireEvent.change(field, { target: { value: "Hello @an tomorrow", selectionStart: 9, selectionEnd: 9 } });
+		fireEvent.keyDown(field, { key: "Enter" });
+		expect(field).toHaveValue("Hello @anna tomorrow");
+		expect(field.selectionStart).toBe(12);
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
+	it("moves among mentions with arrows and dismisses them without sending", async () => {
+		const user = userEvent.setup();
+		renderInput({ isGroup: true, participants: [makeParticipant("an", "An"), makeParticipant("anna", "Anna")] });
+		const field = screen.getByLabelText("Message");
+		await user.type(field, "Hi @a{ArrowDown}");
+		expect(screen.getByRole("option", { name: "Anna@anna" })).toHaveAttribute("aria-selected", "true");
+		await user.keyboard("{Enter}");
+		expect(field).toHaveValue("Hi @anna ");
+		await user.type(field, "@a{Escape}");
+		expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+		expect(onSend).not.toHaveBeenCalled();
+	});
+
+	it.each(["mail@example", "https://host/@an"])("does not offer mentions inside %s", async (text) => {
+		const user = userEvent.setup();
+		renderInput({ isGroup: true, participants: [makeParticipant("an", "An")] });
+		await user.type(screen.getByLabelText("Message"), text);
+		expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+	});
+
 	it("shows voice instead of an inactive send button when the composer is empty", () => {
 		renderInput();
 
@@ -130,7 +208,7 @@ describe("MessageInput", () => {
 
 	it("restores a device-local draft for the conversation", () => {
 		localStorage.setItem(
-			"chatty:draft:conversation-1",
+			"chatty:user-draft:minh:conversation-1",
 			JSON.stringify({ content: "unfinished thought", replyToId: null }),
 		);
 
@@ -145,7 +223,7 @@ describe("MessageInput", () => {
 
 		view.unmount();
 
-		expect(JSON.parse(localStorage.getItem("chatty:draft:conversation-1") ?? "null")).toEqual({
+		expect(JSON.parse(localStorage.getItem("chatty:user-draft:minh:conversation-1") ?? "null")).toEqual({
 			content: "keep this",
 			replyToId: null,
 		});
@@ -162,7 +240,7 @@ describe("MessageInput", () => {
 	it("accepts an image dropped over the chat surface", () => {
 		renderInput();
 
-		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [image] } });
+		fireEvent.drop(screen.getByLabelText("Message"), { dataTransfer: { types: ["Files"], files: [image] } });
 
 		expect(screen.getByAltText("Attached image preview 1")).toBeInTheDocument();
 	});
@@ -194,7 +272,9 @@ describe("MessageInput", () => {
 		if (source === "paste") {
 			fireEvent.paste(screen.getByLabelText("Message"), { clipboardData: { files: [documentFile] } });
 		} else {
-			fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+			fireEvent.drop(screen.getByLabelText("Message"), {
+				dataTransfer: { types: ["Files"], files: [documentFile] },
+			});
 		}
 
 		await waitFor(() =>
@@ -238,7 +318,7 @@ describe("MessageInput", () => {
 
 		expect(screen.getByRole("status", { name: "Uploading attachment 0%" })).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Remove attached file" })).toBeDisabled();
-		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		fireEvent.drop(screen.getByLabelText("Message"), { dataTransfer: { types: ["Files"], files: [documentFile] } });
 		await typist.type(screen.getByLabelText("Message"), "A separate message{Enter}");
 		expect(onSendFile).toHaveBeenCalledTimes(1);
 		expect(onSend).not.toHaveBeenCalled();
@@ -262,12 +342,26 @@ describe("MessageInput", () => {
 		expect(onSendFile).toHaveBeenCalledTimes(1);
 	});
 
+	it("ignores file drops outside its composer and while a modal covers it", () => {
+		const onSendFile = vi.fn();
+		renderInput({ onSendFile });
+		fireEvent.drop(document.body, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		expect(onSendFile).not.toHaveBeenCalled();
+		const modal = document.createElement("div");
+		modal.setAttribute("role", "dialog");
+		modal.setAttribute("aria-modal", "true");
+		document.body.append(modal);
+		fireEvent.drop(screen.getByLabelText("Message"), { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		expect(onSendFile).not.toHaveBeenCalled();
+		modal.remove();
+	});
+
 	it("refuses invalid files before starting their upload", () => {
 		const onSendFile = vi.fn();
 		renderInput({ onSendFile });
 		const executable = new File(["bytes"], "installer.exe", { type: "application/octet-stream" });
 
-		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [executable] } });
+		fireEvent.drop(screen.getByLabelText("Message"), { dataTransfer: { types: ["Files"], files: [executable] } });
 
 		expect(screen.getByRole("alert")).toHaveTextContent("Executable files cannot be sent");
 		expect(onSendFile).not.toHaveBeenCalled();
@@ -277,19 +371,26 @@ describe("MessageInput", () => {
 		const onSendFile = vi.fn();
 		renderInput({ onSendFile, isDisabled: true });
 
-		fireEvent.drop(window, { dataTransfer: { types: ["Files"], files: [documentFile] } });
+		fireEvent.drop(screen.getByLabelText("Message"), { dataTransfer: { types: ["Files"], files: [documentFile] } });
 		fireEvent.paste(screen.getByLabelText("Message"), { clipboardData: { files: [documentFile] } });
 
 		expect(onSendFile).not.toHaveBeenCalled();
 	});
 
+	it("sends a handle in a direct chat as ordinary text instead of an invalid group mention", async () => {
+		const user = userEvent.setup();
+		renderInput({ participants: [makeParticipant("an", "An")], isGroup: false });
+		await user.type(screen.getByLabelText("Message"), "Hi @an{Enter}");
+		expect(onSend).toHaveBeenCalledWith("Hi @an", [], null, []);
+	});
+
 	it("autocompletes a group mention and sends the participant id", async () => {
 		const user = userEvent.setup();
 		const an = makeParticipant("an", "An");
-		renderInput({ participants: [makeParticipant("minh", "Minh"), an] });
+		renderInput({ isGroup: true, participants: [makeParticipant("minh", "Minh"), an] });
 
 		await user.type(screen.getByLabelText("Message"), "Hello @a");
-		await user.click(screen.getByRole("button", { name: "An@an" }));
+		await user.click(screen.getByRole("option", { name: "An@an" }));
 		await user.type(screen.getByLabelText("Message"), "there{Enter}");
 
 		expect(onSend).toHaveBeenCalledWith("Hello @an there", [], null, ["an"]);

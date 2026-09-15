@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useDialog } from "@/hooks/use-dialog";
 import { Button } from "@/components/button";
+import { isOfflineMediaUrl } from "@/utils/is-offline-media-url";
 import { cn } from "@/utils/cn";
 import { LIGHTBOX_CONTROL_CLASS } from "../constants/attachment";
 import { useAttachmentZoom } from "../hooks/use-attachment-zoom";
@@ -157,6 +158,11 @@ export function AttachmentLightbox({
 				</div>
 			)}
 
+			{isOfflineMediaUrl(current.url) && (
+				<p role="status" className="text-center text-xs text-on-media">
+					Connect to download the original image.
+				</p>
+			)}
 			{saveError && (
 				<p role="alert" className="meta mx-auto w-max shrink-0 rounded-badge bg-signal px-2 py-1 text-on-media">
 					{saveError}
@@ -251,6 +257,7 @@ export function AttachmentLightbox({
 					onRotateClockwise={() => rotate(1)}
 					onSave={() => void saveCurrentImage(current)}
 					isSaving={isSaving}
+					canSave={!isOfflineMediaUrl(current.url)}
 					onClose={close}
 					{...(onOpenMessage ? { onOpenMessage: () => onOpenMessage(current) } : {})}
 					{...(onForward ? { onForward } : {})}

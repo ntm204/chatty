@@ -2,7 +2,7 @@ import type { MessageDTO } from "@chatty/shared-types";
 import { CornerUpLeft, X } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
-import { DELETED_AUTHOR_NAME } from "../constants/message";
+import { DELETED_AUTHOR_NAME, DELETED_MESSAGE_TEXT } from "../constants/message";
 import { getAttachmentPreviewText } from "../utils";
 
 interface ComposerReplyPreviewProps {
@@ -19,8 +19,10 @@ export function ComposerReplyPreview({ replyTo, onCancel }: ComposerReplyPreview
 					Replying to {replyTo.author?.displayName ?? DELETED_AUTHOR_NAME}
 				</span>
 				<span className="truncate text-[12.5px]/[1.45] text-ink-soft">
-					{replyTo.content ||
-						(replyTo.attachments.length > 0 ? getAttachmentPreviewText(replyTo.attachments) : "")}
+					{replyTo.deletedAt
+						? DELETED_MESSAGE_TEXT
+						: replyTo.content ||
+							(replyTo.attachments.length > 0 ? getAttachmentPreviewText(replyTo.attachments) : "")}
 				</span>
 			</div>
 			{replyTo.attachments[0] && (

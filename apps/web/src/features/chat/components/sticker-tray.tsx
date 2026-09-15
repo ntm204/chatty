@@ -1,11 +1,11 @@
 import { ImagePlus, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ACCEPTED_IMAGE_TYPES } from "../constants/attachment";
 import { useStickers } from "../hooks";
 
 interface StickerTrayProps {
-	onPick: (stickerId: string) => void;
+	onPick: (stickerId: string) => Promise<void>;
 	onClose: () => void;
 }
 
@@ -22,11 +22,16 @@ interface StickerTrayProps {
  * from the tray never blanks a picture out of a conversation it was sent to.
  */
 export function StickerTray({ onPick, onClose }: StickerTrayProps) {
-	const { stickers, isLoading, error, add, remove } = useStickers();
+	const { stickers, isLoading, error, isAdding, removingIds, reload, add, remove } = useStickers();
+	const [isSending, setIsSending] = useState(false);
+	const [sendError, setSendError] = useState("");
+	const isSendingRef = useRef(false);
+	const isMountedRef = useRef(true);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
+		isMountedRef.current = true;
 		function handlePointerDown(event: PointerEvent) {
 			if (!panelRef.current?.contains(event.target as Node)) onClose();
 		}
@@ -39,10 +44,28 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 		document.addEventListener("keydown", handleKeyDown);
 
 		return () => {
+			isMountedRef.current = false;
 			document.removeEventListener("pointerdown", handlePointerDown);
 			document.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [onClose]);
+
+	async function sendSticker(stickerId: string): Promise<void> {
+		if (isSendingRef.current) return;
+		isSendingRef.current = true;
+		setIsSending(true);
+		setSendError("");
+		try {
+			await onPick(stickerId);
+			if (isMountedRef.current) onClose();
+		} catch (caught) {
+			if (isMountedRef.current)
+				setSendError(caught instanceof Error ? caught.message : "The sticker could not be sent. Try again.");
+		} finally {
+			isSendingRef.current = false;
+			if (isMountedRef.current) setIsSending(false);
+		}
+	}
 
 	function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
 		const file = event.target.files?.[0];
@@ -71,19 +94,30 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 				<Button
 					variant="ghost"
 					onClick={() => fileInputRef.current?.click()}
+					disabled={isSending || isLoading || isAdding}
 					className="eyebrow gap-1.5 px-1.5 py-0.5 text-ink-faint hover:text-ink"
 				>
 					<ImagePlus className="size-3.5" />
-					Add
+					{isAdding ? "Adding…" : "Add"}
 				</Button>
 			</div>
 
-			{error && (
+			{(sendError || error) && (
 				<p role="alert" className="eyebrow border-b border-rule-soft px-3.5 py-2.5 text-signal">
-					{error}
+					{sendError || error}
 				</p>
 			)}
 
+			{error && !isLoading && stickers.length === 0 && (
+				<Button variant="ghost" onClick={reload} className="mx-3 text-xs">
+					Try loading stickers again
+				</Button>
+			)}
+			{(isSending || isLoading) && (
+				<p role="status" className="px-3.5 py-2 text-xs text-ink-soft">
+					{isSending ? "Sending sticker…" : "Loading stickers…"}
+				</p>
+			)}
 			<div className="grid max-h-[240px] grid-cols-3 gap-2 overflow-y-auto p-3">
 				{stickers.map((sticker) => (
 					// `group` so the remove button appears on hover rather than sitting
@@ -91,7 +125,8 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 					<div key={sticker.id} className="group relative">
 						<Button
 							variant="ghost"
-							onClick={() => onPick(sticker.id)}
+							onClick={() => void sendSticker(sticker.id)}
+							disabled={isSending || removingIds?.has(sticker.id)}
 							aria-label="Send this sticker"
 							className="block size-full overflow-hidden rounded-control p-0"
 						>
@@ -105,8 +140,9 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 						<Button
 							variant="ghost"
 							onClick={() => void remove(sticker.id)}
+							disabled={isSending || removingIds?.has(sticker.id)}
 							aria-label="Remove this sticker"
-							className="absolute -right-1.5 -top-1.5 size-5 rounded-badge border border-rule bg-paper-raised p-0 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+							className="absolute -right-1.5 -top-1.5 size-5 rounded-badge border border-rule bg-paper-raised p-0 text-ink-faint opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
 						>
 							<X className="size-3" />
 						</Button>
@@ -114,7 +150,7 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 				))}
 			</div>
 
-			{!isLoading && stickers.length === 0 && (
+			{!isLoading && !error && stickers.length === 0 && (
 				<p className="px-4 pb-5 text-center text-[13px] text-ink-faint">
 					No stickers yet. Add a picture and it is one tap away from every conversation.
 				</p>

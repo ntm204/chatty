@@ -1,3 +1,4 @@
+import { isOfflineMediaUrl } from "@/utils/is-offline-media-url";
 import type { AttachmentDTO } from "@chatty/shared-types";
 
 /**
@@ -15,6 +16,7 @@ import type { AttachmentDTO } from "@chatty/shared-types";
  * and the API sends CORS headers for the web app's origin.
  */
 export async function downloadAttachment(attachment: AttachmentDTO): Promise<void> {
+	if (isOfflineMediaUrl(attachment.url)) throw new Error("Connect to download the original attachment.");
 	const response = await fetch(attachment.url);
 	if (!response.ok) throw new Error(`The attachment could not be fetched (${response.status})`);
 

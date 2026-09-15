@@ -69,6 +69,7 @@ jobs:
         run: npx playwright install chromium
       - run: npx playwright install-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:e2e:built
 
   images:
     name: Publish ${{ matrix.name }} image

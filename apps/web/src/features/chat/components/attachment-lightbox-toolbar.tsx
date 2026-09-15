@@ -14,6 +14,7 @@ interface AttachmentLightboxToolbarProps {
 	onForward?: () => void;
 	onSave: () => void;
 	isSaving: boolean;
+	canSave?: boolean;
 	onClose: () => void;
 }
 
@@ -44,6 +45,7 @@ export function AttachmentLightboxToolbar({
 	onForward,
 	onSave,
 	isSaving,
+	canSave = true,
 	onClose,
 }: AttachmentLightboxToolbarProps) {
 	return (
@@ -129,7 +131,7 @@ export function AttachmentLightboxToolbar({
 			<Button
 				variant="ghost"
 				onClick={onSave}
-				disabled={isSaving}
+				disabled={isSaving || !canSave}
 				title="Save"
 				aria-label="Save this image"
 				className={LIGHTBOX_TOOLBAR_BUTTON_CLASS}

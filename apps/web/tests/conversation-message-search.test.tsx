@@ -5,6 +5,8 @@ import { api } from "@/api/client";
 import { ConversationMessageSearch } from "@/features/chat/components/conversation-message-search";
 import { makeMessage, makeUser } from "./factories";
 
+vi.mock("@/features/chat/hooks/use-socket-event", () => ({ useSocketEvent: vi.fn() }));
+
 const results = ["new", "old"].map((id) => ({
 	message: { ...makeMessage(id, "an", `deployment ${id}`), conversationId: "c1" },
 	conversation: {

@@ -140,4 +140,70 @@ describe("optimistic send reconciliation", () => {
 		expect(localStore.removeLocalMessage).toHaveBeenCalledWith("draft:durable");
 		expect(view.result.current.loadError).toBe("");
 	});
+	it("reports an outbox write failure while preserving the failed message for retry", async () => {
+		localStore.enqueueLocalMessage.mockRejectedValue(new Error("Quota exceeded"));
+		vi.mocked(api.sendMessage).mockRejectedValue(new Error("Offline"));
+		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
+		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));
+		await act(async () => {
+			await view.result.current.sendMessage("keep me", [], null).catch(() => undefined);
+		});
+		expect(view.result.current.messages[0]?.content).toBe("keep me");
+		expect(view.result.current.hasUnsavedMessages).toBe(true);
+		vi.mocked(api.sendMessage).mockResolvedValue(makeMessage("saved", "minh", "keep me"));
+		act(() => view.result.current.retrySend(view.result.current.messages[0]!.id));
+		await waitFor(() => expect(view.result.current.hasUnsavedMessages).toBe(false));
+	});
+
+	it("blocks duplicate retries and discard while a retry is in flight", async () => {
+		vi.mocked(api.sendMessage).mockRejectedValueOnce(new Error("Offline"));
+		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
+		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));
+		await act(async () => {
+			await view.result.current.sendMessage("keep me", [], null).catch(() => undefined);
+		});
+		const draftId = view.result.current.messages[0]!.id;
+		let rejectRetry!: (error: Error) => void;
+		vi.mocked(api.sendMessage).mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectRetry = reject;
+				}),
+		);
+		act(() => {
+			view.result.current.retrySend(draftId);
+			view.result.current.retrySend(draftId);
+			view.result.current.discardDraft(draftId);
+		});
+		expect(api.sendMessage).toHaveBeenCalledTimes(2);
+		expect(view.result.current.messages[0]?.id).toBe(draftId);
+		await act(async () => {
+			rejectRetry(new Error("Still offline"));
+		});
+		expect(view.result.current.messages[0]?.deliveryState).toBe("failed");
+		act(() => view.result.current.discardDraft(draftId));
+		expect(view.result.current.messages).toHaveLength(0);
+	});
+	it("does not dispatch after logout while the local outbox write is pending", async () => {
+		let finishWrite!: () => void;
+		localStore.enqueueLocalMessage.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					finishWrite = resolve;
+				}),
+		);
+		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
+		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));
+		let pending!: Promise<void>;
+		act(() => {
+			pending = view.result.current.sendMessage("private", [], null);
+		});
+		await waitFor(() => expect(localStore.enqueueLocalMessage).toHaveBeenCalled());
+		await act(async () => {
+			useAuth.setState({ currentUser: null });
+			finishWrite();
+			await pending;
+		});
+		expect(api.sendMessage).not.toHaveBeenCalled();
+	});
 });

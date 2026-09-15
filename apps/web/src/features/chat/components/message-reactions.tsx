@@ -13,6 +13,7 @@ interface MessageReactionsProps {
 	isMine: boolean;
 	/** The conversation's shared accent, replacing the fixed default for a "mine" chip — see ADR 0022. */
 	themeColor: ConversationTheme | null;
+	isDisabled?: boolean;
 	onToggle: (emoji: ReactionEmoji) => void;
 	/** Opens the reactor list. Reached from the overflow count and from the actions menu. */
 	onShowDetails: () => void;
@@ -58,6 +59,7 @@ export function MessageReactions({
 	users,
 	isMine,
 	themeColor,
+	isDisabled = false,
 	onToggle,
 	onShowDetails,
 }: MessageReactionsProps) {
@@ -84,6 +86,7 @@ export function MessageReactions({
 						key={reaction.emoji}
 						variant="ghost"
 						onClick={() => onToggle(reaction.emoji)}
+						disabled={isDisabled}
 						aria-pressed={isReacted}
 						aria-label={`${reaction.emoji}, ${count}`}
 						aria-description={getReactionSummary(reaction, users, currentUserId)}

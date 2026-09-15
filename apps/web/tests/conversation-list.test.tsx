@@ -27,9 +27,19 @@ function renderList(overrides: Partial<React.ComponentProps<typeof ConversationL
 }
 
 describe("ConversationList", () => {
+	it("does not show another account's persisted or live draft preview", () => {
+		localStorage.setItem(
+			"chatty:user-draft:an:conversation-1",
+			JSON.stringify({ content: "Private An", replyToId: null }),
+		);
+		renderList();
+		act(() => announceDraftPreview("an", "conversation-1", "Private An", null));
+		expect(screen.queryByText("Private An")).not.toBeInTheDocument();
+		expect(screen.getByText("ordinary preview")).toBeVisible();
+	});
 	it("prefers a restored draft to typing and the last message without hiding unread", () => {
 		localStorage.setItem(
-			"chatty:draft:conversation-1",
+			"chatty:user-draft:minh:conversation-1",
 			JSON.stringify({ content: "My unfinished\n reply", replyToId: null }),
 		);
 		renderList({
@@ -45,25 +55,25 @@ describe("ConversationList", () => {
 
 	it("updates immediately, represents reply-only drafts and restores typing on clear", () => {
 		renderList({ typingByConversation: { "conversation-1": ["an"] } });
-		act(() => announceDraftPreview("conversation-1", "Hello", null));
+		act(() => announceDraftPreview("minh", "conversation-1", "Hello", null));
 		expect(screen.getByText("Hello")).toBeVisible();
-		act(() => announceDraftPreview("conversation-1", "", "reply-id"));
+		act(() => announceDraftPreview("minh", "conversation-1", "", "reply-id"));
 		expect(screen.getByText("Reply")).toBeVisible();
-		act(() => announceDraftPreview("conversation-1", "   ", null));
+		act(() => announceDraftPreview("minh", "conversation-1", "   ", null));
 		expect(screen.queryByText("Draft:")).not.toBeInTheDocument();
 		expect(screen.getByText("Typing")).toBeVisible();
 	});
 
 	it("ignores other conversations and invalid data, and refreshes external storage changes", () => {
-		localStorage.setItem("chatty:draft:conversation-1", "broken");
+		localStorage.setItem("chatty:user-draft:minh:conversation-1", "broken");
 		renderList();
-		act(() => announceDraftPreview("other", "Private draft", null));
+		act(() => announceDraftPreview("minh", "other", "Private draft", null));
 		expect(screen.queryByText("Draft:")).not.toBeInTheDocument();
 		localStorage.setItem(
-			"chatty:draft:conversation-1",
+			"chatty:user-draft:minh:conversation-1",
 			JSON.stringify({ content: "Another tab", replyToId: null }),
 		);
-		act(() => window.dispatchEvent(new StorageEvent("storage", { key: "chatty:draft:conversation-1" })));
+		act(() => window.dispatchEvent(new StorageEvent("storage", { key: "chatty:user-draft:minh:conversation-1" })));
 		expect(screen.getByText("Another tab")).toBeVisible();
 		localStorage.clear();
 		act(() => window.dispatchEvent(new StorageEvent("storage", { key: null })));

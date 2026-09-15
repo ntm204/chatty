@@ -1,5 +1,7 @@
+import { GlobalMessageSearch } from "../components/global-message-search";
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useState } from "react";
+import { useGlobalSearchSession } from "../hooks/use-global-search-session";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
@@ -11,7 +13,6 @@ import {
 	useReplyTarget,
 	useConversationMessages,
 	useDocumentTitle,
-	useMarkRead,
 	useKeyboardShortcuts,
 	useMessageListHandlers,
 	useMessageNotifications,
@@ -21,7 +22,7 @@ import {
 	useSocketConnection,
 	useTypingParticipants,
 } from "../hooks";
-import { findFirstUnreadConversation, getNewestStoredMessage, getTotalUnreadCount } from "../utils";
+import { findFirstUnreadConversation, getTotalUnreadCount } from "../utils";
 
 export function ChatPage() {
 	const currentUser = useAuth((state) => state.currentUser);
@@ -30,9 +31,6 @@ export function ChatPage() {
 	const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 	const [openedSavedConversation, setOpenedSavedConversation] = useState<ConversationDTO | null>(null);
 	const [isManagingGroup, setIsManagingGroup] = useState(false);
-	// The reply target lives here rather than in the composer, because the message
-	// is picked in the list and answered in the composer — two siblings, so the
-	// state belongs to the parent that owns both.
 	const [requestedMessageId, setRequestedMessageId] = useState<string | null>(null);
 	const [isConversationSearchOpen, setIsConversationSearchOpen] = useState(false);
 	const [forwardingMessage, setForwardingMessage] = useState<MessageDTO | null>(null);
@@ -40,13 +38,18 @@ export function ChatPage() {
 	const [editLastRequest, setEditLastRequest] = useState(0);
 	const [cancelEditRequest, setCancelEditRequest] = useState(0);
 	const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
+	const globalSearch = useGlobalSearchSession();
 
 	const refreshBlockedUsers = useBlockedUsersSync();
 	const refreshRestrictedUsers = useRestrictedUsersSync();
 	const onlineUserIds = usePresence();
 	const { activeUserIds: typingUserIds, typingByConversation } = useTypingParticipants(selectedConversationId);
 	const hasOpenPanel =
-		isShortcutHelpOpen || Boolean(forwardingMessage) || isManagingGroup || isConversationSearchOpen;
+		globalSearch.isOpen ||
+		isShortcutHelpOpen ||
+		Boolean(forwardingMessage) ||
+		isManagingGroup ||
+		isConversationSearchOpen;
 
 	const {
 		conversations,
@@ -56,8 +59,6 @@ export function ChatPage() {
 		setIsShowingArchived,
 	} = useConversationList(
 		currentUser?.id,
-		// Deselect only when the conversation that ended is the one on screen —
-		// leaving a group you were not looking at must not close the one you were.
 		useCallback((conversationId: string) => {
 			setSelectedConversationId((current) => (current === conversationId ? null : current));
 		}, []),
@@ -77,6 +78,7 @@ export function ChatPage() {
 		loadNewer,
 		isLoadingThread,
 		loadError,
+		hasUnsavedMessages,
 		retryLoad,
 		resync,
 		sendMessage,
@@ -97,7 +99,8 @@ export function ChatPage() {
 	useKeyboardShortcuts({
 		hasOpenPanel,
 		onClosePanel: () => {
-			if (isShortcutHelpOpen) setIsShortcutHelpOpen(false);
+			if (globalSearch.isOpen) globalSearch.close();
+			else if (isShortcutHelpOpen) setIsShortcutHelpOpen(false);
 			else if (forwardingMessage) setForwardingMessage(null);
 			else if (isManagingGroup) setIsManagingGroup(false);
 			else closeMessageSearch();
@@ -129,23 +132,10 @@ export function ChatPage() {
 		clearReply();
 	}, [clearReply, selectedConversationId]);
 
-	// Reading is defined by what is on screen, so the marker follows the newest
-	// loaded message rather than the newest that exists. Loading older pages
-	// prepends and leaves this untouched, which is what stops scrolling up from
-	// looking like unreading.
-	//
-	// Drafts are skipped, and that is not cosmetic: a draft's id names nothing on
-	// the server, so moving the read marker to one would be a request the server
-	// can only refuse.
-	const newestStoredMessageId = getNewestStoredMessage(messages)?.id;
-	useMarkRead(selectedConversationId, newestStoredMessageId);
-
 	const selectedConversation =
 		conversations.find((conversation) => conversation.id === selectedConversationId) ??
 		(openedSavedConversation?.id === selectedConversationId ? openedSavedConversation : undefined);
 
-	// Stable identities, which is what keeps the memo on `MessageRows` working
-	// while this component re-renders on every typing and presence event.
 	const { pinnedMessageIds, onTogglePinMessage } = useMessageListHandlers(
 		selectedConversationId,
 		selectedConversation?.pinnedMessages,
@@ -171,6 +161,20 @@ export function ChatPage() {
 
 	return (
 		<div className="chat-shell relative flex h-dvh flex-col overflow-hidden bg-paper">
+			{globalSearch.isOpen && (
+				<GlobalMessageSearch
+					search={globalSearch.search}
+					scrollPosition={globalSearch.scrollPosition}
+					currentUserId={currentUser.id}
+					onClose={globalSearch.close}
+					onSelectMessage={(conversation, messageId) => {
+						handleConversationStarted(conversation.id, conversation);
+						setRequestedMessageId(messageId);
+						globalSearch.selectConversation(conversation.id);
+						globalSearch.close();
+					}}
+				/>
+			)}
 			{isShortcutHelpOpen && <KeyboardShortcutsPanel onClose={() => setIsShortcutHelpOpen(false)} />}
 			{isConnectionLost && <ConnectionBanner />}
 
@@ -184,6 +188,11 @@ export function ChatPage() {
 					onSelect={handleConversationSelected}
 					onConversationStarted={handleConversationStarted}
 					onSignOut={logout}
+					onOpenMessageSearch={globalSearch.open}
+					onOpenBookmarkedMessage={(conversation, messageId) => {
+						handleConversationStarted(conversation.id, conversation);
+						setRequestedMessageId(messageId);
+					}}
 					isShowingArchived={isShowingArchived}
 					onToggleArchived={() => setIsShowingArchived(!isShowingArchived)}
 					typingByConversation={typingByConversation}
@@ -214,13 +223,18 @@ export function ChatPage() {
 							onSelectSearchResult={selectSearchResult}
 							onClearSearchResult={() => setRequestedMessageId(null)}
 							forwardingMessage={forwardingMessage}
-							conversations={conversations}
 							onCloseForward={() => setForwardingMessage(null)}
 							onOpenMessage={(messageId) => {
 								jumpToMessage(messageId);
 								setIsManagingGroup(false);
 							}}
+							onReturnToGlobalSearch={
+								globalSearch.conversationId === selectedConversation.id && requestedMessageId
+									? globalSearch.open
+									: undefined
+							}
 							loadError={loadError}
+							hasUnsavedMessages={hasUnsavedMessages}
 							onRetryLoad={retryLoad}
 							messageListProps={{
 								conversationId: selectedConversation.id,
@@ -257,6 +271,7 @@ export function ChatPage() {
 								onReturnToLatest: closeMessageSearch,
 							}}
 							messageInputProps={{
+								isGroup: selectedConversation.isGroup,
 								conversationId: selectedConversation.id,
 								participants: selectedConversation.participants,
 								currentUserId: currentUser.id,

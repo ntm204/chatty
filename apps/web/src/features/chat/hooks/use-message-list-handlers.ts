@@ -4,7 +4,7 @@ import { api } from "@/api/client";
 
 interface MessageListHandlers {
 	pinnedMessageIds: string[];
-	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
+	onTogglePinMessage: (messageId: string, isPinned: boolean) => Promise<void>;
 }
 
 /**
@@ -34,10 +34,10 @@ export function useMessageListHandlers(
 	const pinnedMessageIds = useMemo(() => pinnedMessages?.map((pin) => pin.messageId) ?? [], [pinnedMessages]);
 
 	const onTogglePinMessage = useCallback(
-		(messageId: string, isPinned: boolean) => {
+		async (messageId: string, isPinned: boolean) => {
 			if (!conversationId) return;
 
-			void (isPinned ? api.unpinMessage(conversationId, messageId) : api.pinMessage(conversationId, messageId));
+			await (isPinned ? api.unpinMessage(conversationId, messageId) : api.pinMessage(conversationId, messageId));
 		},
 		[conversationId],
 	);

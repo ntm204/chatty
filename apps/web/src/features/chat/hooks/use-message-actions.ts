@@ -1,28 +1,16 @@
+import { applyMessageUpdate } from "@/utils/apply-message-update";
 import type { MessageDTO, ReactionEmoji } from "@chatty/shared-types";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { api } from "@/api/client";
 import { useSocketEvent } from "./use-socket-event";
 
 interface MessageActions {
-	editMessage: (messageId: string, content: string) => void;
-	deleteMessage: (messageId: string) => void;
-	toggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
+	editMessage: (messageId: string, content: string) => Promise<void>;
+	deleteMessage: (messageId: string) => Promise<void>;
+	toggleReaction: (messageId: string, emoji: ReactionEmoji) => Promise<void>;
 }
 
-/**
- * Changing a message that is already on screen: the two writes, and the one
- * event that renders their result.
- *
- * The three belong together and nowhere else. Both writes deliberately ignore
- * what the request returns — the server broadcasts `message:updated` back to
- * everyone including the author, and the subscription below is what puts it on
- * screen. Applying the response here as well would render the same change twice
- * by two routes, which is exactly what `MessageInput` avoids on a send.
- *
- * Takes the page's `setMessages` rather than owning the list: paging and arrival
- * still live in the page, and two sources of truth for one array is worse than
- * one setter passed down.
- */
+/** Writes settle for inline feedback; socket updates remain the source of rendered message state. */
 export function useMessageActions(
 	conversationId: string | null,
 	setMessages: Dispatch<SetStateAction<MessageDTO[]>>,
@@ -36,9 +24,7 @@ export function useMessageActions(
 					// conversation. One that has scrolled out of the loaded page simply
 					// matches nothing, which is correct — it will arrive in its new
 					// state whenever that page is fetched again.
-					setMessages((current) =>
-						current.map((existing) => (existing.id === message.id ? message : existing)),
-					);
+					setMessages((current) => current.map((existing) => applyMessageUpdate(existing, message)));
 				}
 			},
 			[conversationId, setMessages],
@@ -46,32 +32,28 @@ export function useMessageActions(
 	);
 
 	const editMessage = useCallback(
-		(messageId: string, content: string) => {
+		async (messageId: string, content: string) => {
 			if (!conversationId) return;
 
-			void api.editMessage(conversationId, messageId, content);
+			await api.editMessage(conversationId, messageId, content);
 		},
 		[conversationId],
 	);
 
 	const deleteMessage = useCallback(
-		(messageId: string) => {
+		async (messageId: string) => {
 			if (!conversationId) return;
 
-			void api.deleteMessage(conversationId, messageId);
+			await api.deleteMessage(conversationId, messageId);
 		},
 		[conversationId],
 	);
 
-	// Same shape as the two above, and for the same reason: the server broadcasts
-	// `message:updated` carrying the whole reaction list, so this fires and waits
-	// for nothing. Applying an optimistic count here as well would render the
-	// change twice and drift the moment two people react at once.
 	const toggleReaction = useCallback(
-		(messageId: string, emoji: ReactionEmoji) => {
+		async (messageId: string, emoji: ReactionEmoji) => {
 			if (!conversationId) return;
 
-			void api.toggleReaction(conversationId, messageId, emoji);
+			await api.toggleReaction(conversationId, messageId, emoji);
 		},
 		[conversationId],
 	);

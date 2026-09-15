@@ -2,7 +2,7 @@ import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback } from "react";
 import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
 import { NOTIFICATION_TAG_PREFIX } from "../constants/notification-tag";
-import { isConversationMuted } from "../utils/conversation-mute";
+import { useMessageAlertPolicy } from "./use-message-alert-policy";
 import { useNotificationSetting } from "@/hooks/use-notification-setting";
 import { useSocketEvent } from "./use-socket-event";
 
@@ -27,24 +27,33 @@ import { useSocketEvent } from "./use-socket-event";
  */
 export function useMessageNotifications(currentUserId: string, conversations: ConversationDTO[]): void {
 	const { isEnabled } = useNotificationSetting();
+	const canAlert = useMessageAlertPolicy(currentUserId, conversations);
 
 	useSocketEvent(
 		"message:new",
 		useCallback(
 			(message: MessageDTO) => {
-				if (!isEnabled || Notification.permission !== "granted") return;
+				if (!isEnabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
 				if (document.visibilityState === "visible") return;
-				if (!message.author || message.author.id === currentUserId) return;
-				const conversation = conversations.find((item) => item.id === message.conversationId);
-				const isMuted = conversation ? isConversationMuted(conversation) : false;
-				if (isMuted && !message.mentionedUserIds.includes(currentUserId)) return;
+				const author = message.author;
+				if (!author || author.id === currentUserId) return;
+				void canAlert(message).then((isAllowed) => {
+					if (
+						!isAllowed ||
+						document.visibilityState === "visible" ||
+						!useNotificationSetting.getState().isEnabled ||
+						Notification.permission !== "granted"
+					) {
+						return;
+					}
 
-				new Notification(message.author.displayName, {
-					body: message.content || ATTACHMENT_PREVIEW_TEXT,
-					tag: `${NOTIFICATION_TAG_PREFIX}${message.conversationId}`,
+					new Notification(author.displayName, {
+						body: message.content || ATTACHMENT_PREVIEW_TEXT,
+						tag: `${NOTIFICATION_TAG_PREFIX}${message.conversationId}`,
+					});
 				});
 			},
-			[isEnabled, currentUserId, conversations],
+			[isEnabled, currentUserId, canAlert],
 		),
 	);
 }

@@ -4,18 +4,18 @@ import type { ThreadMessage } from "./thread-message";
 /** Stable, unbound actions shared by every row in a thread. */
 export interface MessageRowActions {
 	onStartEdit: (messageId: string) => void;
-	onSaveEdit: (messageId: string, content: string) => void;
+	onSaveEdit: (messageId: string, content: string) => void | Promise<void>;
 	onCancelEdit: () => void;
-	onDeleteMessage: (messageId: string) => void;
-	onHideMessage: (messageId: string) => void;
+	onDeleteMessage: (messageId: string) => void | Promise<void>;
+	onHideMessage: (messageId: string) => void | Promise<void>;
 	onShowHistory: (messageId: string) => void;
 	onRetrySend: (messageId: string) => void;
 	onDiscardDraft: (messageId: string) => void;
-	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void;
+	onToggleReaction: (messageId: string, emoji: ReactionEmoji) => void | Promise<void>;
 	/** Opens the reactor list. One dialog for the whole thread, owned by `MessageList`. */
 	onShowReactions: (messageId: string) => void;
 	onReplyToMessage: (message: ThreadMessage) => void;
 	onForwardMessage: (message: ThreadMessage) => void;
-	onTogglePinMessage: (messageId: string, isPinned: boolean) => void;
+	onTogglePinMessage: (messageId: string, isPinned: boolean) => void | Promise<void>;
 	onJumpToMessage: (messageId: string) => void;
 }

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { ValidationError } from "../../lib/errors.js";
 import {
+	searchConversationsQuerySchema,
 	addParticipantSchema,
 	archiveConversationSchema,
 	createConversationSchema,
@@ -180,4 +181,9 @@ export async function renameConversationController(req: Request, res: Response):
 	const conversationId = req.params.conversationId as string;
 	const conversation = await conversationsService.renameConversation(req.userId!, conversationId, input);
 	res.status(200).json(conversation);
+}
+
+export async function searchConversationsController(req: Request, res: Response): Promise<void> {
+	const query = searchConversationsQuerySchema.parse(req.query);
+	res.status(200).json(await conversationsService.searchConversationsForUser(req.userId!, query));
 }

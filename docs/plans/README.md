@@ -4,11 +4,14 @@
 
 | Plan | Scope | Status |
 | --- | --- | --- |
-| [Experience polish](experience-polish.md) | 60 tasks in 12 batches for existing workflows, interface details and recovery from errors; includes acceptance criteria and implementation order | Planned; XP-01 and XP-11 are next |
+| [Experience polish](experience-polish.md) | 60 tasks in 12 batches for existing workflows, interface details and recovery from errors; includes acceptance criteria and implementation order | In progress; see the implementation ledger for verified outcomes |
 
 The active plan follows the current workflow in [CLAUDE.md](../../CLAUDE.md). Public launch and large
 feature additions are deferred. The specifications below are the historical record of phases 24–28;
 their exclusions describe that earlier scope, not the complete state of today's application.
+
+The [September 15 product assessment](product-assessment-2026-09-15.md) records the detailed
+feature review, subsequent priorities and implementation evidence.
 
 ## Historical plans — phases 24 to 28
 

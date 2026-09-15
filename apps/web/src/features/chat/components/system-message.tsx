@@ -2,6 +2,7 @@ import { formatMessageTime } from "../utils";
 
 interface SystemMessageProps {
 	content: string;
+	messageId?: string;
 	createdAt: string;
 }
 
@@ -16,9 +17,9 @@ interface SystemMessageProps {
  * it is rarely the point of an event like this, and available on hover/focus
  * without a persistent line of chrome for it.
  */
-export function SystemMessage({ content, createdAt }: SystemMessageProps) {
+export function SystemMessage({ content, createdAt, messageId }: SystemMessageProps) {
 	return (
-		<div className="flex justify-center py-2">
+		<div id={messageId ? `message-${messageId}` : undefined} className="flex justify-center py-2">
 			<span
 				title={formatMessageTime(createdAt)}
 				className="eyebrow max-w-[85%] truncate rounded-full bg-paper-sunken px-3 py-1 tracking-[0.08em] text-ink-faint"
