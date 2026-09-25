@@ -60,6 +60,51 @@ regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobi
 
 ## Current focus — everyday experience polish
 
+Final local review consolidates six obsolete proposal/assessment files, preserves the XP criteria and
+corrects old owner-role guidance to the current admin/member contract. It also repairs sidebar focus
+after a rejected pin and moves textarea height writes out of ResizeObserver delivery. Runtime security
+updates cover multer, nodemailer and sharp without changing their major versions. The single
+[acceptance report](plans/acceptance-2026-09-25.md) records final runs and remaining limits.
+
+The batch reaching **40/60 locally accepted XP items** resolves unloaded reply drafts without moving the reading window,
+separates preparation/upload/confirmation feedback, and surfaces sidebar loading failures with retry.
+Reaction filters support arrow keys and removed filters fall back to All. Dialogs recover focus when
+their opener disappears; message deletion choices start at Cancel and explain their scope.
+The final accepted count and browser evidence are tracked in the September 25 report, not inferred from this implementation note.
+
+September 25 continuation: the preceding session was committed as `22a388a`. Reply jumps now
+offer a return to the captured reading anchor; bookmark changes invalidate other sessions of
+the same account; vault pages respond to live retraction and retain category pages. Image
+selection keeps valid picks and names rejected files. File downloads can renew expired URLs
+after a current membership/visibility check. The built offline shell caches complete build
+versions and an offline initial session refreshes media on its first successful connection.
+Current verification and remaining acceptance requirements live in
+[the September 25 report](plans/acceptance-2026-09-25.md).
+
+The next continuation adds explicit authorized image/voice recovery and protects against late
+renewal after changing media. Dialog callbacks no longer steal focus on rerender; composition
+Escape remains with the input method. Acceptance for this continuation is recorded separately
+in that report rather than inheriting the preceding run's counts.
+
+The search/input batch adds query-generation guards and explicit empty states to people search,
+IME-safe conversation search with Clear/Retry, accent-insensitive emoji keywords, and clipboard
+text preservation beside mixed media. Partial group additions retry only unfinished people.
+The two-tab outbox regression now covers both text and image bytes and checks durable queue cleanup.
+The current delivery scope remains local app completion and deploy-readiness, not public hosting/domain setup.
+
+The vault continuation preserves loaded category depth through live refresh and retries the failed
+request from its original cursor. Retraction/hide removes only the affected rows immediately;
+membership loss clears visible content. Bookmark edits also refresh the loaded window instead of
+resetting the list. Verification is recorded in the September 25 acceptance report.
+
+The group/voice/sticker batch guards pending member writes by person and conversation, keeps failed
+removals retryable in their confirmation, and updates open invitations when admin rights change.
+Member menus support arrow keys and Escape with focus return. Confirmations initially focus Cancel
+and ignore Escape while pending. Recording now remains available beside an unrelated text draft;
+five-minute/device/recorder feedback and upload-versus-confirmation feedback are explicit.
+Sticker send/remove targets no longer overlap, full trays explain the existing 60-item limit, and
+composition Escape stays within its input method. Privacy menus explain mute/restrict and shared groups.
+
 The September 12 chat polish adds a Saved messages shortcut and replaces the welcome mascot with
 an expandable activity status. Voice players now use a 256×60 px surface with a 32 px play control,
 a 32 px waveform inside a 40 px seek target, remaining time after playback starts and a speed
@@ -81,7 +126,7 @@ product choice. Record completed outcomes here as each implementation is verifie
 
 ## September 15 — account-safe drafts, retraction and everyday composition
 
-The implementation note is [the product assessment](plans/product-assessment-2026-09-15.md).
+Current verification is consolidated in [the acceptance report](plans/acceptance-2026-09-25.md).
 
 - Draft persistence and sidebar events now carry the account identity. Logout/account deletion
   invalidates pending writes before asynchronous cleanup; legacy ownerless drafts are discarded.
@@ -126,7 +171,7 @@ Physical IME/mobile keyboard and Safari acceptance remain separate from syntheti
 - Cached image/file placeholders cannot be downloaded as originals. Details resizing again uses the shared
   mouse/keyboard divider; resize-sensitive browser checks wait for layout to settle before a separate gesture.
 
-Verification and remaining scope are recorded in the [implementation ledger](plans/product-assessment-2026-09-15.md).
+Verification and remaining scope are recorded in the [acceptance report](plans/acceptance-2026-09-25.md).
 Physical device/Safari acceptance, complete background outbox replay and Web Push remain later work.
 
 ---
@@ -148,7 +193,7 @@ Group-message edits rebuild mentions from current participant handles and rebuil
 transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
 `message:updated`, so adding a mention while editing does not replay new-message popup/sound alerts.
 
-Acceptance and remaining limitations are recorded in the product assessment and XP ledger.
+Current acceptance and remaining limitations are recorded in the acceptance report and XP ledger.
 
 ---
 
@@ -170,7 +215,7 @@ New acceptance covers real editor expiry while open, mute expiry, mutation retri
 changes during attachment preparation. `npm run verify:full` passes with 495 server and 530 web tests
 and a 0-hit audit, and the whole browser suite was re-run once: 76 of 76 Chromium scenarios pass.
 Exact results and remaining XP criteria are in the
-[assessment](plans/product-assessment-2026-09-15.md) and [XP ledger](plans/experience-polish.md).
+[acceptance report](plans/acceptance-2026-09-25.md) and [XP ledger](plans/experience-polish.md).
 
 ---
 
@@ -2009,17 +2054,17 @@ token and never asserted its *path*, which is precisely the gap. Found by openin
 
 Asked for directly, after phase 23: there is no way to *see* what a conversation has accumulated, no
 way to send anything that is not a picture, no voice, and a list of small things every other messenger
-has. Each phase below is specified in full under **[docs/plans/](plans/README.md)** — schema, wire
-types, the decisions and what they cost — so the argument happens before the migration rather than
-halfway through it.
+has. These phases are delivered history. Their original proposals have been consolidated;
+current contracts live in [architecture](ARCHITECTURE.md), ADRs and the implementation, while
+[active plans](plans/README.md) track remaining acceptance rather than obsolete proposals.
 
 | Phase | Item | Status |
 | --- | --- | --- |
-| 24 | [An attachment that is not a picture](plans/phase-24-any-file-attachments.md) — kind, media type, filename, a download that cannot execute (ADR 0013) | `done` |
-| 25 | [Voice messages](plans/phase-25-voice-messages.md) — recorded anywhere, playable everywhere (ADR 0014) | `done` |
-| 26 | [The vault](plans/phase-26-conversation-vault.md) — media, files, voice, links and saved messages of one conversation, plus thumbnails | `done` |
-| 27 | [A sidebar you can organise](plans/phase-27-sidebar-organisation.md) — archive, pin, mute, and the incremental list item 80 has been waiting for | `done` |
-| 28 | [The small ones](plans/phase-28-small-things.md) — eleven items, two of them closing Known gaps above | `done` |
+| 24 | [Safe arbitrary-file downloads](adr/0013-safe-arbitrary-file-downloads.md) — kind, media type, filename and forced download; not a malware guarantee | `done` |
+| 25 | [Voice messages](adr/0014-portable-voice-message-format.md) — normalized AAC/MP4 and a shared playback format | `done` |
+| 26 | The vault — media, files, voice, links and saved messages of one conversation, plus thumbnails | `done` |
+| 27 | Sidebar organisation — archive, pin, mute and incremental list updates | `done` |
+| 28 | Everyday actions — drafts, unread controls, drag/paste, links, forwarding, mentions, pins, reply navigation, keyboard map, typing and readers | `done` |
 
 Order matters for 24 → 25 → 26 only; 27 touches no attachment code and 28's items are independent of
 everything, including each other.

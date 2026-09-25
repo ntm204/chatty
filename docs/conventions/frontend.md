@@ -227,9 +227,9 @@ in their place is the bug they were extracted to fix:
 
 Three fonts and one rule about when each applies:
 
-- `font-sans` (Archivo) is everything you read.
-- `font-display` (Instrument Serif) is the wordmark and a dialog's title. Nothing else.
-- **`font-mono` (IBM Plex Mono) is anything a machine produced** — a timestamp, a handle, a count, an
+- `font-sans` (General Sans, with Geist as fallback) is the main interface text.
+- `font-display` (Clash Display) is the display type declared in the current design tokens.
+- **`font-mono` (Geist Mono) is anything a machine produced** — a timestamp, a handle, a count, an
   avatar's initials. That one rule is most of the personality, so two utilities exist to spend it in
   one place rather than in forty files:
   - `eyebrow` — a label, byline or status: mono, uppercase, tracked out, 10px.
@@ -239,7 +239,8 @@ Three fonts and one rule about when each applies:
   Neither sets a colour. That is the caller's, which is what keeps `eyebrow text-signal` from being a
   fight between two classes.
 
-Fonts are **self-hosted** through `@fontsource/*`, imported at the top of `globals.css`. Not a
+Fonts are **self-hosted**: Fontshare files are prepared by `scripts/prepare-fonts.mjs` in the web
+workspace; Geist comes from `@fontsource/*`. The declarations live in `globals.css`. Not a
 preference: `nginx.conf.template` sets `style-src 'self'; font-src 'self'`, and a `<link>` to Google
 Fonts needs both relaxed. Add a weight by importing it there, and only if the design uses it.
 
@@ -251,8 +252,9 @@ a rounded tick beside a hairline border belongs to a different drawing.
 ## Dialogs
 
 `hooks/use-dialog.ts` is the only focus trap. It gives a `<div role="dialog">` Escape-to-close, Tab
-wrapped inside the panel, and focus moved into it on open; the caller owns the state and passes a
-**stable** `onClose` — a new function each render re-binds the listener.
+wrapped inside the panel, and focus moved into it on open. The caller owns the state; the hook
+reads the latest `onClose` without rebinding or resetting focus on rerenders. Composition Escape
+is left to the input method, and hidden/inert/aria-hidden controls are excluded from the trap.
 
 Use it for anything that covers the page. Do not write a second one: two copies of a focus trap are
 two chances for one of them to lose a case, which is why the edit-history dialog and the settings

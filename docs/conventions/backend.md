@@ -100,9 +100,9 @@ Two constraints to keep in mind:
 - **Schema changes go through a migration** (`npm run db:migrate --workspace apps/server`), never a manual `psql` edit. The migration files are the history; a hand-edited database is a database nobody else can reproduce.
 - **Multi-write operations use a transaction** (`prisma.$transaction`). Creating a conversation and its participants is one unit — a conversation with no participants is corrupt data.
 - **Custom SQL invariants stay visible.** Prisma 5 cannot model partial indexes or deferred
-  cross-row triggers. The group-owner and message-author constraints therefore live in the phase 7
-  migrations and are called out beside `ConversationParticipant.role` in `schema.prisma`; do not
-  replace them with application-only checks during a schema change.
+  cross-row triggers. Message-author constraints and the non-empty group's admin floor are enforced
+  by migrations and documented beside the schema. ADR 0021 supersedes the historical single-owner
+  constraint; do not restore that old uniqueness rule or replace database invariants with app-only checks.
 - Indexes are part of the schema, not an afterthought: `Message` already has `@@index([conversationId, createdAt])` because "load a conversation's recent messages" is the app's hottest query.
 
 ---
@@ -122,14 +122,14 @@ Not in a middleware, not in the controller. Middleware runs per-route, but servi
 
 Authentication (who you are) is the middleware's job — `requireAuth` for HTTP, the `io.use()` handshake for sockets. Authorization (what you may touch) is the service's.
 
-**Two roles, and only two operations tell them apart.** `assertParticipant` is still the check every
-conversation-scoped operation starts with. On top of it, `assertOwner` guards exactly two things:
-renaming a group, and removing *somebody else*. Adding a member and removing *yourself* are open to
-any participant, deliberately — see [ADR 0008](../adr/0008-group-owner-role.md) before adding a
-stricter check to either, and [ADR 0006](../adr/0006-flat-group-permissions.md) for the phase this
-app spent with no roles at all.
+**Two roles: ADMIN and MEMBER, with equal standing among admins.** `assertParticipant` checks
+membership; `assertAdmin` protects group administration, including rename, removing others,
+role changes and invite policy. Inviting follows the group's EVERYONE/MANAGERS policy; leaving
+remains available to each participant. A non-empty group retains an admin through transactional
+succession. [ADR 0021](../adr/0021-flatten-group-roles-to-admin-member.md) is authoritative;
+ADRs 0006/0008/0018 describe superseded role models, not current authorization rules.
 
-`assertOwner` throws `ForbiddenError` (403), not `NotFoundError` (404). The 404 exists to stop
+`assertAdmin` throws `ForbiddenError` (403), not `NotFoundError` (404). The 404 exists to stop
 outsiders probing for conversation ids; someone already in the group has nothing left to learn, and a
 404 leaves the UI unable to say why the button did nothing.
 
@@ -144,7 +144,7 @@ Keep the order the same in every future membership-sensitive operation:
 
 1. open the transaction and lock `Conversation`;
 2. authorize against the locked state;
-3. write every durable part of the transition, including system messages and owner transfer;
+3. write every durable part of the transition, including system messages and admin succession;
 4. return the final rows and let the transaction commit;
 5. only then join/leave socket rooms and emit events.
 

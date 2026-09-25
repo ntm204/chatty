@@ -10,6 +10,14 @@ Current development focus: **everyday usability and interface polish**. The
 acceptance criteria and dependencies. Public launch and large feature additions are deferred while
 this work improves the existing messaging experience.
 
+The local acceptance pass covers account-scoped drafts, retryable delivery, reply navigation,
+live vault/bookmark updates, authorized media recovery, group permissions and versioned offline shell.
+Current results, known gaps and the distinction between automated and physical-device checks live in
+[one acceptance report](docs/plans/acceptance-2026-09-25.md); do not infer readiness from historical phase counts.
+
+The XP ledger records **40 of 60 items accepted locally** (11 partial, 9 planned).
+Physical-device acceptance and public deployment remain separate.
+
 The interface follows the owner's [chatty.net](https://chatty.net/) reference: deep navy,
 bright yellow, faint violet gradients, restrained typography and rounded surfaces.
 Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
@@ -222,6 +230,9 @@ offline presence and disconnect retract typing; idle and missing-stop timers pro
 Reduced motion keeps the dots still. Typing is never stored or counted as a new message.
 
 Unsent text drafts are saved on this browser per account and conversation, and restored when reopening a conversation.
+Reply drafts resolve their original message even outside the loaded history. A failed lookup keeps the draft
+and offers Retry or Remove reply; sending waits until that choice is resolved. Upload feedback distinguishes
+image preparation, transmitted bytes and server confirmation. Offline text/image rows retain their retry/discard path.
 Signing out or deleting the account clears its drafts and invalidates pending writes. Legacy drafts without an
 account owner are discarded. If storage is unavailable, the composer explains that reloading may lose the draft.
 Switching conversations keeps their drafts separate; leaving or hiding the page flushes the latest text before

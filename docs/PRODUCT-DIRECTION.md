@@ -50,7 +50,7 @@ require a public deployment. The foundations below remain context for future dec
 | Telegram | Fast multi-device history, search, saved messages, media/file utility | Keyset history, Vietnamese-friendly search, personal and conversation vaults, forwarding, pins, stickers | A crowded settings surface or every power feature in the composer |
 | WhatsApp | A simple conversation-first mental model and clear group safety | Mobile list-to-thread navigation, read/typing state, blocking, explicit invite permissions and shared admins | Phone-number identity as a mandatory product constraint |
 | Signal | Privacy as an architectural property | Short/revocable sessions, metadata-conscious uploads, next: a written E2EE protocol decision before code | Home-grown cryptography or a lock icon before the guarantee is true |
-| Discord | Durable communities, roles and discoverable context | A small owner/admin/member hierarchy; channels only when groups demonstrate that need | Server/channel complexity in ordinary private chats |
+| Discord | Durable communities, roles and discoverable context | Equal admins and members, with no owner tier; channels only when groups demonstrate that need | Server/channel complexity in ordinary private chats |
 | Instagram | Media composition and direct manipulation | Compact albums, reactions, captions, zoom/pan/rotate, forwarding and saving | A recommendation feed or attention-maximising counters |
 | Zalo | Vietnamese usage and tolerance of constrained devices/networks | Accent-insensitive search, Vietnamese emoji keywords and bandwidth-first media | Tying the experience to one market-specific account system |
 

@@ -8,6 +8,34 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Update vulnerable runtime dependencies (multer, nodemailer and sharp) and ESLint's transitive js-yaml dependency within existing major versions.
+- Restore sidebar-menu focus after a rejected mutation and keep Escape within that menu.
+- Schedule composer resize writes outside ResizeObserver delivery and cancel pending frames on cleanup.
+- Consolidate obsolete product/phase plans into the current acceptance report and XP ledger; correct superseded group-role documentation.
+
+- Restore reply drafts outside the loaded message window with explicit retry/removal, and ignore stale context lookups.
+- Distinguish image preparation, measured upload, server confirmation and offline waiting; add actionable sidebar load failures.
+- Restore dialog focus when an opener disappears, support keyboard reaction filters, and default message deletion choices to Cancel.
+- Expose reaction entry on touch layouts and keep message menus and reaction pickers inside the viewport/history bounds.
+
+- Keep unfinished group invitations across live permission changes, serialize member writes, and retain failed removal confirmations for retry.
+- Preserve text drafts during voice recording, distinguish capture failures and the recording limit, and separate uploaded bytes from server confirmation.
+- Separate sticker send/remove targets, explain full trays, and improve member-menu keyboard and destructive-dialog focus behavior.
+
+- Preserve loaded vault/bookmark windows during live refresh, remove revoked items immediately, and retry failed vault refreshes without appending the wrong page.
+
+- Discard stale people-search responses, show explicit empty/offline states, and add IME-safe conversation-search Clear/Retry controls.
+- Match accented Vietnamese emoji keywords, preserve recent targets while a picker is open, and keep mixed clipboard text and valid images.
+- Retry only unfinished group-member additions after a partial failure; avoid taking touch focus from selected message text.
+
+- Add explicit retry with authorized URL renewal to image viewers and voice players; ignore stale recovery after switching media or starting another player.
+- Keep dialog focus stable across rerenders and leave composition Escape to the input method.
+
+- Preserve the reading position across reply-context jumps, refresh bookmarks across the account's tabs, and retain loaded vault categories and their scroll positions.
+- Keep valid image selections when another selected image is invalid; scope viewer shortcuts to the topmost modal.
+- Renew file download URLs using current membership and visibility checks, with inline progress and retry feedback.
+- Precache a complete versioned offline shell, defer upgrades until old tabs close, and resync after an offline startup reconnects.
+
 - Reorganized conversation details into Messenger's sections (quick actions, Chat info, Customize chat, Media/files/links, Members, Group options, Privacy & support — content, then people, then settings, then the rare/sensitive controls), and added a group photo and a shared theme color — two features that didn't exist before. Nicknames are now shared and per-member, visible to everyone in the conversation, opened in their own modal and edited in place; replaces the previous private whole-conversation label. See [ADR 0022](docs/adr/0022-conversation-customize-and-shared-nicknames.md).
 - Shortened the pinned-message bar, gave it a pin icon, and removed its hover color shift. Its dialog no longer resizes as pins are added or removed, and its "…" menu is no longer clipped by the dialog's scroll area. Opening Search no longer closes conversation details. Media/files/links categories now offer a tab row to switch between them without leaving the one that's open; the Saved category and the double-tap reaction (with its Customize chat control) were removed. The invite-policy control is a toggle switch instead of a dropdown, since there are only two states.
 - Fixed the invite-policy toggle rendering hollow while hovered (the ghost button's own hover tint was winning over the switch's solid "on" fill) and gave the track a visible border so its off state isn't nearly invisible against the panel. Rename and the group photo now open their own modal instead of an inline field-plus-Save, matching nicknames. Adding people to a group is now search-then-multi-select-then-confirm in its own modal, matching how starting a new conversation already works. A member row's actions menu is portalled above the list instead of pushed inline, so opening it no longer shifts every row below it down. The Members section header no longer repeats the member count.

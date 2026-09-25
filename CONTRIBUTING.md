@@ -68,16 +68,13 @@ a dependency is one that cannot be reverted.
 
 ## Where the work is
 
-[docs/ROADMAP.md](docs/ROADMAP.md) is the source of truth for what is done and why in that order. The
-**Known gaps** list at the bottom is the real queue — each entry says what is missing and, usually,
-what the fix would cost. Good places to start are the ones that are self-contained: a sweep for
-orphaned attachment files, a Content-Security-Policy for the web app, `last seen at` for presence.
+[docs/ROADMAP.md](docs/ROADMAP.md) records completed phases and their decisions. The active backlog is
+the [experience polish plan](docs/plans/experience-polish.md); use its XP ledger for current acceptance
+status, since the older roadmap sections describe historical gaps. CSP, last-seen privacy,
+orphan cleanup and accent-insensitive search have already been implemented.
 
-Two things are deliberately **not** open yet, both waiting on a hosting decision rather than on
-someone to write them: S3-compatible object storage for uploads, and the `unaccent` extension that
-would let search match Vietnamese typed without diacritics. The exact change for the second one is
-written out in full in the phase 12 migration. Please do not open a pull request for either — see
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Object storage remains deferred until measured capacity or a multi-host deployment requires it.
+Public deployment has external conditions in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Branches and review
 

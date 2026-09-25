@@ -1,5 +1,12 @@
 # Architecture
 
+September 25 acceptance follow-up: reply draft IDs resolve through the existing membership-scoped
+message-context endpoint without replacing thread history. Request generations reject late lookups;
+unresolved replies remain persisted and block reply-bearing sends until retry or explicit removal.
+Image upload rows carry transient preparation/upload/confirmation metadata, with percentages sourced
+only from XHR upload events. Sidebar refreshes use request generations and expose loading/error/retry
+while retaining available cached rows. None of these states changes server delivery or authorization semantics.
+
 ## Overview
 
 ```
@@ -29,6 +36,42 @@ commit. See [ADR 0010](adr/0010-serialize-conversation-writes.md).
 Typing is the one exception, and it proves the rule — it is not written anywhere, it fires several times a sentence, and it expires in seconds. On HTTP it would be a request per keystroke, each with its own round trip and auth check. So `typing:start` / `typing:stop` are the only client→server socket events, and their membership check reads `socket.rooms` rather than the database for the same reason.
 
 ## Message delivery and bandwidth
+
+The production service worker precaches each build's HTML, hashed scripts, styles and fonts as
+one version. Installation must complete before activation; a new worker waits for the old app's
+tabs to close, preserving drafts and in-progress media without forcing a reload. Navigation uses
+that version's cached HTML rather than mixing it with newly deployed assets. Only Chatty shell
+caches are cleaned, and API responses/private media are never stored in the shell cache.
+An offline initial load is refreshed when the socket first connects successfully.
+
+People search invalidates outstanding requests on query changes, reset and unmount, and filters
+results against the latest group membership. Its API remains case-insensitive substring matching;
+unaccented matching is not promised for names. Emoji keyword search shares the message snippet's
+Vietnamese folding. Message search offline is an explicit connection error, not an empty result.
+Mixed clipboard media keeps supported images and inserts accompanying plain text at the composer selection.
+
+Group member mutations serialize per person, retain failed destructive decisions for deliberate retry,
+and scope late completions to the mounted conversation. An open add-people dialog reads current invite
+permission before every write, skips people already added by another session, and retains unfinished
+selections after permission loss. API authorization remains authoritative; these guards do not replace it.
+Confirm dialogs focus Cancel initially and honor their pending boundary for both buttons and Escape.
+The recorder preserves unrelated text drafts; permission/device/recorder errors and the five-minute
+auto-stop have distinct guidance. Uploaded voice bytes reaching 100% do not imply a confirmed message.
+Personal sticker trays expose the server's existing 60-item limit and separate send/remove hit areas.
+
+Bookmark mutations emit a `bookmark:changed` invalidation only to the acting user's room.
+Open bookmark lists refresh the number of pages already loaded; another account never receives
+the event. Vault panels refresh the loaded window atomically on observed message changes,
+retaining category depth rather than replacing it with only page one. Retraction/hide removes
+the affected rows immediately; membership loss clears the visible content. Failed refreshes
+retain unaffected rows and retry the original request; automatic pagination pauses on error.
+`GET /attachments/:attachmentId/urls` requires authentication and current membership, rejects
+hidden/retracted messages, and returns fresh signed URLs with `Cache-Control: no-store`.
+Downloads renew once after an expired/denied URL and keep failures beside the file.
+Image viewers and voice players renew on an explicit retry after load/play failure, not in an
+automatic retry loop. Late image results are scoped to the selected attachment; a late voice
+renewal cannot resume after another player takes ownership. A browser gesture rejection asks
+for a fresh tap without another asynchronous authorization round-trip. Offline placeholders stay inert.
 
 The thread is an initial HTTP snapshot plus incremental Socket.IO events. History is keyset-paged 50
 messages at a time, the browser retains a bounded window, and reconnecting refetches only the newest
@@ -297,9 +340,10 @@ already committed forwards remain independently readable and retryable after sou
 
 Personal bookmarks reuse `/me/saved` and the idempotent PUT/DELETE message `star` endpoints. They remain
 references to originals, distinct from the self-conversation used for notes. The mounted bookmark list
-invalidates old page generations and clears its rows on observed retraction, hide, or membership loss;
-reloading from page one avoids a cursor pointing at a removed bookmark. Separate tabs do not yet receive
-bookmark add/remove events. Opening the list always fetches current server state. Removal attempts use
+invalidates old page generations and removes affected rows on observed retraction or hide;
+membership loss clears its rows. Refresh walks from page one through the previously loaded window,
+avoiding a cursor pointing at a removed bookmark without collapsing the list. Private bookmark
+add/remove events refresh other tabs of the same account. Opening the list always fetches current server state. Removal attempts use
 a separate account identity from pagination generations: confirmed deletion invalidates any simultaneous
 socket refresh, while old-account completions cannot refresh or unlock the new account.
 
