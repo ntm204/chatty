@@ -1,6 +1,6 @@
 import type { UserDTO } from "@chatty/shared-types";
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { MessageSquareText, Search } from "lucide-react";
 import { api } from "@/api/client";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -11,9 +11,10 @@ import { SelectedParticipants } from "./selected-participants";
 
 interface NewConversationPanelProps {
 	onConversationStarted: (conversationId: string) => void;
+	onOpenMessageSearch?: () => void;
 }
 
-export function NewConversationPanel({ onConversationStarted }: NewConversationPanelProps) {
+export function NewConversationPanel({ onConversationStarted, onOpenMessageSearch }: NewConversationPanelProps) {
 	const {
 		query,
 		setQuery,
@@ -84,6 +85,17 @@ export function NewConversationPanel({ onConversationStarted }: NewConversationP
 						aria-label="Find someone"
 						className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-ink-faint"
 					/>
+					{onOpenMessageSearch && (
+						<Button
+							variant="ghost"
+							onClick={onOpenMessageSearch}
+							aria-label="Search all messages"
+							title="Search all messages"
+							className="size-8 shrink-0 rounded-full p-0 text-ink-soft hover:bg-ink/5"
+						>
+							<MessageSquareText className="size-4" />
+						</Button>
+					)}
 				</div>
 			</form>
 

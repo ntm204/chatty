@@ -95,11 +95,6 @@ export function ConversationActionsMenu({
 					{isBlocked ? "Unblock" : "Block"}
 				</Button>
 			)}
-			{peer && (
-				<p className="px-2.5 py-2 text-xs leading-normal text-ink-soft">
-					Restrict keeps direct messages without alerts or unread badges. Shared groups are not affected.
-				</p>
-			)}
 		</>
 	);
 }

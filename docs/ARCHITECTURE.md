@@ -37,6 +37,15 @@ Typing is the one exception, and it proves the rule — it is not written anywhe
 
 ## Message delivery and bandwidth
 
+Chat code loads at the authenticated route boundary; settings code loads only when its dialog
+opens. Suspense provides a loading state and a screen boundary offers explicit recovery for a
+failed chunk. This reduces initial module loading/evaluation, not the total app's feature size.
+The service worker still precaches lazy chunks for offline navigation; background transfer is
+not claimed as eliminated. Sidebar cache reads and the server request start concurrently;
+a late cached page cannot replace a successful current server page.
+Sidebar pagination has a synchronous single-flight guard, stops at the final page, and invalidates
+its pending owner on refresh/scope change. An obsolete page cannot unlock a newer request.
+
 The production service worker precaches each build's HTML, hashed scripts, styles and fonts as
 one version. Installation must complete before activation; a new worker waits for the old app's
 tabs to close, preserving drafts and in-progress media without forcing a reload. Navigation uses

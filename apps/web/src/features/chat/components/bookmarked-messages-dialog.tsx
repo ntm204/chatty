@@ -54,18 +54,15 @@ export function BookmarkedMessagesDialog({ currentUserId, onClose, onSelectMessa
 				aria-modal="true"
 				aria-label="Bookmarked messages"
 				tabIndex={-1}
-				className="flex h-[min(80dvh,36rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<header className="flex items-center gap-3 border-b border-rule px-4 py-3">
 					<Bookmark className="size-4" />
-					<h2 className="flex-1 text-sm font-semibold">Bookmarked messages</h2>
+					<h2 className="flex-1 text-sm font-semibold">Bookmarks</h2>
 					<Button variant="ghost" onClick={onClose} aria-label="Close bookmarks" className="size-9 p-0">
 						<X className="size-4" />
 					</Button>
 				</header>
-				<p className="px-4 py-2 text-xs text-ink-soft">
-					Messages you marked in your conversations. Removing a bookmark keeps the original message.
-				</p>
 				<div className="min-h-0 flex-1 overflow-y-auto p-3">
 					{bookmarks.isLoading && (
 						<p role="status" className="p-3 text-sm text-ink-soft">
@@ -83,9 +80,7 @@ export function BookmarkedMessagesDialog({ currentUserId, onClose, onSelectMessa
 						</Button>
 					)}
 					{!bookmarks.isLoading && !bookmarks.error && !bookmarks.results.length && (
-						<p className="p-3 text-sm text-ink-soft">
-							No bookmarks yet. Choose “Bookmark message” from a message’s menu.
-						</p>
+						<p className="p-3 text-sm text-ink-soft">No bookmarks yet.</p>
 					)}
 					<ul className="space-y-2">
 						{bookmarks.results.map((result) => (

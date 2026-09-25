@@ -108,22 +108,14 @@ test("files, voice, links, thumbnails and the conversation vault work across two
 	await senderPage.keyboard.press("ArrowRight");
 	await expect(sidebarResize).toHaveAttribute("aria-valuenow", "336");
 	const detailsResize = senderPage.getByRole("separator", { name: "Resize conversation details" });
+	await expect(detailsResize).toHaveCount(0);
 	await vault.evaluate(async (element) => {
 		await Promise.all(element.getAnimations().map((animation) => animation.finished));
 	});
-	const divider = await detailsResize.boundingBox();
-	await senderPage.mouse.move(divider!.x + divider!.width / 2, divider!.y + 100);
-	await senderPage.mouse.down();
-	await senderPage.mouse.move(divider!.x - 60, divider!.y + 100, { steps: 5 });
-	await senderPage.mouse.up();
-	await expect(detailsResize).toHaveAttribute("aria-valuenow", "384");
-	expect((await vault.boundingBox())!.width).toBeCloseTo(384, 0);
-	await detailsResize.press("End");
-	await expect(detailsResize).toHaveAttribute("aria-valuenow", "400");
+	expect((await vault.boundingBox())!.width).toBeCloseTo(320, 0);
 	await vault.getByRole("button", { name: "Close conversation storage" }).click();
 	await senderPage.getByRole("button", { name: "Conversation storage and details" }).click();
-	await expect(detailsResize).toHaveAttribute("aria-valuenow", "400");
-	await detailsResize.press("Enter");
+	await expect(detailsResize).toHaveCount(0);
 	await sidebarResize.press("Enter");
 	await senderPage.screenshot({ path: "/tmp/chatty-three-panels-desktop.png", animations: "disabled" });
 	await senderPage.setViewportSize({ width: 390, height: 844 });

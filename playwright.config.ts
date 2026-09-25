@@ -54,7 +54,7 @@ const serverEnv = {
 
 export default defineConfig({
 	testDir: "./e2e",
-	testIgnore: "**/production-media.spec.ts",
+	testIgnore: ["**/production-media.spec.ts", "**/performance-measurement.spec.ts"],
 	// A plain relative path, resolved against this file. `import.meta.url` would
 	// read better and does not work: the root package.json has no `"type":
 	// "module"`, so Playwright transpiles this config to CommonJS before running it.

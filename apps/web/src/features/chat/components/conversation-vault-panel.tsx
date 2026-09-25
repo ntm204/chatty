@@ -13,7 +13,6 @@ import { ConversationCustomizePanel } from "./conversation-customize-panel";
 import { ConversationDetailsIdentity } from "./conversation-details-identity";
 import { ConversationQuickActions } from "./conversation-quick-actions";
 import { GroupInvitePolicyControl } from "./group-invite-policy-control";
-import { PanelResizeHandle } from "./panel-resize-handle";
 import { PinnedMessagesDialog } from "./pinned-messages-dialog";
 import { GroupMembersPanel } from "./group-members-panel";
 import { VaultCategoryList } from "./vault-category-list";
@@ -81,17 +80,8 @@ export function ConversationVaultPanel({
 			ref={panelRef}
 			aria-label="Conversation details"
 			id="conversation-details"
-			className="conversation-details-panel relative flex min-h-0 w-full shrink-0 flex-col bg-paper-raised lg:rounded-xl lg:border lg:border-rule xl:w-[var(--panel-width,320px)]"
+			className="conversation-details-panel relative flex min-h-0 w-full shrink-0 flex-col bg-paper-raised lg:rounded-xl lg:border lg:border-rule xl:w-80"
 		>
-			<PanelResizeHandle
-				panelId="conversation-details"
-				label="Resize conversation details"
-				edge="left"
-				defaultWidth={320}
-				minWidth={280}
-				maxWidth={400}
-				className="hidden xl:block"
-			/>
 			<div className="relative flex h-[70px] shrink-0 items-center border-b border-rule px-5">
 				{activeTab && (
 					<Button

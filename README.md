@@ -15,8 +15,15 @@ live vault/bookmark updates, authorized media recovery, group permissions and ve
 Current results, known gaps and the distinction between automated and physical-device checks live in
 [one acceptance report](docs/plans/acceptance-2026-09-25.md); do not infer readiness from historical phase counts.
 
-The XP ledger records **40 of 60 items accepted locally** (11 partial, 9 planned).
+The XP ledger records **41 of 60 items accepted locally** (10 partial, 9 planned).
 Physical-device acceptance and public deployment remain separate.
+
+Chat and settings load on demand; offline caching still includes their chunks. Sidebar startup
+reads cache and fetches fresh data concurrently, without allowing late cache to overwrite the server.
+This is targeted optimization, not a claim of measured end-to-end performance at production scale.
+The repeatable local workload is `npx playwright test --config playwright.performance.config.ts`;
+it rebuilds both apps and resets only `chatty_e2e`, like other E2E runs. Do not run it concurrently
+with other E2E suites. Results and limitations are recorded in the acceptance report.
 
 The interface follows the owner's [chatty.net](https://chatty.net/) reference: deep navy,
 bright yellow, faint violet gradients, restrained typography and rounded surfaces.
@@ -533,9 +540,11 @@ where the docs and the code say different things.
 [MIT](LICENSE). `scripts/audit-rules.sh` is adapted from evondev's Dev Rules, also MIT.
 
 Conversation details dock in a separate right panel on screens at least 1280px wide.
-Desktop panels have subtle frames and gutters: drag either divider to resize, or focus it and use
-arrow keys (Home/End for limits, Enter or double-click to reset). Widths are remembered locally.
-Both side panels default to 320px; the sidebar supports 260–400px and details support 280–400px.
+Desktop panels have subtle frames and gutters. Conversation details have a fixed 320px width,
+without a resize handle. Only the left sidebar can be resized from 260–400px (default 320px):
+drag its divider or use arrow keys, Home/End, and Enter to reset. Its width is remembered locally.
+People search and the message-search button share one sidebar row; Saved and Bookmarks are
+compact adjacent shortcuts, distinguishing personal notes from messages marked in other chats.
 On smaller screens they replace the thread until closed, preserving the composer draft.
 The panel stays open while chatting on desktop; use the header toggle, Close, or Escape to close it.
 

@@ -59,6 +59,38 @@ beforeEach(() => {
 });
 
 describe("useConversationList event reducer", () => {
+	it("shows cached rows while the concurrent server request is still pending", async () => {
+		let resolveServer!: (page: { items: ConversationDTO[]; hasMore: boolean }) => void;
+		localStore.readConversationPage.mockResolvedValue({ items: [first], hasMore: true });
+		vi.mocked(api.listConversations).mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveServer = resolve;
+				}),
+		);
+		const view = renderHook(() => useConversationList("minh", vi.fn()));
+		await waitFor(() => expect(view.result.current.conversations[0]?.id).toBe("first"));
+		expect(view.result.current.paging.isLoading).toBe(true);
+		await act(async () => resolveServer({ items: [second], hasMore: false }));
+		expect(view.result.current.conversations.map((row) => row.id)).toEqual(["second"]);
+		expect(view.result.current.paging.isLoading).toBe(false);
+	});
+	it("starts the server request without waiting for cache and ignores a late stale cache", async () => {
+		let resolveCache!: (page: { items: ConversationDTO[]; hasMore: boolean }) => void;
+		localStore.readConversationPage.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveCache = resolve;
+				}),
+		);
+		vi.mocked(api.listConversations).mockResolvedValue({ items: [second], hasMore: false });
+		const view = renderHook(() => useConversationList("minh", vi.fn()));
+		expect(api.listConversations).toHaveBeenCalledOnce();
+		await waitFor(() => expect(view.result.current.conversations[0]?.id).toBe("second"));
+		await act(async () => resolveCache({ items: [first], hasMore: true }));
+		expect(view.result.current.conversations.map((row) => row.id)).toEqual(["second"]);
+		expect(view.result.current.paging.hasMore).toBe(false);
+	});
 	it("keeps a cached sidebar available when startup is offline", async () => {
 		localStore.readConversationPage.mockResolvedValue({ items: [first], hasMore: false });
 		vi.mocked(api.listConversations).mockRejectedValue(new TypeError("offline"));

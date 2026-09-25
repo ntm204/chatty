@@ -71,7 +71,7 @@ export function ConversationBlockControl({ peer }: ConversationBlockControlProps
 					// Says what it does *and* what it does not. "Blocked" reads as total,
 					// and somebody who shares a group with this person would otherwise
 					// find the exception out at the worst moment.
-					body={`Neither of you will be able to message the other, and you will stop appearing in each other's search. Messages you have already exchanged stay, and groups you are both in are not affected.`}
+					body="Stops direct messages and hides both of you from each other’s search. Existing messages and shared groups stay."
 					confirmLabel="Block"
 					isConfirming={isSaving}
 					error={error}

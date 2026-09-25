@@ -313,9 +313,6 @@ export function useMessageScroll({
 		syncScrollPosition();
 	}
 
-	// The ref itself rather than its value: the trim decision is made in an effect
-	// that must not re-run because the reader scrolled, and a boolean in the
-	// return would make every scroll event a render.
 	return {
 		containerRef,
 		contentRef,

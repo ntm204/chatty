@@ -15,14 +15,16 @@ export function BookmarksShortcut({ currentUserId, onSelectMessage }: BookmarksS
 	const close = useCallback(() => setIsOpen(false), []);
 
 	return (
-		<div className="px-3 pb-2">
+		<div className="min-w-0">
 			<Button
 				variant="ghost"
 				onClick={() => setIsOpen(true)}
-				className="w-full justify-start gap-2 px-3 text-xs text-ink-soft"
+				aria-label="Bookmarked messages"
+				title="Messages bookmarked from your conversations"
+				className="h-10 w-full justify-center gap-2 rounded-control bg-paper-sunken px-2 text-xs text-ink-soft hover:bg-ink/5"
 			>
 				<Bookmark className="size-4" />
-				Bookmarked messages
+				Bookmarks
 			</Button>
 			{isOpen &&
 				createPortal(

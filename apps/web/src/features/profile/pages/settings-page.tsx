@@ -1,7 +1,11 @@
-import { useCallback } from "react";
+import { lazy, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { SettingsModal } from "../components";
+import { ScreenLoadBoundary } from "@/components/screen-load-boundary/screen-load-boundary";
+
+const SettingsModal = lazy(() =>
+	import("../components/settings-modal").then((module) => ({ default: module.SettingsModal })),
+);
 
 /**
  * What `/profile` renders — the dialog and nothing else.
@@ -22,5 +26,9 @@ export function SettingsPage() {
 
 	if (!currentUser || location.pathname !== "/profile") return null;
 
-	return <SettingsModal user={currentUser} onClose={handleClose} />;
+	return (
+		<ScreenLoadBoundary>
+			<SettingsModal user={currentUser} onClose={handleClose} />
+		</ScreenLoadBoundary>
+	);
 }

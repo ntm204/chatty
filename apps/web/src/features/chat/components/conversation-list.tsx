@@ -47,10 +47,7 @@ export function ConversationList({
 		return (
 			<div className="px-5 py-6 text-[13px] text-ink-faint">
 				<p role={paging.error ? "alert" : "status"}>
-					{paging.error ||
-						(paging.isLoading
-							? "Loading conversations…"
-							: "No conversations here. Find someone above or switch your inbox view.")}
+					{paging.error || (paging.isLoading ? "Loading conversations…" : "No conversations yet.")}
 				</p>
 				{paging.error && (
 					<Button variant="ghost" onClick={paging.retry}>

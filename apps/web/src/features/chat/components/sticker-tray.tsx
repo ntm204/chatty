@@ -167,9 +167,7 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 			</div>
 
 			{!isLoading && !error && stickers.length === 0 && (
-				<p className="px-4 pb-5 text-center text-[13px] text-ink-faint">
-					No stickers yet. Add a picture and it is one tap away from every conversation.
-				</p>
+				<p className="px-4 pb-5 text-center text-[13px] text-ink-faint">No stickers yet. Add a picture.</p>
 			)}
 		</div>
 	);

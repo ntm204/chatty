@@ -60,8 +60,7 @@ export function RestrictedUsersSettings() {
 	return (
 		<div className="flex flex-col gap-4">
 			<p className="text-[13px] leading-normal text-ink-soft">
-				Restricted people can still message you, but it never raises a notification, and they cannot see when
-				you read a message or when you are online. They are not told.
+				Direct messages stay silent. Your online status and read receipts stay hidden.
 			</p>
 
 			{isLoading ? (

@@ -61,6 +61,8 @@ export function useConversationList(
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState("");
 	const requestRef = useRef(0);
+	const serverPageRef = useRef(0);
+	const pageRequestRef = useRef<object | null>(null);
 	const failedPageRef = useRef(false);
 	const [loadedCacheScope, setLoadedCacheScope] = useState<string | null>(null);
 	const cacheScope = currentUserId ? `${currentUserId}:${isShowingArchived ? "archived" : "active"}` : null;
@@ -75,6 +77,8 @@ export function useConversationList(
 		if (!currentUserId) return;
 		const scope = scopeRef.current;
 		const request = ++requestRef.current;
+		pageRequestRef.current = null;
+		setIsLoadingMore(false);
 		failedPageRef.current = false;
 		setIsLoading(true);
 		setError("");
@@ -82,6 +86,8 @@ export function useConversationList(
 			.listConversations(isShowingArchived)
 			.then((page) => {
 				if (scopeRef.current !== scope || request !== requestRef.current) return;
+				serverPageRef.current += 1;
+				setLoadedCacheScope(scope.key);
 				setConversations(page.items);
 				setHasMore(page.hasMore);
 			})
@@ -110,9 +116,12 @@ export function useConversationList(
 		setConversations([]);
 		setHasMore(false);
 		setLoadedCacheScope(null);
+		const serverPage = serverPageRef.current;
+		// Local storage must not delay the network or replace a fresher server page.
+		refresh();
 		void readConversationPage(currentUserId, isShowingArchived)
 			.then((cached) => {
-				if (!isCurrent || !cached) return;
+				if (!isCurrent || !cached || serverPageRef.current !== serverPage) return;
 				setConversations(cached.items);
 				setHasMore(cached.hasMore);
 			})
@@ -120,7 +129,6 @@ export function useConversationList(
 			.finally(() => {
 				if (!isCurrent) return;
 				setLoadedCacheScope(cacheScope);
-				refresh();
 			});
 
 		return () => {
@@ -140,11 +148,19 @@ export function useConversationList(
 	 * sequence being walked.
 	 */
 	const loadMore = useCallback(() => {
-		const cursor = [...conversations].reverse().find((conversation) => !conversation.isPinned);
-		if (!cursor || isLoadingMore) return;
+		let cursor: ConversationDTO | undefined;
+		for (let index = conversations.length - 1; index >= 0; index--) {
+			if (!conversations[index]?.isPinned) {
+				cursor = conversations[index];
+				break;
+			}
+		}
+		if (!cursor || !hasMore || isLoading || pageRequestRef.current) return;
 
 		const scope = scopeRef.current;
 		const request = requestRef.current;
+		const pageRequest = {};
+		pageRequestRef.current = pageRequest;
 		setIsLoadingMore(true);
 		setError("");
 		void api
@@ -160,6 +176,7 @@ export function useConversationList(
 					return [...current, ...page.items.filter((conversation) => !held.has(conversation.id))];
 				});
 				setHasMore(page.hasMore);
+				failedPageRef.current = false;
 			})
 			.catch(() => {
 				if (scopeRef.current !== scope || request !== requestRef.current) return;
@@ -167,9 +184,11 @@ export function useConversationList(
 				setError("Could not load more conversations. Try again.");
 			})
 			.finally(() => {
-				if (scopeRef.current === scope) setIsLoadingMore(false);
+				if (pageRequestRef.current !== pageRequest) return;
+				pageRequestRef.current = null;
+				if (scopeRef.current === scope && request === requestRef.current) setIsLoadingMore(false);
 			});
-	}, [conversations, isLoadingMore, isShowingArchived]);
+	}, [conversations, hasMore, isLoading, isShowingArchived]);
 
 	useSocketEvent(
 		"message:new",

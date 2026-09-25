@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { lazy, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { setSessionExpiredHandler } from "@/api/client";
 import { ConfirmEmailPage } from "@/features/auth/pages/confirm-email-page";
 import { ForgotPasswordPage } from "@/features/auth/pages/forgot-password-page";
 import { LoginPage } from "@/features/auth/pages/login-page";
 import { ResetPasswordPage } from "@/features/auth/pages/reset-password-page";
-import { ChatPage } from "@/features/chat/pages/chat-page";
+import { ScreenLoadBoundary } from "@/components/screen-load-boundary/screen-load-boundary";
 import { SettingsPage } from "@/features/profile/pages/settings-page";
 import { useAuth } from "@/hooks/use-auth";
+
+const ChatPage = lazy(() => import("@/features/chat/pages/chat-page").then((module) => ({ default: module.ChatPage })));
 
 export function App() {
 	const currentUser = useAuth((state) => state.currentUser);
@@ -37,49 +39,51 @@ export function App() {
 
 	return (
 		<BrowserRouter>
-			<Routes>
-				<Route path="/login" element={currentUser ? <Navigate to="/chat" replace /> : <LoginPage />} />
-				{/* Reachable while signed in as well as out. Someone who is still
+			<ScreenLoadBoundary>
+				<Routes>
+					<Route path="/login" element={currentUser ? <Navigate to="/chat" replace /> : <LoginPage />} />
+					{/* Reachable while signed in as well as out. Someone who is still
 				    logged in on this device may well be the person who asked for the
 				    link, and bouncing them to /chat would strand the email. */}
-				<Route path="/forgot-password" element={<ForgotPasswordPage />} />
-				<Route path="/reset-password" element={<ResetPasswordPage />} />
-				{/* Unguarded for the same reason: the link is opened in the new
+					<Route path="/forgot-password" element={<ForgotPasswordPage />} />
+					<Route path="/reset-password" element={<ResetPasswordPage />} />
+					{/* Unguarded for the same reason: the link is opened in the new
 				    mailbox, which is regularly a phone that has never signed in. */}
-				<Route path="/confirm-email" element={<ConfirmEmailPage />} />
-				<Route
-					path="/chat"
-					element={
-						currentUser ? (
-							<>
-								<ChatPage />
-								<SettingsPage />
-							</>
-						) : (
-							<Navigate to="/login" replace />
-						)
-					}
-				/>
-				{/* The chat and the dialog on top of it, as siblings, so a
+					<Route path="/confirm-email" element={<ConfirmEmailPage />} />
+					<Route
+						path="/chat"
+						element={
+							currentUser ? (
+								<>
+									<ChatPage />
+									<SettingsPage />
+								</>
+							) : (
+								<Navigate to="/login" replace />
+							)
+						}
+					/>
+					{/* The chat and the dialog on top of it, as siblings, so a
 				    reload of /profile shows what a click on the settings icon
 				    shows and Back closes the dialog rather than leaving the app.
 				    Composed here because `features/profile` may not import a page
 				    from `features/chat` — the router is where both are in scope. */}
-				<Route
-					path="/profile"
-					element={
-						currentUser ? (
-							<>
-								<ChatPage />
-								<SettingsPage />
-							</>
-						) : (
-							<Navigate to="/login" replace />
-						)
-					}
-				/>
-				<Route path="*" element={<Navigate to={currentUser ? "/chat" : "/login"} replace />} />
-			</Routes>
+					<Route
+						path="/profile"
+						element={
+							currentUser ? (
+								<>
+									<ChatPage />
+									<SettingsPage />
+								</>
+							) : (
+								<Navigate to="/login" replace />
+							)
+						}
+					/>
+					<Route path="*" element={<Navigate to={currentUser ? "/chat" : "/login"} replace />} />
+				</Routes>
+			</ScreenLoadBoundary>
 		</BrowserRouter>
 	);
 }

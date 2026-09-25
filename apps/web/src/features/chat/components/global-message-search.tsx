@@ -77,9 +77,9 @@ export function GlobalMessageSearch({
 				aria-modal="true"
 				aria-label="Search all messages"
 				tabIndex={-1}
-				className="flex h-[min(80dvh,36rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
-				<header className="flex shrink-0 items-center gap-3 border-b border-rule px-4 py-3">
+				<header className="flex shrink-0 items-center gap-3 border-b border-rule px-4 py-3 focus-within:bg-paper-sunken/50">
 					<Search className="size-4 shrink-0 text-ink-faint" />
 					<input
 						ref={inputRef}
@@ -88,7 +88,7 @@ export function GlobalMessageSearch({
 						disabled={openingMessageId !== null}
 						aria-label="Search all messages"
 						placeholder="Search all messages"
-						className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-ink/15"
+						className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink outline-none"
 					/>
 					<Button
 						variant="ghost"
@@ -107,9 +107,7 @@ export function GlobalMessageSearch({
 					className="min-h-0 flex-1 overflow-y-auto p-3"
 				>
 					{query.trim().length < 2 && (
-						<p className="p-3 text-sm text-ink-soft">
-							Find a message across your conversations. Enter at least two characters.
-						</p>
+						<p className="p-3 text-sm text-ink-soft">Type at least 2 characters.</p>
 					)}
 					{isSearching && (
 						<p role="status" className="p-3 text-sm text-ink-faint">

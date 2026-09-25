@@ -60,6 +60,20 @@ regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobi
 
 ## Current focus — everyday experience polish
 
+The built-app performance workload now covers 1,000 messages, 30 groups, normal/4× CPU,
+throttled network, 1/5/20 concurrent API requests and repeated image/voice memory cycles.
+It found and fixed a retained-history gap: jumping to latest previously left 551 rendered rows
+until another message change. The repeated workload now trims immediately to 200 rows and
+reduces forced-GC JS heap from about 26 MiB at depth to about 15 MiB at the live edge.
+The acceptance report records actual measurements and limits; this is not production load certification.
+
+The concise-copy pass removes repeated explanations in menus, bookmarks and settings while
+retaining destructive/privacy/offline guidance. Chat and settings are split at their loading
+boundaries; sidebar cache no longer delays its first server request. Regression checks also cover
+coalescing repeated pagination calls and isolating pending pages across archive switches.
+Measurement evidence belongs in the acceptance report. XP-59 is locally accepted from the repeated
+interaction/API/memory workload; production soak and physical-device claims remain outside it.
+
 Final local review consolidates six obsolete proposal/assessment files, preserves the XP criteria and
 corrects old owner-role guidance to the current admin/member contract. It also repairs sidebar focus
 after a rejected pin and moves textarea height writes out of ResizeObserver delivery. Runtime security
@@ -172,8 +186,10 @@ Physical IME/mobile keyboard and Safari acceptance remain separate from syntheti
   the query, loaded results and position, including paginated archived results.
 - Popup/sound resolve missing conversation metadata, honor mute and DM restriction, and suppress stale
   policy lookups. Archived arrivals stay outside the active sidebar; stale sidebar scope responses are ignored.
-- Cached image/file placeholders cannot be downloaded as originals. Details resizing again uses the shared
-  mouse/keyboard divider; resize-sensitive browser checks wait for layout to settle before a separate gesture.
+- Cached image/file placeholders cannot be downloaded as originals. Per the owner's layout review,
+  details now use a fixed 320px desktop width without a resize handle; sidebar resizing remains available.
+  Search entry points share one row, Saved/Bookmarks use compact paired shortcuts, and global search
+  uses a smaller stable-height dialog with focus styling on the search row rather than a square input ring.
 
 Verification and remaining scope are recorded in the [acceptance report](plans/acceptance-2026-09-25.md).
 Physical device/Safari acceptance, complete background outbox replay and Web Push remain later work.

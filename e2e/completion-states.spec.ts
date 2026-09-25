@@ -23,7 +23,7 @@ test("sidebar distinguishes loading, failure, retry and empty without disabling 
 	await expect(page.getByLabel("Find someone")).toBeEnabled();
 	await page.unroute(/\/conversations(?:\?.*)?$/);
 	await page.getByRole("button", { name: "Retry conversations" }).click();
-	await expect(page.getByText("No conversations here.", { exact: false })).toBeVisible();
+	await expect(page.getByText("No conversations yet.", { exact: true })).toBeVisible();
 });
 
 test("touch reactions converge after concurrent changes and a delayed HTTP response", async ({ browser }) => {

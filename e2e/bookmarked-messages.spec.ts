@@ -8,6 +8,13 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	const peer = makeUser("BookmarkPeer");
 	await register(await peerContext.newPage(), peer);
 	await register(page, makeUser("BookAuthor"));
+	await page.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	const emptyBookmarks = page.getByRole("dialog", { name: "Bookmarked messages" });
+	await expect(emptyBookmarks.getByText("No bookmarks yet.", { exact: true })).toBeVisible();
+	await expect(emptyBookmarks.getByRole("heading", { name: "Bookmarks", exact: true })).toBeVisible();
+	await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+	await page.screenshot({ path: "/tmp/chatty-lean-bookmarks.png" });
+	await page.getByRole("button", { name: "Close bookmarks" }).click();
 	await startDirectChat(page, peer);
 	await sendMessage(page, "My bookmarked original");
 	await page.getByLabel("Message actions").click();

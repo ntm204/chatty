@@ -19,6 +19,14 @@ test("built web previews and sends image/voice under the production CSP", async 
 		});
 		const response = await page.goto("/login");
 		expect(response?.headers()["content-security-policy"]).toContain("media-src 'self' blob:");
+		await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+		const initialModules = await page.evaluate(() =>
+			performance
+				.getEntriesByType("resource")
+				.filter((entry) => (entry as PerformanceResourceTiming).initiatorType === "script")
+				.map((entry) => entry.name),
+		);
+		expect(initialModules.some((url) => /\/(chat-page|settings-modal)-/.test(url))).toBe(false);
 		await register(other, peer);
 		await register(page, author);
 		await startDirectChat(page, peer);
@@ -69,6 +77,10 @@ test("built web previews and sends image/voice under the production CSP", async 
 		await openConversationWith(page, peer);
 		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Offline draft stays here");
 		await expect(page.getByRole("button", { name: "Play voice message" })).toBeDisabled();
+		await page.getByRole("link", { name: "Account settings" }).click();
+		await expect(page.getByRole("button", { name: "Close settings" })).toBeVisible();
+		await page.getByRole("button", { name: "Close settings" }).click();
+		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Offline draft stays here");
 		await sender.setOffline(false);
 		await expect(page.getByRole("button", { name: "Play voice message" })).toBeEnabled({ timeout: 15_000 });
 		expect(violations).toEqual([]);

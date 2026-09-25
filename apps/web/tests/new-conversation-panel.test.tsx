@@ -1,5 +1,5 @@
 import type { UserDTO } from "@chatty/shared-types";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NewConversationPanel } from "@/features/chat/components/new-conversation-panel";
@@ -39,6 +39,16 @@ async function search(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("NewConversationPanel", () => {
+	it("opens message search from the shared search row without submitting people search", () => {
+		const onOpenMessageSearch = vi.fn();
+		render(<NewConversationPanel onConversationStarted={vi.fn()} onOpenMessageSearch={onOpenMessageSearch} />);
+		const input = screen.getByRole("textbox", { name: "Find someone" });
+		fireEvent.change(input, { target: { value: "Lan" } });
+		fireEvent.click(screen.getByRole("button", { name: "Search all messages" }));
+		expect(onOpenMessageSearch).toHaveBeenCalledOnce();
+		expect(searchUsers).not.toHaveBeenCalled();
+		expect(input).toHaveValue("Lan");
+	});
 	it("shows a direct-chat button when exactly one person is selected", async () => {
 		const user = userEvent.setup();
 		render(<NewConversationPanel onConversationStarted={vi.fn()} />);

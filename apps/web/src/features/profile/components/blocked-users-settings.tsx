@@ -60,8 +60,7 @@ export function BlockedUsersSettings() {
 	return (
 		<div className="flex flex-col gap-4">
 			<p className="text-[13px] leading-normal text-ink-soft">
-				Blocked people cannot message you in a direct conversation or find you in search. Groups you share are
-				not affected.
+				No direct messages or search visibility. Shared groups stay unchanged.
 			</p>
 
 			{isLoading ? (

@@ -66,8 +66,8 @@ export function MessageList({
 		contentRef,
 		handleScroll,
 		isFarFromBottom,
+		isJumpingToLatest,
 		scrollToLatest,
-		isPinnedToLatestRef,
 		newMessageCount,
 	} = useMessageScroll({
 		conversationId,
@@ -129,9 +129,9 @@ export function MessageList({
 	/*
 	 * Three conditions, and each one is a way the reader would notice:
 	 *
-	 *  - **At the bottom.** Trimming above somebody who is reading history would
-	 *    take the messages out from under them. The ref rather than
-	 *    `isFarFromBottom` because this must not re-run on every scroll event.
+	 *  - **At the bottom, after navigation settles.** Trimming above somebody who
+	 *    is reading history would take the messages out from under them. Waiting
+	 *    until a smooth jump lands also keeps its moving destination stable.
 	 *  - **Not looking at a jumped-to message.** A search result opens the thread
 	 *    around an old message with newer ones still unloaded; the newest message
 	 *    is not on screen even though the scroll position says bottom.
@@ -140,10 +140,10 @@ export function MessageList({
 	 */
 	useEffect(() => {
 		if (messages.length <= MAX_RETAINED_MESSAGES) return;
-		if (targetMessageId || hasMoreNewer || !isPinnedToLatestRef.current) return;
+		if (targetMessageId || hasMoreNewer || isFarFromBottom || isJumpingToLatest) return;
 
 		onTrimHistory();
-	}, [messages, targetMessageId, hasMoreNewer, onTrimHistory, isPinnedToLatestRef]);
+	}, [messages, targetMessageId, hasMoreNewer, isFarFromBottom, isJumpingToLatest, onTrimHistory]);
 
 	const reactionsMessage = reactionsMessageId
 		? messages.find((message) => message.id === reactionsMessageId)

@@ -89,3 +89,64 @@ it("coalesces unseen-thread lookups and keeps archived messages out of the activ
 	});
 	expect(view.result.current.conversations).toEqual([]);
 });
+
+it("coalesces same-tick pagination and stops requesting once the last page arrives", async () => {
+	vi.mocked(api.listConversations).mockResolvedValueOnce({
+		items: [makeConversation({ id: "first" })],
+		hasMore: true,
+	});
+	let finish!: (page: Awaited<ReturnType<typeof api.listConversations>>) => void;
+	vi.mocked(api.listConversations).mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+	);
+	const view = renderHook(() => useConversationList("me", vi.fn()));
+	await waitFor(() => expect(view.result.current.paging.isLoading).toBe(false));
+	act(() => {
+		view.result.current.paging.loadMore();
+		view.result.current.paging.loadMore();
+	});
+	expect(api.listConversations).toHaveBeenCalledTimes(2);
+	await act(async () => finish({ items: [makeConversation({ id: "last" })], hasMore: false }));
+	act(() => view.result.current.paging.loadMore());
+	expect(api.listConversations).toHaveBeenCalledTimes(2);
+	expect(view.result.current.conversations.map((row) => row.id)).toEqual(["first", "last"]);
+});
+
+it("does not let an obsolete page release the next scope's pending request", async () => {
+	vi.mocked(api.listConversations).mockResolvedValueOnce({
+		items: [makeConversation({ id: "active" })],
+		hasMore: true,
+	});
+	let finishOld!: (page: Awaited<ReturnType<typeof api.listConversations>>) => void;
+	let finishNew!: (page: Awaited<ReturnType<typeof api.listConversations>>) => void;
+	vi.mocked(api.listConversations)
+		.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishOld = resolve;
+				}),
+		)
+		.mockResolvedValueOnce({ items: [makeConversation({ id: "archive", isArchived: true })], hasMore: true })
+		.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishNew = resolve;
+				}),
+		);
+	const view = renderHook(() => useConversationList("me", vi.fn()));
+	await waitFor(() => expect(view.result.current.paging.isLoading).toBe(false));
+	act(() => view.result.current.paging.loadMore());
+	act(() => view.result.current.setIsShowingArchived(true));
+	await waitFor(() => expect(view.result.current.conversations[0]?.id).toBe("archive"));
+	act(() => view.result.current.paging.loadMore());
+	await act(async () => finishOld({ items: [makeConversation({ id: "stale" })], hasMore: false }));
+	expect(view.result.current.paging.isLoadingMore).toBe(true);
+	act(() => view.result.current.paging.loadMore());
+	expect(api.listConversations).toHaveBeenCalledTimes(4);
+	await act(async () => finishNew({ items: [], hasMore: false }));
+	expect(view.result.current.paging.isLoadingMore).toBe(false);
+	expect(view.result.current.conversations.map((row) => row.id)).toEqual(["archive"]);
+});

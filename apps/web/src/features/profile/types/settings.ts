@@ -8,12 +8,11 @@ export type SettingsSection =
  *
  * Here rather than beside the constant it types, per the frontend conventions:
  * a type a constant is keyed on outlives the constant, and the settings dialog
- * reads `label` and `description` for its own header from the same row.
+ * reads `label` for its own header from the same row.
  */
 export interface SettingsNavigationItem {
 	id: SettingsSection;
 	label: string;
-	description: string;
 	icon: LucideIcon;
 	/**
 	 * Set on the one row that ends an account. It is drawn in the signal colour

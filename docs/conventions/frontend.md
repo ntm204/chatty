@@ -251,6 +251,11 @@ a rounded tick beside a hairline border belongs to a different drawing.
 
 ## Dialogs
 
+Keep interface copy short. Do not repeat a control's purpose in a permanent paragraph.
+Explain only what changes a decision: destructive consequences, privacy scope, permissions,
+offline limits, or the next step after an error. Put optional detail beside the relevant action,
+not below every menu. Shortening copy must never hide a risk or an actionable error.
+
 `hooks/use-dialog.ts` is the only focus trap. It gives a `<div role="dialog">` Escape-to-close, Tab
 wrapped inside the panel, and focus moved into it on open. The caller owns the state; the hook
 reads the latest `onClose` without rebinding or resetting focus on rerenders. Composition Escape

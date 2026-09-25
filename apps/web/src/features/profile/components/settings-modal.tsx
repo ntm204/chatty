@@ -67,9 +67,6 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 							<h2 id={titleId} className="text-[19px] font-bold tracking-tight">
 								{activeItem.label}
 							</h2>
-							<p className="mt-1.5 text-[13.5px] leading-normal text-ink-soft">
-								{activeItem.description}
-							</p>
 						</div>
 						<Button
 							variant="ghost"

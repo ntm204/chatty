@@ -18,9 +18,7 @@ export function NotificationSettings() {
 	return (
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4">
-				<p className="text-[13px] text-ink-soft">
-					Play a chime when a message arrives and you are not already looking at that conversation.
-				</p>
+				<p className="text-[13px] text-ink-soft">Sound for messages in other chats.</p>
 				<div className="flex items-center gap-3">
 					<Button
 						variant={isSoundEnabled ? "outline" : "primary"}
@@ -42,18 +40,14 @@ export function NotificationSettings() {
 					<p className="text-[13px] text-ink-soft">This browser cannot show desktop notifications.</p>
 				) : (
 					<>
-						<p className="text-[13px] text-ink-soft">
-							Show a notification when a message arrives and this tab is not the one you are looking at.
-							The setting applies to this browser only.
-						</p>
+						<p className="text-[13px] text-ink-soft">Notify while you're away. This browser only.</p>
 
 						{permission === "denied" ? (
 							<p
 								role="status"
 								className="rounded-control border border-rule bg-paper-raised px-3 py-2.5 text-[13px] text-ink-soft"
 							>
-								This browser is blocking notifications for Chatty. Allow them in its site settings, then
-								come back.
+								Notifications blocked. Allow them in your browser’s site settings.
 							</p>
 						) : (
 							<div className="flex flex-col gap-3">

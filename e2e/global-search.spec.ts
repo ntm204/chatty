@@ -36,6 +36,10 @@ test("global search opens a message in an archived conversation outside the load
 		).toHaveCount(0);
 		await page.getByRole("button", { name: "Search all messages", exact: true }).click();
 		const dialog = page.getByRole("dialog", { name: "Search all messages" });
+		await expect(dialog).toBeVisible();
+		await page.screenshot({ path: "/tmp/chatty-compact-search.png" });
+		await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+		await page.screenshot({ path: "/tmp/chatty-compact-search-dark.png" });
 		await dialog.getByRole("textbox", { name: "Search all messages" }).fill("da nang");
 		await expect(dialog.locator("ul > li")).toHaveCount(20);
 		await context.setOffline(true);
@@ -62,6 +66,14 @@ test("global search opens a message in an archived conversation outside the load
 		await expect
 			.poll(() => dialog.locator("ul").evaluate((list) => list.parentElement!.scrollTop))
 			.toBeCloseTo(scrollTop, 0);
+		await dialog.getByRole("button", { name: "Close message search" }).click();
+		await page.getByRole("button", { name: "Saved messages", exact: true }).click();
+		await expect(page.getByRole("main").getByText("Your personal storage", { exact: true })).toBeVisible();
+		await sendMessage(page, "Personal note from the compact Saved shortcut");
+		await expect(
+			page.getByRole("main").getByText("Personal note from the compact Saved shortcut", { exact: true }),
+		).toBeVisible();
+		await page.screenshot({ path: "/tmp/chatty-compact-sidebar-dark.png" });
 	} finally {
 		await context.close();
 		await otherContext.close();
