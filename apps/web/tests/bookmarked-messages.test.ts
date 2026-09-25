@@ -22,6 +22,23 @@ beforeEach(() => {
 	handlers.clear();
 });
 
+it("refreshes all loaded bookmark pages after editing a saved message", async () => {
+	vi.mocked(api.listBookmarkedMessages)
+		.mockResolvedValueOnce({ results: [result("first")], hasMore: true })
+		.mockResolvedValueOnce({ results: [result("second")], hasMore: false })
+		.mockResolvedValueOnce({ results: [result("first")], hasMore: true })
+		.mockResolvedValueOnce({ results: [result("second")], hasMore: false });
+	const { result: state } = renderHook(() => useBookmarkedMessages("me"));
+	await waitFor(() => expect(state.current.results).toHaveLength(1));
+	act(() => state.current.loadMore());
+	await waitFor(() => expect(state.current.results).toHaveLength(2));
+	act(() => handlers.get("message:updated")?.(makeMessage("first", "me", "Edited")));
+	expect(state.current.results).toHaveLength(2);
+	await waitFor(() => expect(state.current.isLoading).toBe(false));
+	expect(api.listBookmarkedMessages).toHaveBeenCalledTimes(4);
+	expect(state.current.results.map((row) => row.message.id)).toEqual(["first", "second"]);
+});
+
 it("does not resurrect an in-flight page after retraction", async () => {
 	let finish!: (page: SavedMessagePageDTO) => void;
 	vi.mocked(api.listBookmarkedMessages)

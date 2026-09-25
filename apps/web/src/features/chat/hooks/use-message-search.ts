@@ -60,6 +60,12 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 		setIsLoadingMore(false);
 		setIsSearching(trimmed.length >= MESSAGE_SEARCH_MIN_LENGTH);
 		if (trimmed.length < MESSAGE_SEARCH_MIN_LENGTH) return;
+		if (!navigator.onLine) {
+			setIsSearching(false);
+			setError("Connect to search messages. Offline history is not searched.");
+
+			return;
+		}
 		const timer = setTimeout(() => {
 			void api
 				.searchMessages(trimmed, 20, conversationId)

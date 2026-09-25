@@ -27,15 +27,24 @@ export function useSocketConnection(onReconnect: () => void): boolean {
 		const socket = getSocket();
 		let warningTimer: ReturnType<typeof setTimeout> | undefined;
 		// Distinguishes "has not connected yet" from "was connected and dropped".
-		// Only the second is a reconnection, and only the second missed anything.
+		// A failed first connection also needs resync: startup may have used only
+		// locally cached messages with inert media placeholders.
 		let hasConnected = socket.connected;
+		let hasMissedInitialLoad = !navigator.onLine;
+		const handleConnectionError = () => {
+			hasMissedInitialLoad = true;
+		};
+		const handleOnline = () => {
+			if (!socket.connected) socket.connect();
+		};
 
 		function handleConnect() {
 			clearTimeout(warningTimer);
 			setIsConnectionLost(false);
 
-			if (hasConnected) onReconnectRef.current();
+			if (hasConnected || hasMissedInitialLoad) onReconnectRef.current();
 			hasConnected = true;
+			hasMissedInitialLoad = false;
 		}
 
 		function handleDisconnect() {
@@ -45,6 +54,8 @@ export function useSocketConnection(onReconnect: () => void): boolean {
 
 		socket.on("connect", handleConnect);
 		socket.on("disconnect", handleDisconnect);
+		socket.on("connect_error", handleConnectionError);
+		window.addEventListener("online", handleOnline);
 
 		// The socket is shared and may already have connected before this mounted,
 		// in which case no "connect" event is coming and waiting for one would leave
@@ -55,6 +66,8 @@ export function useSocketConnection(onReconnect: () => void): boolean {
 			clearTimeout(warningTimer);
 			socket.off("connect", handleConnect);
 			socket.off("disconnect", handleDisconnect);
+			socket.off("connect_error", handleConnectionError);
+			window.removeEventListener("online", handleOnline);
 		};
 	}, []);
 

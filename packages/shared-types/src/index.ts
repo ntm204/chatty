@@ -889,6 +889,8 @@ export interface ConversationSelfUpdatedEvent {
 
 /** Events the server pushes down. The client only listens to these. */
 export interface ServerToClientEvents {
+	/** Private invalidation, sent only to the bookmarking account's sessions. */
+	"bookmark:changed": (event: { conversationId: string; messageId: string }) => void;
 	"message:new": (message: MessageDTO) => void;
 	"message:hidden": (event: { conversationId: string; messageId: string }) => void;
 	/**

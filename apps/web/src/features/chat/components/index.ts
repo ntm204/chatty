@@ -50,3 +50,4 @@ export { PinnedMessagesList } from "./pinned-messages-list";
 
 export { GlobalMessageSearch } from "./global-message-search";
 export { ConversationActionError } from "./conversation-action-error";
+export { ComposerDraftNotices } from "./composer-draft-notices";

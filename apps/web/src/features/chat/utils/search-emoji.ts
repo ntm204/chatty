@@ -1,5 +1,6 @@
 import { EMOJI_CATEGORIES } from "../constants/emoji";
 import type { EmojiEntry } from "../types/emoji";
+import { foldSearchText } from "./fold-search-text";
 
 /**
  * Every emoji whose keywords contain the query, across all categories.
@@ -11,10 +12,12 @@ import type { EmojiEntry } from "../types/emoji";
  * times per keystroke.
  */
 export function searchEmoji(query: string): EmojiEntry[] {
-	const needle = query.trim().toLowerCase();
+	const needle = foldSearchText(query.trim());
 	if (!needle) return [];
 
 	return EMOJI_CATEGORIES.flatMap((category) =>
-		category.emoji.filter((entry) => entry.keywords.includes(needle) || entry.char === needle),
+		category.emoji.filter(
+			(entry) => foldSearchText(entry.keywords).includes(needle) || entry.char === query.trim(),
+		),
 	);
 }

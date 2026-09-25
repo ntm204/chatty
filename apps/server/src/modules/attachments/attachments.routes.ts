@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { getAttachmentController } from "./attachments.controller.js";
+import { getAttachmentController, getAttachmentUrlsController } from "./attachments.controller.js";
+import { requireAuth } from "../../middlewares/require-auth.js";
 
 export const attachmentsRouter = Router();
 
@@ -14,3 +15,4 @@ export const attachmentsRouter = Router();
  * checked, scoped to this one id, and expires.
  */
 attachmentsRouter.get("/:attachmentId", getAttachmentController);
+attachmentsRouter.get("/:attachmentId/urls", requireAuth, getAttachmentUrlsController);

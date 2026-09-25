@@ -2,7 +2,6 @@ import { GlobalMessageSearch } from "../components/global-message-search";
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import { useGlobalSearchSession } from "../hooks/use-global-search-session";
-import { api } from "@/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
@@ -77,7 +76,10 @@ export function ChatPage() {
 		requestedMessageId,
 		handleUnavailableMessageNavigation,
 	);
-	const { replyTo, setReplyTo, requestReplyTo, clearReply } = useReplyTarget(messageState.messages);
+	const { replyTo, pendingReplyId, replyError, setReplyTo, requestReplyTo, clearReply } = useReplyTarget(
+		messageState.messages,
+		selectedConversationId,
+	);
 
 	useKeyboardShortcuts({
 		hasOpenPanel,
@@ -88,8 +90,8 @@ export function ChatPage() {
 			else if (isManagingGroup) setIsManagingGroup(false);
 			else closeMessageSearch();
 		},
-		hasReply: Boolean(replyTo),
-		onCancelReply: () => setReplyTo(null),
+		hasReply: Boolean(replyTo || pendingReplyId),
+		onCancelReply: clearReply,
 		isEditing: isEditingMessage,
 		onCancelEdit: () => setCancelEditRequest((current) => current + 1),
 		onEditLast: () => setEditLastRequest((current) => current + 1),
@@ -112,8 +114,7 @@ export function ChatPage() {
 		setIsManagingGroup(false);
 		setIsConversationSearchOpen(false);
 		setForwardingMessage(null);
-		clearReply();
-	}, [clearReply, selectedConversationId]);
+	}, [selectedConversationId]);
 
 	const selectedConversation =
 		conversations.find((conversation) => conversation.id === selectedConversationId) ??
@@ -126,6 +127,7 @@ export function ChatPage() {
 
 	const {
 		handleConversationStarted,
+		openNotificationConversation,
 		handleConversationSelected,
 		selectSearchResult,
 		closeMessageSearch,
@@ -139,20 +141,6 @@ export function ChatPage() {
 		setRequestedMessageId,
 		setIsConversationSearchOpen,
 	});
-	const openNotificationConversation = useCallback(
-		async (conversationId: string) => {
-			try {
-				// A hidden or archived conversation may not be in the sidebar page, so
-				// navigation needs its DTO before ChatPage can render the thread.
-				const conversation = await api.getConversation(conversationId);
-				handleConversationStarted(conversation.id, conversation);
-			} catch {
-				// Lost membership or a transient request must not replace the current
-				// conversation with an empty pane after a notification click.
-			}
-		},
-		[handleConversationStarted],
-	);
 	useMessageNotifications(currentUser?.id ?? "", conversations, openNotificationConversation);
 
 	if (!currentUser) return null;
@@ -276,6 +264,8 @@ export function ChatPage() {
 								participants: selectedConversation.participants,
 								currentUserId: currentUser.id,
 								replyTo,
+								pendingReplyId,
+								replyError,
 								onCancelReply: () => setReplyTo(null),
 								onSend: messageState.sendMessage,
 								onSendSticker: messageState.sendSticker,

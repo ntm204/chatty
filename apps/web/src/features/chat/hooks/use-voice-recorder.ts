@@ -17,6 +17,7 @@ export function useVoiceRecorder() {
 	const [elapsedMs, setElapsedMs] = useState(0);
 	const [recording, setRecording] = useState<Blob | null>(null);
 	const [error, setError] = useState("");
+	const [notice, setNotice] = useState("");
 	const [waveform, setWaveform] = useState<number[]>([]);
 	const phaseRef = useRef<VoiceRecorderPhase>("idle");
 	const isMountedRef = useRef(true);
@@ -63,6 +64,7 @@ export function useVoiceRecorder() {
 		stopActiveVoicePlayback();
 		transitionTo("requesting");
 		setError("");
+		setNotice("");
 		setRecording(null);
 		setElapsedMs(0);
 		setWaveform([]);
@@ -110,11 +112,15 @@ export function useVoiceRecorder() {
 				transitionTo("preview");
 			}
 
-			function failRecording(): void {
+			function failRecording(event: Event): void {
 				if (!isCurrent()) return;
 				requestGenerationRef.current += 1;
 				release();
-				setError("Recording stopped because the microphone became unavailable. Try again.");
+				setError(
+					event.type === "ended"
+						? "Recording stopped because the microphone became unavailable. Reconnect it and try again."
+						: "The browser could not finish this recording. Start a new recording.",
+				);
 				transitionTo("idle");
 			}
 
@@ -145,7 +151,10 @@ export function useVoiceRecorder() {
 				setWaveform([...Array<number>(LIVE_VOICE_WAVEFORM_BARS - recent.length).fill(0), ...recent]);
 				const duration = Math.min(MAX_VOICE_RECORDING_MS, Date.now() - startedAtRef.current);
 				setElapsedMs(duration);
-				if (duration >= MAX_VOICE_RECORDING_MS) recorder.stop();
+				if (duration >= MAX_VOICE_RECORDING_MS) {
+					setNotice("Five-minute recording limit reached. Review and send this recording, or discard it.");
+					recorder.stop();
+				}
 			}, VOICE_SAMPLE_INTERVAL_MS);
 		} catch (caught) {
 			if (!isCurrent()) return;
@@ -166,6 +175,7 @@ export function useVoiceRecorder() {
 		setElapsedMs(0);
 		setWaveform([]);
 		setError("");
+		setNotice("");
 		transitionTo("idle");
 	}
 
@@ -179,5 +189,5 @@ export function useVoiceRecorder() {
 		};
 	}, []);
 
-	return { phase, elapsedMs, recording, error, waveform, start, stop, discard };
+	return { phase, elapsedMs, recording, error, notice, waveform, start, stop, discard };
 }

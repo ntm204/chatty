@@ -155,6 +155,7 @@ describe("useVoiceRecorder", () => {
 
 		expect(result.current.phase).toBe("preview");
 		expect(result.current.elapsedMs).toBe(300_000);
+		expect(result.current.notice).toContain("Five-minute recording limit reached");
 		expect(result.current.recording?.size).toBeGreaterThan(0);
 		expect(vi.getTimerCount()).toBe(0);
 	});
@@ -165,8 +166,32 @@ describe("useVoiceRecorder", () => {
 		await act(async () => result.current.start());
 
 		expect(result.current.phase).toBe("idle");
-		expect(result.current.error).toBe("Microphone permission was denied.");
+		expect(result.current.error).toContain("Microphone permission was denied.");
 		expect(recorders).toHaveLength(0);
+	});
+	it.each([
+		["NotFoundError", "Connect a microphone"],
+		["NotReadableError", "close other apps"],
+	])("explains %s without retaining capture resources", async (name, explanation) => {
+		getUserMedia.mockRejectedValue(new DOMException("Cannot capture", name));
+		const { result } = renderHook(useVoiceRecorder);
+		await act(async () => result.current.start());
+		expect(result.current.phase).toBe("idle");
+		expect(result.current.error).toContain(explanation);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it("distinguishes a recorder error from device removal and ignores late stop events", async () => {
+		const { stream, track } = makeStream();
+		getUserMedia.mockResolvedValue(stream);
+		const { result } = renderHook(useVoiceRecorder);
+		await act(async () => result.current.start());
+		act(() => recorders[0]!.dispatchEvent(new Event("error")));
+		act(() => recorders[0]!.dispatchEvent(new Event("stop")));
+		expect(result.current.error).toContain("browser could not finish");
+		expect(result.current.phase).toBe("idle");
+		expect(result.current.recording).toBeNull();
+		expect(track.stop).toHaveBeenCalledOnce();
+		expect(closeAudioContext).toHaveBeenCalledOnce();
 	});
 
 	it("releases capture resources when the microphone disconnects", async () => {

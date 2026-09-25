@@ -1,8 +1,11 @@
 import { Button } from "@/components/button";
-import type { MessageDeliveryState } from "../types/thread-message";
+import { useEffect, useState } from "react";
+import type { MessageDeliveryState, ThreadMessage } from "../types/thread-message";
 
 interface MessageDeliveryStatusProps {
 	state: MessageDeliveryState;
+	phase?: ThreadMessage["deliveryPhase"];
+	progress?: number | undefined;
 	onRetry: () => void;
 	onDiscard: () => void;
 }
@@ -19,15 +22,45 @@ interface MessageDeliveryStatusProps {
  * exception: `--signal` marks unread counts, the open conversation, and things
  * you cannot undo. A message the recipient never got is squarely the third.
  */
-export function MessageDeliveryStatus({ state, onRetry, onDiscard }: MessageDeliveryStatusProps) {
-	if (state === "pending") return <span className="meta text-ink-faint">Sending…</span>;
+export function MessageDeliveryStatus({ state, phase, progress, onRetry, onDiscard }: MessageDeliveryStatusProps) {
+	const [isOnline, setIsOnline] = useState(navigator.onLine);
+	useEffect(() => {
+		const update = () => setIsOnline(navigator.onLine);
+		window.addEventListener("online", update);
+		window.addEventListener("offline", update);
+
+		return () => {
+			window.removeEventListener("online", update);
+			window.removeEventListener("offline", update);
+		};
+	}, []);
+	if (state === "pending") {
+		const label = !isOnline
+			? "Waiting for network…"
+			: phase === "preparing"
+				? "Preparing images…"
+				: phase === "confirming"
+					? "Awaiting confirmation…"
+					: phase === "uploading"
+						? `Uploading${progress === undefined ? "…" : ` ${progress}%`}`
+						: "Sending…";
+
+		return (
+			<span role="status" className="meta text-ink-faint">
+				{label}
+			</span>
+		);
+	}
 
 	return (
 		<span className="inline-flex items-center gap-1.5">
-			<span className="meta text-signal">Not sent</span>
+			<span role="status" className="meta text-signal">
+				{isOnline ? "Not sent" : "Waiting for network"}
+			</span>
 			<Button
 				variant="ghost"
 				onClick={onRetry}
+				disabled={!isOnline}
 				className="eyebrow border-b border-dotted border-ink-faint px-0 py-0 text-ink-soft hover:bg-transparent hover:text-ink"
 			>
 				Try again

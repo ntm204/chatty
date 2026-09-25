@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import { Button } from "@/components/button";
@@ -9,6 +9,88 @@ interface TestDialogProps {
 	areControlsDisabled?: boolean;
 	label?: string;
 }
+
+it("returns to the composer when the opening message was removed", async () => {
+	const view = render(
+		<>
+			<main>
+				<textarea aria-label="Message" />
+			</main>
+			<Button>Message action</Button>
+		</>,
+	);
+	screen.getByRole("button", { name: "Message action" }).focus();
+	view.rerender(
+		<>
+			<main>
+				<textarea aria-label="Message" />
+			</main>
+			<TestDialog onClose={vi.fn()} />
+		</>,
+	);
+	view.rerender(
+		<main>
+			<textarea aria-label="Message" />
+		</main>,
+	);
+	await waitFor(() => expect(screen.getByLabelText("Message")).toHaveFocus());
+});
+
+it("keeps focus on rerender and uses the latest close callback", () => {
+	const original = vi.fn();
+	const latest = vi.fn();
+	const view = render(<TestDialog onClose={original} />);
+	const last = screen.getByRole("button", { name: "Last action" });
+	last.focus();
+	view.rerender(<TestDialog onClose={latest} />);
+	expect(last).toHaveFocus();
+	fireEvent.keyDown(last, { key: "Escape" });
+	expect(original).not.toHaveBeenCalled();
+	expect(latest).toHaveBeenCalledOnce();
+});
+
+it("leaves composition Escape to the input method", () => {
+	const onClose = vi.fn();
+	render(<TestDialog onClose={onClose} />);
+	fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape", isComposing: true });
+	fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape", keyCode: 229 });
+	expect(onClose).not.toHaveBeenCalled();
+});
+
+it("restores the original opener after callback changes and skips inaccessible controls", async () => {
+	const user = userEvent.setup();
+	const view = render(
+		<>
+			<Button>Open viewer</Button>
+		</>,
+	);
+	const opener = screen.getByRole("button", { name: "Open viewer" });
+	opener.focus();
+	view.rerender(
+		<>
+			<Button>Open viewer</Button>
+			<TestDialog onClose={vi.fn()} />
+		</>,
+	);
+	const hiddenControl = document.createElement("button");
+	hiddenControl.setAttribute("aria-hidden", "true");
+	screen.getByRole("dialog").append(hiddenControl);
+	screen.getByRole("button", { name: "Last action" }).focus();
+	await user.tab();
+	expect(screen.getByRole("button", { name: "First action" })).toHaveFocus();
+	view.rerender(
+		<>
+			<Button>Open viewer</Button>
+			<TestDialog onClose={vi.fn()} />
+		</>,
+	);
+	view.rerender(
+		<>
+			<Button>Open viewer</Button>
+		</>,
+	);
+	expect(opener).toHaveFocus();
+});
 
 function TestDialog({ onClose, areControlsDisabled = false, label = "Example dialog" }: TestDialogProps) {
 	const ref = useDialog<HTMLDivElement>(onClose);

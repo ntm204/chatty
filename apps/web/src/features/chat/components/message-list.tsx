@@ -4,7 +4,8 @@ import { Button } from "@/components/button";
 import type { MessageListProps } from "../types/message-list";
 import { MAX_RETAINED_MESSAGES } from "../constants/pagination";
 import { useMessageEditing, useMessageScroll, useUnreadDivider } from "../hooks";
-import { getReadReceipt, scrollToMessage } from "../utils";
+import { useMessageNavigationPosition } from "../hooks/use-message-navigation-position";
+import { getReadReceipt } from "../utils";
 import { MessageEditHistory } from "./message-edit-history";
 import { MessageRows } from "./message-rows";
 import { ReactionDetailsPanel } from "./reaction-details-panel";
@@ -59,7 +60,6 @@ export function MessageList({
 	const [returningConversationId, setReturningConversationId] = useState<string | null>(null);
 	const isReturningToLatest = returningConversationId === conversationId;
 	const hasObservedReturnLoadRef = useRef(false);
-	const lastScrollTargetRef = useRef<string | null>(null);
 	// The list owns both scroll position and the visible read marker.
 	const {
 		containerRef,
@@ -107,26 +107,14 @@ export function MessageList({
 		unreadCount,
 	});
 
-	useEffect(() => {
-		lastScrollTargetRef.current = null;
-	}, [conversationId, targetMessageId]);
-
-	useEffect(() => {
-		if (!targetMessageId || lastScrollTargetRef.current === targetMessageId) return;
-		// Wait for the target to render, then leave the reader free to move. Socket
-		// edits and page loads must not repeatedly drag them back to the search hit.
-		const tryScroll = () => {
-			if (lastScrollTargetRef.current !== targetMessageId && scrollToMessage(targetMessageId, "auto")) {
-				lastScrollTargetRef.current = targetMessageId;
-			}
-		};
-		tryScroll();
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(tryScroll);
-		if (containerRef.current) observer.observe(containerRef.current);
-
-		return () => observer.disconnect();
-	}, [conversationId, targetMessageId, messages, containerRef]);
+	const { hasReadingPosition, jumpWithReturn, returnToReadingPosition } = useMessageNavigationPosition({
+		conversationId,
+		targetMessageId,
+		messages,
+		containerRef,
+		isLoadingThread,
+		onJumpToMessage,
+	});
 
 	useEffect(() => {
 		if (isReturningToLatest && isLoadingThread) hasObservedReturnLoadRef.current = true;
@@ -240,7 +228,7 @@ export function MessageList({
 								onReplyToMessage={onReplyToMessage}
 								onForwardMessage={onForwardMessage}
 								onTogglePinMessage={onTogglePinMessage}
-								onJumpToMessage={onJumpToMessage}
+								onJumpToMessage={jumpWithReturn}
 							/>
 
 							{hasMoreNewer && (
@@ -268,6 +256,16 @@ export function MessageList({
 				</div>
 			</div>
 
+			{hasReadingPosition && (
+				<Button
+					variant="outline"
+					className="absolute left-3 top-2 z-10 bg-paper-raised text-xs"
+					disabled={isLoadingThread}
+					onClick={returnToReadingPosition}
+				>
+					Back to reading position
+				</Button>
+			)}
 			<ScrollToLatestButton
 				isVisible={isFarFromBottom || canReturnToLatest || isReturningToLatest}
 				isLoading={isReturningToLatest}

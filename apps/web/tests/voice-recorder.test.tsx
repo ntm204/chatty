@@ -9,6 +9,7 @@ const recorder = vi.hoisted(() => ({
 	elapsedMs: 2_500,
 	recording: null as Blob | null,
 	error: "",
+	notice: "",
 	waveform: [0, 20, 60, 0],
 	start: vi.fn(),
 	stop: vi.fn(),
@@ -52,6 +53,21 @@ afterEach(() => {
 });
 
 describe("VoiceRecorder", () => {
+	it("distinguishes transmitted bytes from server confirmation", async () => {
+		let finish!: () => void;
+		const onSend = vi.fn((_blob: Blob, progress?: (percent: number) => void) => {
+			progress?.(100);
+
+			return new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+		});
+		render(<VoiceRecorder isDisabled={false} onSend={onSend} onActiveChange={vi.fn()} />);
+		fireEvent.click(screen.getByRole("button", { name: "Send voice message" }));
+		expect(screen.getByRole("status")).toHaveTextContent("Waiting for confirmation");
+		expect(recorder.discard).not.toHaveBeenCalled();
+		await act(async () => finish());
+	});
 	it("keeps the recording after an upload failure and retries the same blob", async () => {
 		const onSend = vi.fn().mockRejectedValueOnce(new Error("Upload failed")).mockResolvedValueOnce(undefined);
 		const user = userEvent.setup();

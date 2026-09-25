@@ -93,6 +93,29 @@ async function sendImage(
 	});
 }
 
+it("requires a session to renew an attachment URL and refuses it after retraction", async () => {
+	const { token, conversationId } = await makeSender();
+	const sent = await sendImage(token, conversationId);
+	expect(sent.status).toBe(201);
+	const message = (await sent.json()) as { id: string; attachments: { id: string }[] };
+	const endpoint = `${baseUrl}/attachments/${message.attachments[0]!.id}/urls`;
+	expect((await fetch(endpoint)).status).toBe(401);
+	const headers = { Authorization: `Bearer ${token}` };
+	const renewed = await fetch(endpoint, { headers });
+	expect(renewed.status).toBe(200);
+	expect(renewed.headers.get("cache-control")).toBe("no-store");
+	expect(await renewed.json()).toMatchObject({ url: expect.stringContaining("token=") });
+	expect(
+		(
+			await fetch(`${baseUrl}/conversations/${conversationId}/messages/${message.id}`, {
+				method: "DELETE",
+				headers,
+			})
+		).status,
+	).toBe(200);
+	expect((await fetch(endpoint, { headers })).status).toBe(404);
+});
+
 async function sendFile(
 	token: string,
 	conversationId: string,

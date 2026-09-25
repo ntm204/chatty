@@ -35,7 +35,8 @@ export function VaultTabContent({
 	onLoadPage,
 	onOpenMessage,
 }: VaultTabContentProps) {
-	const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+	const [lightboxId, setLightboxId] = useState<string | null>(null);
+	const lightboxIndex = attachments.findIndex((attachment) => attachment.id === lightboxId);
 	// Every list carries the same heading, because every one of them answers
 	// "when was this shared?" — and a month is the only handle a hundred rows of
 	// files, voice notes or links can be aimed at.
@@ -70,10 +71,9 @@ export function VaultTabContent({
 								{items.map((attachment) => (
 									<Button
 										key={attachment.id}
+										data-vault-item={attachment.id}
 										variant="ghost"
-										onClick={() =>
-											setLightboxIndex(attachments.findIndex((item) => item.id === attachment.id))
-										}
+										onClick={() => setLightboxId(attachment.id)}
 										className="aspect-square overflow-hidden rounded-sm p-0"
 									>
 										<img
@@ -96,7 +96,7 @@ export function VaultTabContent({
 							<h3 className={MONTH_HEADING_CLASS}>{month}</h3>
 							<div className="flex flex-col gap-3">
 								{items.map((attachment) => (
-									<div key={attachment.id}>
+									<div key={attachment.id} data-vault-item={attachment.id}>
 										{activeTab === "files" ? (
 											<MessageFileCard attachment={attachment} className="w-full max-w-none" />
 										) : (
@@ -106,6 +106,13 @@ export function VaultTabContent({
 											{attachment.authorName ?? "Deleted account"} ·{" "}
 											{formatVaultDate(attachment.messageCreatedAt)}
 										</p>
+										<Button
+											variant="ghost"
+											className="px-1 text-xs"
+											onClick={() => onOpenMessage(attachment.messageId)}
+										>
+											Show in conversation
+										</Button>
 									</div>
 								))}
 							</div>
@@ -123,6 +130,7 @@ export function VaultTabContent({
 								{items.map((link) => (
 									<Button
 										key={link.id}
+										data-vault-item={link.id}
 										variant="ghost"
 										onClick={() => onOpenMessage(link.messageId)}
 										className="block min-w-0 text-left"
@@ -155,7 +163,7 @@ export function VaultTabContent({
 			<div ref={loadMoreRef} aria-hidden="true" className="h-px" />
 			{isLoading && !isEmpty && <p className="eyebrow py-3 text-center text-ink-faint">Loading more…</p>}
 
-			{lightboxIndex !== null && (
+			{activeTab === "media" && lightboxIndex >= 0 && (
 				<AttachmentLightbox
 					key={attachments[lightboxIndex]?.id}
 					attachments={attachments}
@@ -165,9 +173,9 @@ export function VaultTabContent({
 					// caption line is now type above the picture, where a stand-in
 					// label would read as this picture's own words.
 					caption=""
-					onClose={() => setLightboxIndex(null)}
+					onClose={() => setLightboxId(null)}
 					onOpenMessage={(attachment) => {
-						setLightboxIndex(null);
+						setLightboxId(null);
 						const item = attachments.find((candidate) => candidate.id === attachment.id);
 						if (item) onOpenMessage(item.messageId);
 					}}

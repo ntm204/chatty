@@ -1,7 +1,7 @@
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/button";
 import { EDITED_MESSAGE_LABEL } from "../constants/message";
-import type { MessageDeliveryState } from "../types/thread-message";
+import type { MessageDeliveryState, ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
 import { formatMessageTime } from "../utils";
 import { MessageDeliveryStatus } from "./message-delivery-status";
@@ -19,6 +19,8 @@ interface MessageMetaProps {
 	/** Only used to decide whether this row needs any gutter at all on mobile. */
 	receipt: ReadReceipt | null;
 	deliveryState: MessageDeliveryState | undefined;
+	deliveryPhase?: ThreadMessage["deliveryPhase"];
+	uploadProgress?: number | undefined;
 	onShowHistory: () => void;
 	onRetrySend: () => void;
 	onDiscardDraft: () => void;
@@ -42,6 +44,8 @@ export function MessageMeta({
 	hasTimeOnMedia,
 	receipt,
 	deliveryState,
+	deliveryPhase,
+	uploadProgress,
 	onShowHistory,
 	onRetrySend,
 	onDiscardDraft,
@@ -68,7 +72,13 @@ export function MessageMeta({
 			{/* A message still on its way has no send time to state: the one it
 			    carries is this machine's guess, not the server's answer. */}
 			{deliveryState ? (
-				<MessageDeliveryStatus state={deliveryState} onRetry={onRetrySend} onDiscard={onDiscardDraft} />
+				<MessageDeliveryStatus
+					state={deliveryState}
+					phase={deliveryPhase}
+					progress={uploadProgress}
+					onRetry={onRetrySend}
+					onDiscard={onDiscardDraft}
+				/>
 			) : hasTimeOnMedia ? null : (
 				<span className="meta text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
 					{formatMessageTime(createdAt)}

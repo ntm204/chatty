@@ -6,6 +6,7 @@ import { Button } from "@/components/button";
 import { Disclosure } from "@/components/disclosure";
 import { VAULT_CATEGORY_TABS, VAULT_TABS, type VaultTab } from "../constants/vault";
 import { useConversationVault } from "../hooks/use-conversation-vault";
+import { useVaultReadingPosition } from "../hooks/use-vault-reading-position";
 import { getDirectPeer } from "../utils";
 import { ConversationBlockControl } from "./conversation-block-control";
 import { ConversationCustomizePanel } from "./conversation-customize-panel";
@@ -37,6 +38,7 @@ export function ConversationVaultPanel({
 	onOpenMessage,
 }: ConversationVaultPanelProps) {
 	const panelRef = useRef<HTMLElement>(null);
+	const categoryScrollRef = useRef<HTMLDivElement>(null);
 	const [activeTab, setActiveTab] = useState<VaultTab | null>(null);
 	const [isPinsDialogOpen, setIsPinsDialogOpen] = useState(false);
 	// Lifted rather than left to Disclosure's own state: selecting a category
@@ -47,6 +49,12 @@ export function ConversationVaultPanel({
 	const blockablePeer = conversation.isGroup ? null : getDirectPeer(conversation, currentUserId);
 	const activeLabel = VAULT_TABS.find((tab) => tab.id === activeTab)?.label ?? "";
 	const isAdmin = conversation.participants.find((participant) => participant.id === currentUserId)?.role === "admin";
+	const rememberPosition = useVaultReadingPosition(
+		categoryScrollRef,
+		activeTab,
+		vault.isLoading,
+		activeTab === "links" ? vault.links : vault.attachments,
+	);
 
 	useEffect(() => {
 		const panel = panelRef.current;
@@ -219,7 +227,11 @@ export function ConversationVaultPanel({
 							</Button>
 						))}
 					</div>
-					<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+					<div
+						ref={categoryScrollRef}
+						onScroll={rememberPosition}
+						className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+					>
 						<VaultTabContent
 							activeTab={activeTab}
 							attachments={vault.attachments}

@@ -19,5 +19,7 @@ export type MessageDeliveryState = "pending" | "failed";
  */
 export interface ThreadMessage extends MessageDTO {
 	deliveryState?: MessageDeliveryState;
+	deliveryPhase?: "preparing" | "uploading" | "confirming" | undefined;
+	uploadProgress?: number | undefined;
 	hasLocalStorageError?: boolean;
 }

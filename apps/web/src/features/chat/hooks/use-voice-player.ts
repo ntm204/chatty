@@ -4,6 +4,7 @@ import { VOICE_PLAYBACK_ERROR, VOICE_PROGRESS_INTERVAL_MS } from "../constants/v
 interface UseVoicePlayerOptions {
 	sourceUrl?: string | undefined;
 	durationMs?: number | undefined;
+	resolveSource?: (() => Promise<string>) | undefined;
 }
 
 interface VoicePlaybackSession {
@@ -21,10 +22,17 @@ export function stopActiveVoicePlayback(): void {
 	activeSession?.stop();
 }
 
-export function useVoicePlayer({ sourceUrl, durationMs: suppliedDurationMs = 0 }: UseVoicePlayerOptions = {}) {
+export function useVoicePlayer({
+	sourceUrl,
+	durationMs: suppliedDurationMs = 0,
+	resolveSource,
+}: UseVoicePlayerOptions = {}) {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const sessionRef = useRef<VoicePlaybackSession | null>(null);
 	const rateRef = useRef(1);
+	const resolverRef = useRef(resolveSource);
+	resolverRef.current = resolveSource;
+	const shouldRenewSourceRef = useRef(false);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [elapsedMs, setElapsedMs] = useState(0);
@@ -43,6 +51,7 @@ export function useVoicePlayer({ sourceUrl, durationMs: suppliedDurationMs = 0 }
 		let lastProgressAt = 0;
 		const session: VoicePlaybackSession = { audio, requestId: 0, wantsPlayback: false, stop: stopPlayback };
 		sessionRef.current = session;
+		shouldRenewSourceRef.current = false;
 		rateRef.current = 1;
 		audio.playbackRate = 1;
 		setPlaybackRate(1);
@@ -127,6 +136,7 @@ export function useVoicePlayer({ sourceUrl, durationMs: suppliedDurationMs = 0 }
 		}
 
 		function onError(): void {
+			shouldRenewSourceRef.current = true;
 			stopPlayback();
 			if (isCurrent) setError(VOICE_PLAYBACK_ERROR);
 		}
@@ -174,6 +184,16 @@ export function useVoicePlayer({ sourceUrl, durationMs: suppliedDurationMs = 0 }
 		setError("");
 		setIsLoading(true);
 		try {
+			if (shouldRenewSourceRef.current && resolverRef.current) {
+				const freshUrl = await resolverRef.current();
+				if (sessionRef.current !== session || session.requestId !== requestId || activeSession !== session) {
+					return;
+				}
+				shouldRenewSourceRef.current = false;
+				audio.src = freshUrl;
+				audio.load();
+				audio.playbackRate = rateRef.current;
+			}
 			if (audio.error) audio.load();
 			if (audio.ended || (durationMs > 0 && audio.currentTime * 1000 >= durationMs)) {
 				audio.currentTime = 0;
@@ -184,10 +204,15 @@ export function useVoicePlayer({ sourceUrl, durationMs: suppliedDurationMs = 0 }
 				// A late completion must stop its old element without pausing a newer attempt on the same element.
 				if (activeSession?.audio !== audio) audio.pause();
 			}
-		} catch {
+		} catch (caught) {
 			if (sessionRef.current !== session || session.requestId !== requestId || activeSession !== session) return;
+			// A browser gesture policy is not an expired URL. The next tap must
+			// play synchronously instead of entering another authorization round-trip.
+			const isGestureBlocked =
+				(caught instanceof Error || caught instanceof DOMException) && caught.name === "NotAllowedError";
+			shouldRenewSourceRef.current = !isGestureBlocked;
 			session.stop();
-			setError(VOICE_PLAYBACK_ERROR);
+			setError(isGestureBlocked ? "Playback was blocked. Tap Retry to play." : VOICE_PLAYBACK_ERROR);
 		}
 	}
 

@@ -7,6 +7,8 @@ import { isOfflineMediaUrl } from "@/utils/is-offline-media-url";
 import { cn } from "@/utils/cn";
 import { LIGHTBOX_CONTROL_CLASS } from "../constants/attachment";
 import { useAttachmentZoom } from "../hooks/use-attachment-zoom";
+import { useImageRecovery } from "../hooks/use-image-recovery";
+import { ImageRecoveryNotice } from "./image-recovery-notice";
 import { downloadAttachment } from "../utils";
 import { AttachmentLightboxThumbnails } from "./attachment-lightbox-thumbnails";
 import { AttachmentLightboxToolbar } from "./attachment-lightbox-toolbar";
@@ -73,6 +75,7 @@ export function AttachmentLightbox({
 	const [saveError, setSaveError] = useState("");
 	const total = attachments.length;
 	const current = attachments[index];
+	const recovery = useImageRecovery(current);
 
 	const step = useCallback((delta: number) => setIndex((value) => (value + delta + total) % total), [total]);
 
@@ -97,6 +100,16 @@ export function AttachmentLightbox({
 
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
+			const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+			if (event.defaultPrevented || event.isComposing || dialogs[dialogs.length - 1] !== dialogRef.current) {
+				return;
+			}
+			if (
+				event.target instanceof Element &&
+				event.target.closest('input, textarea, select, [contenteditable="true"]')
+			) {
+				return;
+			}
 			if (event.key === "ArrowRight") step(1);
 			if (event.key === "ArrowLeft") step(-1);
 			if (event.key === "+" || event.key === "=") zoomIn();
@@ -108,7 +121,7 @@ export function AttachmentLightbox({
 		window.addEventListener("keydown", handleKeyDown);
 
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [resetZoom, rotate, step, zoomIn, zoomOut]);
+	}, [dialogRef, resetZoom, rotate, step, zoomIn, zoomOut]);
 
 	// Both neighbours are fetched while this one is being looked at, so an arrow
 	// key swaps the picture instead of blanking the frame for as long as a
@@ -168,6 +181,11 @@ export function AttachmentLightbox({
 					{saveError}
 				</p>
 			)}
+			<ImageRecoveryNotice
+				error={recovery.error}
+				isRetrying={recovery.isRetrying}
+				onRetry={() => void recovery.retry()}
+			/>
 
 			<div
 				className={cn(
@@ -204,10 +222,14 @@ export function AttachmentLightbox({
 					    from two places at once is how a transition starts fighting a
 					    drag instead of yielding to it. */}
 					<div className="flex max-h-full max-w-full items-center justify-center">
-						<div key={current.id} className="flex max-h-full max-w-full items-center justify-center">
+						<div
+							key={`${current.id}:${recovery.attempt}`}
+							className="flex max-h-full max-w-full items-center justify-center"
+						>
 							<img
 								ref={imageRef}
-								src={current.url}
+								src={recovery.url}
+								onError={recovery.fail}
 								alt={caption || "Image"}
 								draggable={false}
 								onLoad={handleImageLoad}

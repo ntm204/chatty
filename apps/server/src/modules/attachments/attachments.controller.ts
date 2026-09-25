@@ -13,6 +13,13 @@ import * as attachmentsService from "./attachments.service.js";
  */
 const ATTACHMENT_CACHE_CONTROL = `private, max-age=${ATTACHMENT_TOKEN_TTL_SECONDS}`;
 
+export async function getAttachmentUrlsController(req: Request, res: Response): Promise<void> {
+	const params = attachmentParamsSchema.parse(req.params);
+	const urls = await attachmentsService.getAttachmentUrls(req.userId!, params.attachmentId);
+	res.setHeader("Cache-Control", "no-store");
+	res.status(200).json(urls);
+}
+
 export async function getAttachmentController(req: Request, res: Response): Promise<void> {
 	const params = attachmentParamsSchema.parse(req.params);
 	const query = attachmentQuerySchema.parse(req.query);

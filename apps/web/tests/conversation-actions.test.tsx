@@ -226,6 +226,32 @@ describe("ConversationActions", () => {
 		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 	});
 
+	it("recovers focus after disabling the active action and keeps Escape within the menu", async () => {
+		let rejectRequest!: (error: Error) => void;
+		vi.mocked(api.setConversationPinned).mockReturnValue(
+			new Promise((_, reject) => {
+				rejectRequest = reject;
+			}),
+		);
+		const user = userEvent.setup();
+		renderDirectActions();
+		const trigger = screen.getByRole("button", { name: "Conversation actions" });
+		await user.click(trigger);
+		const pin = screen.getByRole("menuitem", { name: "Pin conversation" });
+		await waitFor(() => expect(pin).toHaveFocus());
+		await user.click(pin);
+		// jsdom keeps disabled focus and ignores blur; reproduce Chromium's body fallback.
+		(pin as HTMLButtonElement).disabled = false;
+		pin.blur();
+		(pin as HTMLButtonElement).disabled = true;
+		expect(document.body).toHaveFocus();
+		await act(async () => rejectRequest(new Error("You can pin up to 5 conversations")));
+		expect(pin).toHaveFocus();
+		await user.keyboard("{Escape}");
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(trigger).toHaveFocus();
+	});
+
 	it("shares a mute request and its recovery feedback with the details controls", async () => {
 		let rejectRequest!: (error: Error) => void;
 		vi.mocked(api.setConversationMuted).mockReturnValue(

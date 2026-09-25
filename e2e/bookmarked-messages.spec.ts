@@ -51,6 +51,11 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	await page.reload();
 	await page.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
 	const dialog = page.getByRole("dialog", { name: "Bookmarked messages", exact: true });
+	const secondTab = await context.newPage();
+	await secondTab.goto("/");
+	await secondTab.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	const secondDialog = secondTab.getByRole("dialog", { name: "Bookmarked messages", exact: true });
+	await expect(secondDialog.getByText("Bookmarked extra 20", { exact: true })).toBeVisible();
 	await expect(dialog.getByRole("button", { name: "More bookmarks" })).toBeVisible();
 	await dialog.getByRole("button", { name: "More bookmarks" }).click();
 	await expect(dialog.getByText("My bookmarked original", { exact: true })).toBeVisible();
@@ -73,6 +78,8 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	await page.unroute("**/messages/*/star");
 	await dialog.getByRole("button", { name: "Remove bookmark", exact: true }).first().click();
 	await expect(dialog.getByText("Bookmarked extra 20", { exact: true })).toHaveCount(0);
+	await expect(secondDialog.getByText("Bookmarked extra 20", { exact: true })).toHaveCount(0);
+	await expect(secondDialog.getByText("Bookmarked extra 19", { exact: true })).toBeVisible();
 	await page.evaluate(async ({ conversationId }) => {
 		const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
 		const messages = await (

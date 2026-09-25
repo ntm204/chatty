@@ -135,6 +135,7 @@ describe("optimistic send reconciliation", () => {
 			undefined,
 			[],
 			"draft:durable",
+			expect.any(Function),
 		);
 		await waitFor(() => expect(view.result.current.messages[0]?.id).toBe("saved"));
 		expect(localStore.removeLocalMessage).toHaveBeenCalledWith("draft:durable");

@@ -66,6 +66,7 @@ export function MessageActions({
 		() => !authorActionExpiresAt || Date.parse(authorActionExpiresAt) <= Date.now(),
 	);
 	const rootRef = useRef<HTMLDivElement>(null);
+	useClampedMessageMenu(rootRef, openPanel, isChoosingDeleteScope);
 
 	useEffect(() => {
 		if (isPending) setOpenPanel(null);
@@ -106,7 +107,9 @@ export function MessageActions({
 		}
 
 		const focusFrame = window.requestAnimationFrame(() => {
-			rootRef.current?.querySelector<HTMLButtonElement>("[role='menuitem']")?.focus();
+			rootRef.current
+				?.querySelector<HTMLButtonElement>(isChoosingDeleteScope ? "[data-safe-default]" : "[role='menuitem']")
+				?.focus();
 		});
 
 		function closeFromOutside(event: PointerEvent) {
@@ -180,7 +183,7 @@ export function MessageActions({
 					aria-haspopup="menu"
 					aria-expanded={openPanel === "reactions"}
 					className={cn(
-						"size-6 p-0 hover:bg-transparent hover:text-ink max-sm:hidden",
+						"size-6 p-0 hover:bg-transparent hover:text-ink",
 						openPanel === "reactions" || myReaction ? "text-ink" : "text-ink-faint",
 					)}
 				>
@@ -256,3 +259,4 @@ export function MessageActions({
 		</div>
 	);
 }
+import { useClampedMessageMenu } from "../hooks/use-clamped-message-menu";

@@ -39,6 +39,10 @@ export function MessageActionsMenu({
 		return (
 			<>
 				<p className="eyebrow px-2.5 py-2 text-ink-faint">Delete this message</p>
+				<p className="px-2.5 pb-2 text-xs text-ink-soft">
+					For me hides it only from you. For everyone removes the original and its edit history; other
+					people's copies remain.
+				</p>
 				<Button
 					variant="ghost"
 					role="menuitem"
@@ -63,6 +67,7 @@ export function MessageActionsMenu({
 					variant="ghost"
 					role="menuitem"
 					onClick={() => setIsChoosingDeleteScope(false)}
+					data-safe-default
 					className="w-full justify-start px-2.5 py-2 text-ink-faint"
 				>
 					<X className="size-4" />

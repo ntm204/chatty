@@ -4,10 +4,12 @@ import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageDTO, ParticipantDTO } from "@chatty/shared-types";
 import { cn } from "@/utils/cn";
+import { ComposerDraftNotices } from "./composer-draft-notices";
 import { getMentionedUserIds } from "../utils/mentioned-user-ids";
 import { useTypingNotifier } from "../hooks";
 import { useComposerMentions } from "../hooks/use-composer-mentions";
 import { useComposerAttachments } from "../hooks/use-composer-attachments";
+import { useComposerTextInsertion } from "../hooks/use-composer-text-insertion";
 import { useComposerStickerSend } from "../hooks/use-composer-sticker-send";
 import { useComposerFileSend } from "../hooks/use-composer-file-send";
 import { useMessageDraft } from "../hooks/use-message-draft";
@@ -26,6 +28,8 @@ interface MessageInputProps {
 	isDisabled?: boolean;
 	/** The message being answered, or null for an ordinary send. */
 	replyTo: MessageDTO | null;
+	pendingReplyId?: string | null;
+	replyError?: string;
 	onCancelReply: () => void;
 	/** Owned by the page because the thread, including optimistic messages, is its sibling. */
 	onSend: (
@@ -52,6 +56,8 @@ export function MessageInput({
 	isGroup = false,
 	isDisabled = false,
 	replyTo,
+	pendingReplyId = null,
+	replyError = "",
 	onCancelReply,
 	onSend,
 	onSendSticker,
@@ -69,6 +75,7 @@ export function MessageInput({
 	const isComposingRef = useRef(false);
 	useAutosizeTextarea(fieldRef, content);
 	const { notifyTyping, stopTyping } = useTypingNotifier(conversationId);
+	const insertText = useComposerTextInsertion({ fieldRef, conversationId, content, setContent, notifyTyping });
 	const { selectedFile, isSending, uploadProgress, sendFile, removeFile } = useComposerFileSend({
 		isDisabled: isDisabled || isVoiceActive,
 		onSendFile,
@@ -94,12 +101,13 @@ export function MessageInput({
 		selectedFile,
 		isDisabled: isDisabled || isSending || isVoiceActive,
 		onFileSelected: sendFile,
+		onPasteText: insertText,
 	});
 	const { clearDraft, hasStorageError } = useMessageDraft({
 		userId: currentUserId,
 		conversationId,
 		content,
-		replyToId: replyTo?.id ?? null,
+		replyToId: replyTo?.id ?? pendingReplyId,
 		onRestore: useCallback(
 			(draft) => {
 				setContent(draft.content);
@@ -109,7 +117,7 @@ export function MessageInput({
 		),
 	});
 	const sendSticker = useComposerStickerSend({
-		isDisabled: isDisabled || isSending || isVoiceActive,
+		isDisabled: isDisabled || isSending || isVoiceActive || pendingReplyId !== null,
 		replyTo,
 		onSend: onSendSticker,
 		onCancelReply,
@@ -144,21 +152,6 @@ export function MessageInput({
 		else stopTyping();
 	}
 
-	/** Inserts at the caret and restores focus after the controlled field renders. */
-	function insertEmoji(char: string) {
-		const field = fieldRef.current;
-		const caret = field?.selectionStart ?? content.length;
-		const next = `${content.slice(0, caret)}${char}${content.slice(field?.selectionEnd ?? caret)}`;
-
-		setContent(next);
-		notifyTyping();
-		// Wait for the new value to render before placing the caret.
-		requestAnimationFrame(() => {
-			field?.focus();
-			field?.setSelectionRange(caret + char.length, caret + char.length);
-		});
-	}
-
 	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (isComposingKey(event) || isComposingRef.current) return;
 		if (mentions.handleKeyDown(event)) return;
@@ -169,7 +162,16 @@ export function MessageInput({
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (isDisabled || isSending || isVoiceActive || isComposingRef.current || !hasSomethingToSend) return;
+		if (
+			isDisabled ||
+			isSending ||
+			isVoiceActive ||
+			pendingReplyId ||
+			isComposingRef.current ||
+			!hasSomethingToSend
+		) {
+			return;
+		}
 
 		// Retract before the request: a slow network must not leave "typing…" behind.
 		stopTyping();
@@ -197,16 +199,14 @@ export function MessageInput({
 			ref={composerRef}
 			className="message-composer shrink-0 border-t border-rule-soft bg-paper-raised px-3 py-2.5 sm:px-4 md:px-5"
 		>
-			{isDisabled && (
-				<p role="status" className="mb-2 rounded-control bg-signal-soft px-3 py-2 text-[13px] text-signal">
-					You blocked this person. Unblock them to send a message.
-				</p>
-			)}
-			{hasStorageError && (
-				<p role="status" className="mb-2 text-xs text-signal">
-					This draft cannot be saved on this device. Keep this page open to avoid losing it.
-				</p>
-			)}
+			<ComposerDraftNotices
+				isBlocked={isDisabled}
+				hasStorageError={hasStorageError}
+				pendingReplyId={pendingReplyId}
+				replyError={replyError}
+				onRestoreReply={onRestoreReply}
+				onCancelReply={onCancelReply}
+			/>
 			<form
 				onSubmit={handleSubmit}
 				className={cn(
@@ -243,6 +243,7 @@ export function MessageInput({
 					isVoiceActive={isVoiceActive}
 					isFull={isFull}
 					canSend={hasSomethingToSend}
+					isSendBlocked={pendingReplyId !== null}
 					isEmojiPickerOpen={isEmojiPickerOpen}
 					isStickerTrayOpen={isStickerTrayOpen}
 					onToggleEmojiPicker={() => {
@@ -257,7 +258,7 @@ export function MessageInput({
 					onCloseStickerTray={() => setIsStickerTrayOpen(false)}
 					onFilesSelected={handleFilesSelected}
 					onFileSelected={handleFileSelected}
-					onInsertEmoji={insertEmoji}
+					onInsertEmoji={insertText}
 					onPickSticker={sendSticker}
 					field={
 						<textarea
@@ -287,7 +288,7 @@ export function MessageInput({
 					}
 					voiceRecorder={
 						<VoiceRecorder
-							isDisabled={isDisabled || isSending || hasSomethingToSend || replyTo !== null}
+							isDisabled={isDisabled || isSending || attachments.length > 0 || replyTo !== null}
 							onSend={onSendVoice}
 							onActiveChange={setIsVoiceActive}
 						/>

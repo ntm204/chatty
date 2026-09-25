@@ -13,13 +13,24 @@ export function useAutosizeTextarea(ref: RefObject<HTMLTextAreaElement>, value: 
 		resize();
 		if (typeof ResizeObserver === "undefined") return;
 		let previousWidth = field.clientWidth;
+		let frame: number | undefined;
 		const observer = new ResizeObserver(() => {
 			if (field.clientWidth === previousWidth) return;
 			previousWidth = field.clientWidth;
-			resize();
+			// Height writes during observer delivery invalidate the same layout cycle.
+			// Coalesce width changes into the next frame, outside that delivery.
+			if (frame === undefined) {
+				frame = requestAnimationFrame(() => {
+					frame = undefined;
+					resize();
+				});
+			}
 		});
 		observer.observe(field);
 
-		return () => observer.disconnect();
+		return () => {
+			observer.disconnect();
+			if (frame !== undefined) cancelAnimationFrame(frame);
+		};
 	}, [ref, value]);
 }

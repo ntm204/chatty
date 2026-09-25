@@ -1,37 +1,37 @@
-const SHELL_CACHE = "chatty-shell-v1";
+const SHELL_CACHE = `chatty-shell-${"__SHELL_VERSION__"}`;
+const SHELL_ASSETS = ["__SHELL_ASSETS__"];
+const SHELL_HTML = "__SHELL_HTML__";
 
-async function cacheCurrentShell() {
-	const response = await self.fetch("/");
-	if (!response.ok) return;
-	const markup = await response.clone().text();
-	const paths = [
-		"/",
-		...Array.from(markup.matchAll(/(?:src|href)="([^"#]+)"/g), (match) => match[1]).filter(
-			(path) => new URL(path, self.location.origin).origin === self.location.origin,
-		),
-	];
-	const cache = await self.caches.open(SHELL_CACHE);
-	await cache.put("/", response);
-	await Promise.all(
-		paths.slice(1).map(async (path) => {
-			const asset = await self.fetch(path);
-			if (asset.ok) await cache.put(path, asset);
-		}),
-	);
-}
-
+// A failed install never replaces the active shell. Each build keeps its HTML
+// and complete hashed asset set together, including lazy chunks and fonts.
 self.addEventListener("install", (event) => {
-	event.waitUntil(cacheCurrentShell().then(() => self.skipWaiting()));
+	event.waitUntil(
+		(async () => {
+			const cache = await self.caches.open(SHELL_CACHE);
+			await cache.addAll(SHELL_ASSETS.map((path) => new self.Request(path, { cache: "reload" })));
+			// Reject a deployment race instead of mixing the next release's HTML
+			// with these assets. Keep the original response, including its CSP.
+			const html = await self.fetch(new self.Request("/", { cache: "reload" }));
+			if (!html.ok || (await html.clone().text()) !== SHELL_HTML)
+				throw new Error("Shell build changed during install");
+			await cache.put("/", html);
+		})(),
+	);
 });
 
+// Activate after the previous app's tabs close. No forced reload interrupts a
+// recording, upload or draft, and no old tab loses its assets mid-session.
 self.addEventListener("activate", (event) => {
 	event.waitUntil(
-		self.caches
-			.keys()
-			.then((keys) =>
-				Promise.all(keys.filter((key) => key !== SHELL_CACHE).map((key) => self.caches.delete(key))),
-			)
-			.then(() => self.clients.claim()),
+		(async () => {
+			const keys = await self.caches.keys();
+			await Promise.all(
+				keys
+					.filter((key) => key.startsWith("chatty-shell-") && key !== SHELL_CACHE)
+					.map((key) => self.caches.delete(key)),
+			);
+			await self.clients.claim();
+		})(),
 	);
 });
 
@@ -39,30 +39,23 @@ self.addEventListener("fetch", (event) => {
 	const request = event.request;
 	const url = new URL(request.url);
 	if (request.method !== "GET" || url.origin !== self.location.origin) return;
-
 	if (request.mode === "navigate") {
 		event.respondWith(
-			self
-				.fetch(request)
-				.then(async (response) => {
-					if (response.ok) await (await self.caches.open(SHELL_CACHE)).put("/", response.clone());
-					return response;
-				})
-				.catch(async () => (await self.caches.match("/")) ?? Response.error()),
+			(async () => {
+				const cache = await self.caches.open(SHELL_CACHE);
+				return (await cache.match("/")) ?? self.fetch(request);
+			})(),
 		);
 		return;
 	}
-
-	if (url.pathname.startsWith("/assets/") || url.pathname === "/theme.js") {
+	if (SHELL_ASSETS.includes(url.pathname)) {
 		event.respondWith(
-			self.caches.match(request).then(
-				(cached) =>
-					cached ??
-					self.fetch(request).then(async (response) => {
-						if (response.ok) await (await self.caches.open(SHELL_CACHE)).put(request, response.clone());
-						return response;
-					}),
-			),
+			(async () => {
+				const cache = await self.caches.open(SHELL_CACHE);
+				// Build assets are public and immutable. A module's Origin header
+				// differs from the install fetch on servers using Vary: Origin.
+				return (await cache.match(request, { ignoreVary: true })) ?? self.fetch(request);
+			})(),
 		);
 	}
 });

@@ -2,6 +2,7 @@ import { ImagePlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ACCEPTED_IMAGE_TYPES } from "../constants/attachment";
+import { MAX_PERSONAL_STICKERS } from "../constants/sticker";
 import { useStickers } from "../hooks";
 
 interface StickerTrayProps {
@@ -29,24 +30,23 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 	const isMountedRef = useRef(true);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const openerRef = useRef(document.activeElement);
+	const hasReachedLimit = stickers.length >= MAX_PERSONAL_STICKERS;
+	useEffect(() => {
+		panelRef.current?.focus({ preventScroll: true });
+	}, []);
 
 	useEffect(() => {
 		isMountedRef.current = true;
 		function handlePointerDown(event: PointerEvent) {
-			if (!panelRef.current?.contains(event.target as Node)) onClose();
-		}
-
-		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") onClose();
+			if (!isSendingRef.current && !panelRef.current?.contains(event.target as Node)) onClose();
 		}
 
 		document.addEventListener("pointerdown", handlePointerDown);
-		document.addEventListener("keydown", handleKeyDown);
 
 		return () => {
 			isMountedRef.current = false;
 			document.removeEventListener("pointerdown", handlePointerDown);
-			document.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [onClose]);
 
@@ -80,6 +80,18 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 			ref={panelRef}
 			role="dialog"
 			aria-label="Stickers"
+			tabIndex={-1}
+			onKeyDown={(event) => {
+				if (event.key !== "Escape" || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+					return;
+				}
+				event.preventDefault();
+				event.stopPropagation();
+				if (isSendingRef.current) return;
+				onClose();
+				if (openerRef.current instanceof HTMLElement && openerRef.current.isConnected)
+					openerRef.current.focus();
+			}}
 			className="popover-enter origin-bottom-left absolute bottom-full left-0 z-40 mb-2 w-[min(320px,calc(100vw-24px))] rounded-panel border border-rule bg-paper-raised shadow-lift"
 		>
 			<div className="flex items-center justify-between border-b border-rule-soft px-3.5 py-2.5">
@@ -94,13 +106,19 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 				<Button
 					variant="ghost"
 					onClick={() => fileInputRef.current?.click()}
-					disabled={isSending || isLoading || isAdding}
+					disabled={isSending || isLoading || isAdding || hasReachedLimit}
 					className="eyebrow gap-1.5 px-1.5 py-0.5 text-ink-faint hover:text-ink"
 				>
 					<ImagePlus className="size-3.5" />
 					{isAdding ? "Adding…" : "Add"}
 				</Button>
 			</div>
+			{hasReachedLimit && (
+				<p role="status" className="px-3.5 py-2 text-xs text-ink-soft">
+					Your tray holds {MAX_PERSONAL_STICKERS} stickers. Remove one to add another; sent stickers stay in
+					conversations.
+				</p>
+			)}
 
 			{(sendError || error) && (
 				<p role="alert" className="eyebrow border-b border-rule-soft px-3.5 py-2.5 text-signal">
@@ -120,15 +138,13 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 			)}
 			<div className="grid max-h-[240px] grid-cols-3 gap-2 overflow-y-auto p-3">
 				{stickers.map((sticker) => (
-					// `group` so the remove button appears on hover rather than sitting
-					// permanently over every picture in the tray.
-					<div key={sticker.id} className="group relative">
+					<div key={sticker.id}>
 						<Button
 							variant="ghost"
 							onClick={() => void sendSticker(sticker.id)}
 							disabled={isSending || removingIds?.has(sticker.id)}
 							aria-label="Send this sticker"
-							className="block size-full overflow-hidden rounded-control p-0"
+							className="block w-full overflow-hidden rounded-control p-0"
 						>
 							<img
 								src={sticker.url}
@@ -142,9 +158,9 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 							onClick={() => void remove(sticker.id)}
 							disabled={isSending || removingIds?.has(sticker.id)}
 							aria-label="Remove this sticker"
-							className="absolute -right-1.5 -top-1.5 size-5 rounded-badge border border-rule bg-paper-raised p-0 text-ink-faint opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+							className="mt-1 h-9 w-full rounded-control p-0 text-xs text-ink-soft"
 						>
-							<X className="size-3" />
+							<X className="size-3" /> Remove
 						</Button>
 					</div>
 				))}

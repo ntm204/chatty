@@ -1,6 +1,6 @@
 import type { UserDTO } from "@chatty/shared-types";
 import { Search, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -12,19 +12,51 @@ import { SelectedParticipants } from "./selected-participants";
 interface AddGroupMembersDialogProps {
 	conversationId: string;
 	participantIds: string[];
+	canInvite?: boolean;
 	onClose: () => void;
 }
 
 /** Search, multi-select, then confirm — the same shape `NewConversationPanel` uses to start a chat. */
-export function AddGroupMembersDialog({ conversationId, participantIds, onClose }: AddGroupMembersDialogProps) {
+export function AddGroupMembersDialog({
+	conversationId,
+	participantIds,
+	canInvite = true,
+	onClose,
+}: AddGroupMembersDialogProps) {
 	const close = useCallback(() => onClose(), [onClose]);
 	const ref = useDialog<HTMLDivElement>(close);
-	const { query, setQuery, results, isSearching, error: searchError, search } = useUserSearch(participantIds);
+	const {
+		query,
+		setQuery,
+		results,
+		isSearching,
+		hasNoResults,
+		error: searchError,
+		search,
+	} = useUserSearch(participantIds);
 	const [selectedUsers, setSelectedUsers] = useState<UserDTO[]>([]);
 	const [isAdding, setIsAdding] = useState(false);
 	const [addError, setAddError] = useState("");
+	const pendingRef = useRef<object | null>(null);
+	const permissionRef = useRef(canInvite);
+	permissionRef.current = canInvite;
+	const participantIdsRef = useRef(participantIds);
+	participantIdsRef.current = participantIds;
+	useEffect(() => {
+		setSelectedUsers((current) => current.filter((user) => !participantIds.includes(user.id)));
+	}, [participantIds]);
+	useEffect(() => {
+		pendingRef.current = null;
+		setIsAdding(false);
+		setSelectedUsers([]);
+
+		return () => {
+			pendingRef.current = null;
+		};
+	}, [conversationId]);
 
 	function toggleUser(user: UserDTO) {
+		if (pendingRef.current) return;
 		setSelectedUsers((current) =>
 			current.some((selected) => selected.id === user.id)
 				? current.filter((selected) => selected.id !== user.id)
@@ -33,17 +65,30 @@ export function AddGroupMembersDialog({ conversationId, participantIds, onClose 
 	}
 
 	async function handleAdd() {
-		if (selectedUsers.length === 0) return;
+		if (!permissionRef.current || selectedUsers.length === 0 || pendingRef.current) return;
+		const request = {};
+		pendingRef.current = request;
 
 		setIsAdding(true);
 		setAddError("");
 		try {
-			for (const user of selectedUsers) await api.addParticipant(conversationId, user.id);
-			onClose();
+			for (const user of selectedUsers) {
+				if (pendingRef.current !== request) return;
+				if (!permissionRef.current) return;
+				if (participantIdsRef.current.includes(user.id)) continue;
+				await api.addParticipant(conversationId, user.id);
+				if (pendingRef.current !== request) return;
+				// A partial failure must retry only the people not yet added.
+				setSelectedUsers((current) => current.filter((selected) => selected.id !== user.id));
+			}
+			if (permissionRef.current) onClose();
 		} catch (addingError) {
-			setAddError((addingError as Error).message);
+			if (pendingRef.current === request) setAddError((addingError as Error).message);
 		} finally {
-			setIsAdding(false);
+			if (pendingRef.current === request) {
+				pendingRef.current = null;
+				setIsAdding(false);
+			}
 		}
 	}
 
@@ -92,6 +137,7 @@ export function AddGroupMembersDialog({ conversationId, participantIds, onClose 
 					<SelectedParticipants
 						participants={selectedUsers}
 						onRemove={(userId) =>
+							!pendingRef.current &&
 							setSelectedUsers((current) => current.filter((user) => user.id !== userId))
 						}
 					/>
@@ -99,7 +145,18 @@ export function AddGroupMembersDialog({ conversationId, participantIds, onClose 
 				</div>
 
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
+					{!canInvite && (
+						<p role="alert" className="py-2 text-sm text-signal">
+							Your permission to add people changed. Your remaining selections are kept; ask an admin for
+							access.
+						</p>
+					)}
 					{isSearching && <p className="eyebrow py-2 text-ink-faint">Searching…</p>}
+					{hasNoResults && (
+						<p role="status" className="py-2 text-sm text-ink-soft">
+							No people found. Try another name or handle.
+						</p>
+					)}
 					{(searchError || addError) && (
 						<p role="alert" className="eyebrow py-2 text-signal">
 							{searchError || addError}
@@ -150,7 +207,7 @@ export function AddGroupMembersDialog({ conversationId, participantIds, onClose 
 				<div className="shrink-0 border-t border-rule p-3">
 					<Button
 						onClick={() => void handleAdd()}
-						disabled={isAdding || selectedUsers.length === 0}
+						disabled={!canInvite || isAdding || selectedUsers.length === 0}
 						className="w-full"
 					>
 						Add people

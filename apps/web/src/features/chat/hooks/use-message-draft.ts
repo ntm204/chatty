@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getMessageDraftGeneration, readMessageDraft, writeMessageDraft } from "@/lib/message-drafts";
 import { announceDraftPreview } from "../utils/draft-preview";
 
@@ -51,7 +51,9 @@ export function useMessageDraft({
 	const sessionRef = useRef<DraftSession | null>(null);
 	onRestoreRef.current = onRestore;
 
-	useEffect(() => {
+	// Restore before the field becomes interactive; a late mount effect could
+	// replace the user's first keystrokes with the saved draft.
+	useLayoutEffect(() => {
 		let draft: MessageDraft = { content: "", replyToId: null };
 		try {
 			draft = readMessageDraft(userId, conversationId);

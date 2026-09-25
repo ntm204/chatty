@@ -6,7 +6,7 @@ import { isValidAttachmentToken, signAttachmentToken } from "../src/lib/attachme
 import * as attachmentTokens from "../src/lib/attachment-token.js";
 import { ValidationError } from "../src/lib/errors.js";
 import { prisma } from "../src/lib/prisma.js";
-import { getAttachmentFilePath } from "../src/modules/attachments/attachments.service.js";
+import { getAttachmentFilePath, getAttachmentUrls } from "../src/modules/attachments/attachments.service.js";
 import { deleteMessage, listMessages, sendMessage } from "../src/modules/messages/messages.service.js";
 import { installFakeIO } from "./fake-io.js";
 
@@ -51,6 +51,23 @@ async function makeConversation(): Promise<{ conversationId: string; authorId: s
 }
 
 describe("sendMessage with an attachment", () => {
+	it("renews URLs only while the attachment is visible to a current participant", async () => {
+		const { conversationId, authorId, outsiderId } = await makeConversation();
+		const message = await sendMessage(authorId, conversationId, {
+			content: "",
+			attachments: [await makeImage(20, 20)],
+		});
+		const attachmentId = message.attachments[0]!.id;
+		await expect(getAttachmentUrls(authorId, attachmentId)).resolves.toMatchObject({
+			url: expect.stringContaining(attachmentId),
+		});
+		await expect(getAttachmentUrls(outsiderId, attachmentId)).rejects.toThrow("Attachment no longer available");
+		await prisma.messageHiddenFor.create({ data: { messageId: message.id, userId: authorId } });
+		await expect(getAttachmentUrls(authorId, attachmentId)).rejects.toThrow("Attachment no longer available");
+		await prisma.messageHiddenFor.deleteMany({ where: { messageId: message.id } });
+		await deleteMessage(authorId, conversationId, message.id);
+		await expect(getAttachmentUrls(authorId, attachmentId)).rejects.toThrow("Attachment no longer available");
+	});
 	it("stores the image and returns it on the message", async () => {
 		const { conversationId, authorId } = await makeConversation();
 

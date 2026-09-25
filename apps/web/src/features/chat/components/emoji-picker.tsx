@@ -43,6 +43,8 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 	const [query, setQuery] = useState("");
 	const [activeCategoryId, setActiveCategoryId] = useState(EMOJI_CATEGORIES[0]!.id);
 	const { recent, remember } = useRecentEmoji();
+	const [visibleRecent] = useState(recent);
+	const openerRef = useRef(document.activeElement);
 	const panelRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -52,16 +54,10 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 			if (!panelRef.current?.contains(event.target as Node)) onClose();
 		}
 
-		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") onClose();
-		}
-
 		document.addEventListener("pointerdown", handlePointerDown);
-		document.addEventListener("keydown", handleKeyDown);
 
 		return () => {
 			document.removeEventListener("pointerdown", handlePointerDown);
-			document.removeEventListener("keydown", handleKeyDown);
 		};
 	}, [onClose]);
 
@@ -82,6 +78,16 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 			ref={panelRef}
 			role="dialog"
 			aria-label="Choose an emoji"
+			onKeyDown={(event) => {
+				if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+				if (event.key === "Escape") {
+					event.preventDefault();
+					event.stopPropagation();
+					onClose();
+					if (openerRef.current instanceof HTMLElement && openerRef.current.isConnected)
+						openerRef.current.focus({ preventScroll: true });
+				}
+			}}
 			className={cn(
 				"popover-enter z-40 w-[min(320px,calc(100vw-24px))] rounded-panel border border-rule bg-paper-raised shadow-lift",
 				// The app declares one shadow and this used to reach for Tailwind's
@@ -104,14 +110,14 @@ export function EmojiPicker({ onPick, onClose, anchor }: EmojiPickerProps) {
 				/>
 			</div>
 
-			{recent.length > 0 && !query.trim() && (
+			{visibleRecent.length > 0 && !query.trim() && (
 				<div className="border-b border-rule-soft px-2 py-2">
 					<span className="eyebrow flex items-center gap-1.5 px-1.5 pb-1.5 text-ink-faint">
 						<Clock aria-hidden="true" className="size-3" />
 						Recent
 					</span>
 					<div className="flex flex-wrap">
-						{recent.map((char) => (
+						{visibleRecent.map((char) => (
 							<Button
 								key={char}
 								variant="ghost"

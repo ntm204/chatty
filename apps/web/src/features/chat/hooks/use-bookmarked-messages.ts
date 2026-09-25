@@ -18,7 +18,7 @@ export function useBookmarkedMessages(currentUserId: string) {
 	const resultsRef = useRef(results);
 	resultsRef.current = results;
 
-	const load = useCallback(async (generation: number, before?: string) => {
+	const load = useCallback(async (generation: number, before?: string, retainCount = 0) => {
 		if (pendingRef.current === generation) return;
 		pendingRef.current = generation;
 		setIsLoading(true);
@@ -26,6 +26,18 @@ export function useBookmarkedMessages(currentUserId: string) {
 		try {
 			const page = await api.listBookmarkedMessages(before);
 			if (generation !== generationRef.current) return;
+			while (!before && page.hasMore && page.results.length < retainCount) {
+				const cursor = page.results.at(-1)?.message.id;
+				if (!cursor) break;
+				const next = await api.listBookmarkedMessages(cursor);
+				if (generation !== generationRef.current) return;
+				const added = next.results.filter(
+					(row) => !page.results.some((existing) => existing.message.id === row.message.id),
+				);
+				page.results.push(...added);
+				page.hasMore = next.hasMore;
+				if (!added.length) break;
+			}
 			setResults((current) =>
 				before
 					? [
@@ -51,6 +63,9 @@ export function useBookmarkedMessages(currentUserId: string) {
 		setHasMore(false);
 		void load(generation);
 	}, [load]);
+	const refresh = useCallback(() => {
+		void load(++generationRef.current, undefined, resultsRef.current.length);
+	}, [load]);
 	useEffect(() => {
 		isMountedRef.current = true;
 		setRemovingId(null);
@@ -71,14 +86,27 @@ export function useBookmarkedMessages(currentUserId: string) {
 					resultsRef.current.some(
 						(row) => row.message.id === message.id || row.message.replyTo?.id === message.id,
 					)
-				)
-					reload();
+				) {
+					if (message.deletedAt)
+						setResults((current) =>
+							current.filter(
+								(row) => row.message.id !== message.id && row.message.replyTo?.id !== message.id,
+							),
+						);
+					refresh();
+				}
 			},
-			[reload],
+			[refresh],
 		),
 	);
-	useSocketEvent("message:hidden", reload);
+	useSocketEvent("message:hidden", (event) => {
+		setResults((current) =>
+			current.filter((row) => row.message.id !== event.messageId && row.message.replyTo?.id !== event.messageId),
+		);
+		refresh();
+	});
 	useSocketEvent("conversation:left", reload);
+	useSocketEvent("bookmark:changed", refresh);
 
 	async function remove(result: MessageSearchResultDTO) {
 		if (removingRef.current) return;
@@ -92,7 +120,7 @@ export function useBookmarkedMessages(currentUserId: string) {
 			// A socket refresh can finish before this deletion commits. Confirmed
 			// removal must supersede that page without affecting another account.
 			if (isMountedRef.current && accountScope === accountScopeRef.current && removingRef.current === removal)
-				reload();
+				refresh();
 		} catch (caught) {
 			if (isMountedRef.current && accountScope === accountScopeRef.current && removingRef.current === removal)
 				setError(caught instanceof Error ? caught.message : "Could not remove bookmark");

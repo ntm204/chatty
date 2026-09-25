@@ -19,10 +19,12 @@ const FOCUSABLE_SELECTOR =
  * of a focus trap are two chances for one of them to lose a case.
  *
  * The caller owns the state: this closes nothing itself, it calls `onClose`.
- * Pass a stable callback — a new function each render re-binds the listener.
+ * Callback changes must not reset focus while somebody is editing inside it.
  */
 export function useDialog<T extends HTMLElement>(onClose: () => void) {
 	const dialogRef = useRef<T>(null);
+	const onCloseRef = useRef(onClose);
+	onCloseRef.current = onClose;
 
 	useEffect(() => {
 		const opener = document.activeElement;
@@ -30,19 +32,22 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 		dialog?.focus();
 
 		function handleKeyDown(event: KeyboardEvent) {
+			if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
 			const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
 			if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
 			if (event.key === "Escape") {
 				event.preventDefault();
 				event.stopPropagation();
-				onClose();
+				onCloseRef.current();
 
 				return;
 			}
 
 			if (event.key !== "Tab" || !dialogRef.current) return;
 
-			const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
+			const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
+				(element) => element.tabIndex >= 0 && !element.closest('[hidden], [inert], [aria-hidden="true"]'),
+			);
 			const first = focusable[0];
 			const last = focusable[focusable.length - 1];
 			if (!first || !last) {
@@ -71,15 +76,31 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 
 		return () => {
 			document.removeEventListener("keydown", handleKeyDown);
+			if (!dialog?.contains(document.activeElement) && document.activeElement !== document.body) return;
 			if (
 				opener instanceof HTMLElement &&
+				opener !== document.body &&
 				opener.isConnected &&
-				(dialog?.contains(document.activeElement) || document.activeElement === document.body)
+				!opener.matches(":disabled")
 			) {
 				opener.focus({ preventScroll: true });
+
+				return;
 			}
+			// Removing a message can also remove its opener. Wait for React's DOM
+			// cleanup, and do not steal focus from a newly opened surface.
+			queueMicrotask(() => {
+				if (document.activeElement !== document.body) return;
+				const remaining = [
+					...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+				].filter((element) => element !== dialog);
+				const fallback =
+					remaining.at(-1) ??
+					document.querySelector<HTMLElement>("main textarea:not(:disabled), aside button:not(:disabled)");
+				fallback?.focus({ preventScroll: true });
+			});
 		};
-	}, [onClose]);
+	}, []);
 
 	return dialogRef;
 }

@@ -1,6 +1,7 @@
 import type {
 	AddParticipantRequest,
 	AttachmentKind,
+	AttachmentDTO,
 	AttachmentPageDTO,
 	AuthResponse,
 	ChangePasswordRequest,
@@ -563,11 +564,7 @@ export const api = {
 	 * are files. One write path rather than two, so there is one place where
 	 * membership is checked and one broadcast everyone renders from.
 	 *
-	 * There is no `onProgress` here, where `sendFile` and `sendVoice` both have
-	 * one. Phase 29 traded the progress bar for the picture itself, held at 60%
-	 * until the server has it, so the only caller had been passing `undefined`
-	 * ever since — a hole in the argument list that every future parameter would
-	 * have had to be counted past.
+	 * Progress describes transmitted bytes only, never server confirmation.
 	 */
 	sendMessage(
 		conversationId: string,
@@ -576,6 +573,7 @@ export const api = {
 		replyToId?: string,
 		mentionedUserIds: string[] = [],
 		clientId?: string,
+		onProgress?: (percent: number) => void,
 	): Promise<MessageDTO> {
 		const path = `/conversations/${conversationId}/messages`;
 		if (attachments.length === 0) {
@@ -603,6 +601,10 @@ export const api = {
 		return new Promise<MessageDTO>((resolve, reject) => {
 			const upload = new XMLHttpRequest();
 			upload.open("POST", `${API_URL}${path}`);
+			upload.upload.addEventListener("progress", (event) => {
+				if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+			});
+			upload.upload.addEventListener("load", () => onProgress?.(100));
 			const token = getStoredToken();
 
 			if (token) upload.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -668,6 +670,9 @@ export const api = {
 		});
 	},
 
+	getAttachmentUrls(attachmentId: string): Promise<Pick<AttachmentDTO, "url" | "thumbUrl">> {
+		return request(`/attachments/${encodeURIComponent(attachmentId)}/urls`);
+	},
 	listBookmarkedMessages(before?: string): Promise<SavedMessagePageDTO> {
 		const params = new URLSearchParams({ limit: "20" });
 		if (before) params.set("before", before);

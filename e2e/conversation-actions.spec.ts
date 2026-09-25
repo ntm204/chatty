@@ -45,7 +45,9 @@ test("the five-pin limit stays actionable and a released slot can be reused", as
 		await page.getByRole("menuitem", { name: "Pin conversation", exact: true }).click();
 		await expect(page.getByRole("alert")).toContainText("You can pin up to 5 conversations");
 		await expect(page.getByRole("menuitem", { name: "Pin conversation", exact: true })).toBeEnabled();
+		await expect(page.getByRole("menuitem", { name: "Pin conversation", exact: true })).toBeFocused();
 		await page.keyboard.press("Escape");
+		await expect(page.getByRole("menu")).toHaveCount(0);
 		const first = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: /Pin group 1/ }) });
 		await first.getByRole("button", { name: "Conversation actions" }).click();
 		await page.getByRole("menuitem", { name: "Unpin", exact: true }).click();

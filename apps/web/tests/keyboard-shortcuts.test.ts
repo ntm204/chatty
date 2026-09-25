@@ -21,6 +21,17 @@ afterEach(() => {
 });
 
 describe("useKeyboardShortcuts", () => {
+	it("does not open help from nested editable content", () => {
+		const callbacks = options();
+		const editor = document.createElement("div");
+		editor.setAttribute("contenteditable", "true");
+		const text = document.createElement("span");
+		editor.append(text);
+		document.body.append(editor);
+		renderHook(() => useKeyboardShortcuts(callbacks));
+		fireEvent.keyDown(text, { key: "?" });
+		expect(callbacks.onShowHelp).not.toHaveBeenCalled();
+	});
 	it("focuses global search and opens conversation search", () => {
 		const callbacks = options();
 		const search = document.createElement("input");

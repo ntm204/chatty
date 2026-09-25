@@ -44,7 +44,8 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 	const dialogRef = useDialog<HTMLElement>(onClose);
 
 	const total = groups.reduce((sum, group) => sum + group.total, 0);
-	const shown = activeEmoji ? groups.filter((group) => group.emoji === activeEmoji) : groups;
+	const selectedEmoji = groups.some((group) => group.emoji === activeEmoji) ? activeEmoji : null;
+	const shown = selectedEmoji ? groups.filter((group) => group.emoji === selectedEmoji) : groups;
 
 	return (
 		<div
@@ -59,7 +60,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 				aria-modal="true"
 				aria-labelledby={titleId}
 				tabIndex={-1}
-				className="flex max-h-[min(70vh,32rem)] w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
+				className="flex h-[min(70vh,32rem)] w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
 			>
 				<header className="flex shrink-0 items-start justify-between gap-4 border-b border-rule px-6 py-5">
 					<div className="min-w-0">
@@ -86,16 +87,36 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 					<div
 						role="tablist"
 						aria-label="Filter by reaction"
+						onKeyDown={(event) => {
+							if (event.isPropagationStopped() || event.nativeEvent.isComposing) return;
+							const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+							const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+							const next =
+								event.key === "ArrowRight"
+									? (index + 1) % tabs.length
+									: event.key === "ArrowLeft"
+										? (index + tabs.length - 1) % tabs.length
+										: event.key === "Home"
+											? 0
+											: event.key === "End"
+												? tabs.length - 1
+												: -1;
+							if (next < 0) return;
+							event.preventDefault();
+							tabs[next]?.focus();
+							tabs[next]?.click();
+						}}
 						className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-rule-soft px-4 py-2"
 					>
 						<Button
 							variant="ghost"
 							role="tab"
-							aria-selected={activeEmoji === null}
+							aria-selected={selectedEmoji === null}
+							tabIndex={selectedEmoji === null ? 0 : -1}
 							onClick={() => setActiveEmoji(null)}
 							className={cn(
 								"eyebrow shrink-0 rounded-full px-3 py-1.5",
-								activeEmoji === null ? "bg-block text-block-ink hover:bg-block" : "text-ink-soft",
+								selectedEmoji === null ? "bg-block text-block-ink hover:bg-block" : "text-ink-soft",
 							)}
 						>
 							All {total}
@@ -105,12 +126,13 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 								key={group.emoji}
 								variant="ghost"
 								role="tab"
-								aria-selected={group.emoji === activeEmoji}
+								aria-selected={group.emoji === selectedEmoji}
+								tabIndex={group.emoji === selectedEmoji ? 0 : -1}
 								aria-label={`${group.emoji}, ${group.total}`}
 								onClick={() => setActiveEmoji(group.emoji)}
 								className={cn(
 									"shrink-0 gap-1.5 rounded-full px-3 py-1.5",
-									group.emoji === activeEmoji
+									group.emoji === selectedEmoji
 										? "bg-block text-block-ink hover:bg-block"
 										: "text-ink-soft",
 								)}
@@ -130,7 +152,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 							<li key={`${group.emoji}-${user.id}`} className="flex items-center gap-3 px-3 py-2">
 								<Avatar user={user} size="sm" />
 								<div className="min-w-0 flex-1">
-									<p className="truncate text-[13.5px] font-medium">
+									<p title={user.displayName} className="truncate text-[13.5px] font-medium">
 										{user.id === currentUserId ? "You" : user.displayName}
 									</p>
 									<p className="meta truncate text-ink-faint">@{user.handle}</p>

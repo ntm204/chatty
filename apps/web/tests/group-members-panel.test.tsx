@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { fireEvent, render as renderView, screen, within } from "@testing-library/react";
+import { act, fireEvent, render as renderView, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GroupMembersPanel } from "@/features/chat/components/group-members-panel";
@@ -7,7 +7,10 @@ import { makeConversation, makeParticipant, makeUser } from "./factories";
 
 function render(element: ReactElement) {
 	const result = renderView(element);
-	for (const button of screen.queryAllByRole("button", { name: /^Actions for/ })) fireEvent.click(button);
+	const trigger =
+		screen.queryByRole("button", { name: "Actions for An" }) ??
+		screen.queryAllByRole("button", { name: /^Actions for/ })[0];
+	if (trigger) fireEvent.click(trigger);
 
 	return result;
 }
@@ -51,6 +54,76 @@ beforeEach(() => {
 });
 
 describe("GroupMembersPanel", () => {
+	it("keeps failed removal in its confirmation and prevents duplicate submission or Escape while pending", async () => {
+		let fail!: (error: Error) => void;
+		removeParticipant.mockImplementationOnce(
+			() =>
+				new Promise((_resolve, reject) => {
+					fail = reject;
+				}),
+		);
+		render(<GroupMembersPanel conversation={group} currentUserId="minh" onClose={vi.fn()} />);
+		fireEvent.click(screen.getByRole("menuitem", { name: "Remove An from the group" }));
+		const dialog = screen.getByRole("dialog", { name: "Remove from the group?" });
+		await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus());
+		act(() => {
+			fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+			fireEvent.keyDown(dialog, { key: "Escape" });
+		});
+		expect(dialog).toBeVisible();
+		expect(removeParticipant).toHaveBeenCalledOnce();
+		await act(async () => fail(new Error("Retry removal")));
+		expect(within(dialog).getByRole("alert")).toHaveTextContent("Retry removal");
+		removeParticipant.mockResolvedValue(undefined);
+		fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(removeParticipant).toHaveBeenCalledTimes(2);
+	});
+	it("invalidates an open destructive decision when admin rights change", () => {
+		const view = render(<GroupMembersPanel conversation={group} currentUserId="minh" onClose={vi.fn()} />);
+		fireEvent.click(screen.getByRole("menuitem", { name: "Remove An from the group" }));
+		view.rerender(
+			<GroupMembersPanel
+				conversation={{ ...group, participants: [{ ...minh, role: "member" }, an, binh] }}
+				currentUserId="minh"
+				onClose={vi.fn()}
+			/>,
+		);
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+		expect(screen.getByRole("alert")).toHaveTextContent("permissions changed");
+		expect(removeParticipant).not.toHaveBeenCalled();
+	});
+	it("keeps invitation choices while live permission loss disables submission", async () => {
+		searchUsers.mockResolvedValue([makeUser("chi", "Chi")]);
+		const view = renderView(<GroupMembersPanel conversation={group} currentUserId="an" onClose={vi.fn()} />);
+		fireEvent.click(screen.getByRole("button", { name: "Add people" }));
+		const field = screen.getByLabelText("Search for someone to add");
+		fireEvent.change(field, { target: { value: "chi" } });
+		fireEvent.submit(field.closest("form")!);
+		fireEvent.click(await screen.findByRole("button", { name: "Chi @chi" }));
+		view.rerender(
+			<GroupMembersPanel
+				conversation={{ ...group, invitePolicy: "managers" }}
+				currentUserId="an"
+				onClose={vi.fn()}
+			/>,
+		);
+		const dialog = screen.getByRole("dialog", { name: "Add people" });
+		expect(within(dialog).getByRole("button", { name: "Remove Chi" })).toBeVisible();
+		expect(within(dialog).getByRole("button", { name: "Add people" })).toBeDisabled();
+		expect(within(dialog).getByRole("alert")).toHaveTextContent("permission to add people changed");
+		expect(addParticipant).not.toHaveBeenCalled();
+	});
+	it("navigates a member menu by keyboard and restores its trigger on Escape", async () => {
+		const user = userEvent.setup();
+		render(<GroupMembersPanel conversation={group} currentUserId="minh" onClose={vi.fn()} />);
+		expect(screen.getByRole("menuitem", { name: "Make An an admin" })).toHaveFocus();
+		await user.keyboard("{End}");
+		expect(screen.getByRole("menuitem", { name: "Remove An from the group" })).toHaveFocus();
+		await user.keyboard("{Escape}");
+		expect(screen.getByRole("button", { name: "Actions for An" })).toHaveFocus();
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+	});
 	it("lists every participant, marking the current user's own row", () => {
 		render(<GroupMembersPanel conversation={group} currentUserId="minh" onClose={vi.fn()} />);
 
@@ -214,6 +287,7 @@ describe("GroupMembersPanel, seen by an admin — symmetric with every other adm
 		render(<GroupMembersPanel conversation={adminGroup} currentUserId="an" onClose={vi.fn()} />);
 
 		expect(screen.getByRole("button", { name: "Add people" })).toBeEnabled();
+		fireEvent.click(screen.getByRole("button", { name: "Actions for Binh" }));
 		expect(screen.getByRole("menuitem", { name: "Remove Binh from the group" })).toBeInTheDocument();
 		expect(screen.getAllByText("Admin")).toHaveLength(2);
 	});

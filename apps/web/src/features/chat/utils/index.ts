@@ -21,6 +21,7 @@ export { toDraftAttachments } from "./draft-attachment";
 export { downloadAttachment } from "./download-attachment";
 export { countJumboEmoji } from "./emoji-only";
 export { searchEmoji } from "./search-emoji";
+export { foldSearchText } from "./fold-search-text";
 export { getReadReceipt } from "./read-receipt";
 export { scrollToMessage } from "./scroll-to-message";
 export { toReplyQuote } from "./reply-quote";
@@ -35,3 +36,5 @@ export { getDraftPreview, announceDraftPreview } from "./draft-preview";
 
 export { getPinnedMessagePreview } from "./pinned-message-preview";
 export { getTotalUnreadCount, findFirstUnreadConversation } from "./unread-summary";
+export { loadRetainedVaultPage } from "./load-retained-vault-page";
+export { focusMenuItem } from "./focus-menu-item";

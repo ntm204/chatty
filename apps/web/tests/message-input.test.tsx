@@ -237,6 +237,22 @@ describe("MessageInput", () => {
 		expect(screen.getByAltText("Attached image preview 1")).toBeInTheDocument();
 	});
 
+	it("keeps clipboard text at the selection and valid images when another file is rejected", () => {
+		renderInput();
+		const field = screen.getByLabelText("Message") as HTMLTextAreaElement;
+		fireEvent.change(field, { target: { value: "Hi OLD there" } });
+		field.setSelectionRange(3, 6);
+		fireEvent.paste(field, {
+			clipboardData: {
+				files: [image, new File(["pdf"], "notes.pdf", { type: "application/pdf" })],
+				getData: () => "caption",
+			},
+		});
+		expect(field).toHaveValue("Hi caption there");
+		expect(screen.getByAltText("Attached image preview 1")).toBeInTheDocument();
+		expect(screen.getByText(/notes.pdf: only images/)).toBeVisible();
+	});
+
 	it("accepts an image dropped over the chat surface", () => {
 		renderInput();
 

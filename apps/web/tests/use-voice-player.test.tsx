@@ -52,6 +52,68 @@ function createAudio() {
 type TestAudio = ReturnType<typeof createAudio>;
 type PlayerOptions = Parameters<typeof useVoicePlayer>[0];
 
+it("renews a failed voice source on explicit retry, not in an automatic loop", async () => {
+	const media = createAudio();
+	vi.spyOn(media.audio, "load").mockImplementation(() => undefined);
+	const resolveSource = vi.fn().mockResolvedValue("https://example.com/fresh.mp4");
+	const view = renderPlayer(media, { sourceUrl: "old.mp4", resolveSource });
+	act(() => media.audio.dispatchEvent(new Event("error")));
+	expect(resolveSource).not.toHaveBeenCalled();
+	await act(() => view.result.current.togglePlayback());
+	expect(resolveSource).toHaveBeenCalledOnce();
+	expect(media.audio.src).toBe("https://example.com/fresh.mp4");
+	expect(media.play).toHaveBeenCalledOnce();
+});
+
+it("does not play after access renewal is denied", async () => {
+	const media = createAudio();
+	const resolveSource = vi.fn().mockRejectedValue(new Error("No access"));
+	const view = renderPlayer(media, { sourceUrl: "old.mp4", resolveSource });
+	act(() => media.audio.dispatchEvent(new Event("error")));
+	await act(() => view.result.current.togglePlayback());
+	expect(media.play).not.toHaveBeenCalled();
+	expect(view.result.current.isLoading).toBe(false);
+	expect(view.result.current.error).not.toBe("");
+});
+
+it("does not resume a late renewal after another voice player has taken ownership", async () => {
+	const media = createAudio();
+	let finish!: (value: string) => void;
+	const resolveSource = vi.fn(
+		() =>
+			new Promise<string>((resolve) => {
+				finish = resolve;
+			}),
+	);
+	const first = renderPlayer(media, { sourceUrl: "old.mp4", resolveSource });
+	const second = renderPlayer(createAudio());
+	act(() => media.audio.dispatchEvent(new Event("error")));
+	let retry!: Promise<void>;
+	act(() => {
+		retry = first.result.current.togglePlayback();
+	});
+	await act(() => second.result.current.togglePlayback());
+	await act(async () => {
+		finish("https://example.com/late.mp4");
+		await retry;
+	});
+	expect(media.play).not.toHaveBeenCalled();
+	expect(media.audio.src).not.toContain("late.mp4");
+	expect(second.result.current.isPlaying).toBe(true);
+});
+
+it("retries browser gesture denial without another asynchronous renewal", async () => {
+	const media = createAudio();
+	const resolveSource = vi.fn();
+	media.play.mockRejectedValueOnce(new DOMException("Gesture required", "NotAllowedError"));
+	const view = renderPlayer(media, { sourceUrl: "voice.mp4", resolveSource });
+	await act(() => view.result.current.togglePlayback());
+	expect(view.result.current.error).toContain("Tap Retry");
+	await act(() => view.result.current.togglePlayback());
+	expect(resolveSource).not.toHaveBeenCalled();
+	expect(view.result.current.isPlaying).toBe(true);
+});
+
 function renderPlayer(media: TestAudio, options?: PlayerOptions) {
 	return renderHook(
 		(props: PlayerOptions) => {

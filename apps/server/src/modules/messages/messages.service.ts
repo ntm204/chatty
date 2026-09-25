@@ -528,11 +528,13 @@ export async function saveMessageForUser(userId: string, conversationId: string,
 		create: { messageId, userId },
 		update: {},
 	});
+	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId });
 }
 
 export async function removeSavedMessage(userId: string, conversationId: string, messageId: string): Promise<void> {
 	await assertParticipant(userId, conversationId);
 	await prisma.messageStar.deleteMany({ where: { messageId, userId, message: { conversationId } } });
+	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId });
 }
 
 function toPinnedMessageDTO(

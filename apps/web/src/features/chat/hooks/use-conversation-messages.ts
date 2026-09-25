@@ -556,8 +556,17 @@ export function useConversationMessages(
 		if (!authorId || sendingDraftIdsRef.current.has(draft.id) || !claimOutboxDelivery(authorId, draft.id)) return;
 		sendingDraftIdsRef.current.add(draft.id);
 		const generation = authorId ? getMessageDraftGeneration(authorId) : -1;
+		const updateProgress = (deliveryPhase: ThreadMessage["deliveryPhase"], uploadProgress?: number) => {
+			if (activeCacheScopeRef.current !== `${authorId}:${draft.conversationId}`) return;
+			setMessages((current) =>
+				current.map((message) =>
+					message.id === draft.id ? { ...message, deliveryPhase, uploadProgress } : message,
+				),
+			);
+		};
 		try {
 			const pendingUpload = pendingUploadsRef.current.get(draft.id);
+			if (pendingUpload) updateProgress("preparing");
 			const files = pendingUpload ? await pendingUpload.filesPromise : undefined;
 			if (
 				!authorId ||
@@ -568,6 +577,7 @@ export function useConversationMessages(
 
 				return;
 			}
+			if (files?.length) updateProgress("uploading");
 			const sent = await api.sendMessage(
 				draft.conversationId,
 				draft.content,
@@ -579,6 +589,7 @@ export function useConversationMessages(
 				// draft, instead of the socket appending a second copy that only the
 				// response knows how to remove.
 				draft.id,
+				(percent) => updateProgress(percent >= 100 ? "confirming" : "uploading", percent),
 			);
 
 			releaseUpload(pendingUploadsRef.current, draft.id);

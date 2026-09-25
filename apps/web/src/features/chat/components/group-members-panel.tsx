@@ -1,11 +1,13 @@
 import type { ConversationDTO, ConversationRole, UserDTO } from "@chatty/shared-types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogOut, UserPlus, X } from "lucide-react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TextField } from "@/components/text-field";
 import { cn } from "@/utils/cn";
+import { useGroupMemberMutations } from "../hooks/use-group-member-mutations";
+import { foldSearchText } from "../utils/fold-search-text";
 import { AddGroupMembersDialog } from "./add-group-members-dialog";
 import { GroupMemberRow } from "./group-member-row";
 
@@ -28,10 +30,9 @@ export function GroupMembersPanel({
 	isEmbedded = false,
 }: GroupMembersPanelProps) {
 	const [memberQuery, setMemberQuery] = useState("");
-	const [removingUserId, setRemovingUserId] = useState<string | null>(null);
-	const [changingRoleUserId, setChangingRoleUserId] = useState<string | null>(null);
-	const [isLeaving, setIsLeaving] = useState(false);
-	const [actionError, setActionError] = useState("");
+	const mutations = useGroupMemberMutations(conversation.id);
+	const actionError = mutations.error;
+	const isLeaving = mutations.pending[currentUserId] === "leave";
 	// Who is about to be removed, and whether leaving is about to happen. Both
 	// hold the *pending* decision — the action runs when the dialog confirms it,
 	// which is the whole point of asking.
@@ -41,47 +42,48 @@ export function GroupMembersPanel({
 
 	const currentRole = conversation.participants.find((participant) => participant.id === currentUserId)?.role;
 	const isAdmin = currentRole === "admin";
-	const canInvite = conversation.invitePolicy === "everyone" || isAdmin;
+	const canInvite = Boolean(currentRole) && (conversation.invitePolicy === "everyone" || isAdmin);
+	const visibleParticipants = conversation.participants.filter((participant) =>
+		foldSearchText(`${participant.nickname ?? ""} ${participant.displayName} ${participant.handle}`).includes(
+			foldSearchText(memberQuery.trim()),
+		),
+	);
+	useEffect(() => {
+		setMemberQuery("");
+		setMemberPendingRemoval(null);
+		setIsConfirmingLeave(false);
+		setIsAddOpen(false);
+	}, [conversation.id]);
+	useEffect(() => {
+		if (
+			memberPendingRemoval &&
+			mutations.pending[memberPendingRemoval.id] !== "remove" &&
+			(!isAdmin || !conversation.participants.some((person) => person.id === memberPendingRemoval.id))
+		) {
+			setMemberPendingRemoval(null);
+			mutations.setError(
+				"Group membership or your permissions changed. Review the member list before trying again.",
+			);
+		}
+	}, [isAdmin, conversation.participants, memberPendingRemoval, mutations.pending, mutations.setError]);
 
 	async function handleRemoveMember(userId: string) {
-		setMemberPendingRemoval(null);
-		setRemovingUserId(userId);
-		setActionError("");
-		try {
-			await api.removeParticipant(conversation.id, userId);
-		} catch (removeError) {
-			setActionError((removeError as Error).message);
-		} finally {
-			setRemovingUserId(null);
-		}
+		if (!isAdmin || userId === currentUserId) return;
+		if (await mutations.run(userId, "remove", () => api.removeParticipant(conversation.id, userId)))
+			setMemberPendingRemoval(null);
 	}
 
 	async function handleToggleAdmin(userId: string, role: ConversationRole) {
-		setChangingRoleUserId(userId);
-		setActionError("");
-		try {
-			await api.setParticipantRole(conversation.id, userId, role === "admin" ? "member" : "admin");
-		} catch (roleError) {
-			setActionError((roleError as Error).message);
-		} finally {
-			setChangingRoleUserId(null);
-		}
+		if (!isAdmin || userId === currentUserId) return;
+		await mutations.run(userId, "role", () =>
+			api.setParticipantRole(conversation.id, userId, role === "admin" ? "member" : "admin"),
+		);
 	}
 
 	async function handleLeave() {
-		setIsConfirmingLeave(false);
-		setIsLeaving(true);
-		setActionError("");
-		try {
-			await api.removeParticipant(conversation.id, currentUserId);
-			// No local cleanup on success: this fires the same `conversation:left`
-			// event a kick does, and the page reacts to that one event whether the
-			// removal happened here, from another tab, or from someone else — one
-			// code path, not this component racing to also deselect itself.
-		} catch (leaveError) {
-			setActionError((leaveError as Error).message);
-			setIsLeaving(false);
-		}
+		if (!currentRole) return;
+		if (await mutations.run(currentUserId, "leave", () => api.removeParticipant(conversation.id, currentUserId)))
+			setIsConfirmingLeave(false);
 	}
 
 	return (
@@ -95,7 +97,7 @@ export function GroupMembersPanel({
 				</div>
 			)}
 
-			{actionError && (
+			{actionError && !memberPendingRemoval && !isConfirmingLeave && (
 				<p role="alert" className="eyebrow mt-3 text-signal">
 					{actionError}
 				</p>
@@ -109,7 +111,7 @@ export function GroupMembersPanel({
 				{!isEmbedded && (
 					<h3 className="text-xs font-medium text-ink-faint">Members · {conversation.participants.length}</h3>
 				)}
-				{conversation.participants.length > 6 && (
+				{(conversation.participants.length > 6 || memberQuery) && (
 					<div className="mt-3 px-3">
 						<TextField
 							label="Find a member"
@@ -119,26 +121,28 @@ export function GroupMembersPanel({
 					</div>
 				)}
 				<ul className="mt-2 flex flex-col gap-0.5 overflow-y-auto">
-					{conversation.participants
-						.filter((participant) =>
-							`${participant.displayName} ${participant.handle}`
-								.toLocaleLowerCase()
-								.includes(memberQuery.trim().toLocaleLowerCase()),
-						)
-						.map((participant) => (
-							<GroupMemberRow
-								key={participant.id}
-								participant={participant}
-								isSelf={participant.id === currentUserId}
-								canChangeAdmin={isAdmin && participant.id !== currentUserId}
-								canRemove={isAdmin && participant.id !== currentUserId}
-								isChangingRole={changingRoleUserId === participant.id}
-								isRemoving={removingUserId === participant.id}
-								onToggleAdmin={() => void handleToggleAdmin(participant.id, participant.role)}
-								onRemove={() => setMemberPendingRemoval(participant)}
-							/>
-						))}
+					{visibleParticipants.map((participant) => (
+						<GroupMemberRow
+							key={participant.id}
+							participant={participant}
+							isSelf={participant.id === currentUserId}
+							canChangeAdmin={isAdmin && participant.id !== currentUserId}
+							canRemove={isAdmin && participant.id !== currentUserId}
+							isChangingRole={mutations.pending[participant.id] === "role"}
+							isRemoving={mutations.pending[participant.id] === "remove"}
+							onToggleAdmin={() => void handleToggleAdmin(participant.id, participant.role)}
+							onRemove={() => {
+								mutations.setError("");
+								setMemberPendingRemoval(participant);
+							}}
+						/>
+					))}
 				</ul>
+				{visibleParticipants.length === 0 && (
+					<p role="status" className="px-3 py-2 text-sm text-ink-soft">
+						No members match. Try another name or handle.
+					</p>
+				)}
 			</section>
 
 			<div className="mt-1">
@@ -159,6 +163,7 @@ export function GroupMembersPanel({
 			{isAddOpen && (
 				<AddGroupMembersDialog
 					conversationId={conversation.id}
+					canInvite={canInvite}
 					participantIds={conversation.participants.map((participant) => participant.id)}
 					onClose={() => setIsAddOpen(false)}
 				/>
@@ -169,7 +174,10 @@ export function GroupMembersPanel({
 			<div className="mt-3 border-t border-rule-soft pt-2">
 				<Button
 					variant="ghost"
-					onClick={() => setIsConfirmingLeave(true)}
+					onClick={() => {
+						mutations.setError("");
+						setIsConfirmingLeave(true);
+					}}
 					disabled={isLeaving}
 					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[13.5px] font-normal text-signal"
 				>
@@ -185,18 +193,26 @@ export function GroupMembersPanel({
 					title="Remove from the group?"
 					body={`${memberPendingRemoval.displayName} will lose access to this conversation and everything in it. They can be added back under the current invite policy.`}
 					confirmLabel="Remove"
+					isConfirming={mutations.pending[memberPendingRemoval.id] === "remove"}
+					error={actionError}
 					onConfirm={() => void handleRemoveMember(memberPendingRemoval.id)}
-					onCancel={() => setMemberPendingRemoval(null)}
+					onCancel={() => {
+						if (!mutations.isPending(memberPendingRemoval.id)) setMemberPendingRemoval(null);
+					}}
 				/>
 			)}
 
 			{isConfirmingLeave && (
 				<ConfirmDialog
 					title="Leave this group?"
-					body="You will stop receiving its messages and it will disappear from your list, including from your search. Somebody still in it can add you back."
+					body={`You will leave ${conversation.name ?? "this group"}, stop receiving its messages, and lose access to its history and search results. You can be added back under the group's invite policy.`}
 					confirmLabel="Leave"
+					isConfirming={isLeaving}
+					error={actionError}
 					onConfirm={() => void handleLeave()}
-					onCancel={() => setIsConfirmingLeave(false)}
+					onCancel={() => {
+						if (!mutations.isPending(currentUserId)) setIsConfirmingLeave(false);
+					}}
 				/>
 			)}
 		</div>

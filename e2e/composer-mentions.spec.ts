@@ -14,8 +14,8 @@ test("mention completion preserves text after the caret and supports keyboard se
 	await startGroupChat(page, [other, third], "Mention workshop");
 	const field = page.getByRole("textbox", { name: "Message", exact: true });
 	await field.fill("Hello @Mention tomorrow");
-	await field.press("Home");
-	for (let index = 0; index < 14; index++) await field.press("ArrowRight");
+	// Home scrolls rather than moving the caret in native macOS WebKit.
+	for (let index = 0; index < " tomorrow".length; index++) await field.press("ArrowLeft");
 	await expect(page.getByRole("listbox", { name: "Mention suggestions" })).toBeVisible();
 	await field.press("ArrowDown");
 	const selected = page.getByRole("option", { selected: true });

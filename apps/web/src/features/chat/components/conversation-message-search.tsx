@@ -20,7 +20,7 @@ export function ConversationMessageSearch({
 	onClearResult,
 	onClose,
 }: ConversationMessageSearchProps) {
-	const { query, setQuery, results, isSearching, error, hasNoResults, hasMore, isLoadingMore, loadMore } =
+	const { query, setQuery, results, isSearching, error, hasNoResults, hasMore, isLoadingMore, loadMore, retry } =
 		useMessageSearch(conversationId);
 	const [activeIndex, setActiveIndex] = useState(0);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +52,7 @@ export function ConversationMessageSearch({
 	}
 
 	function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+		if (event.nativeEvent.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
 		if (event.key === "Escape") {
 			event.preventDefault();
 			onClose();
@@ -93,8 +94,32 @@ export function ConversationMessageSearch({
 				aria-label="Search in conversation"
 				className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"
 			/>
-			{isSearching && <span className="eyebrow text-ink-faint">Searching…</span>}
-			{error && <span className="eyebrow max-w-48 truncate text-signal">{error}</span>}
+			{query && (
+				<Button
+					variant="ghost"
+					aria-label="Clear conversation search"
+					className="size-8 shrink-0 p-0"
+					onClick={() => {
+						setQuery("");
+						inputRef.current?.focus();
+					}}
+				>
+					<X className="size-4" />
+				</Button>
+			)}
+			{isSearching && (
+				<span role="status" className="eyebrow text-ink-faint">
+					Searching…
+				</span>
+			)}
+			{error && (
+				<span role="alert" className="eyebrow max-w-48 text-signal">
+					{error}
+					<Button variant="ghost" onClick={retry} className="px-2 text-xs">
+						Retry search
+					</Button>
+				</span>
+			)}
 			{hasNoResults && !isSearching && <span className="eyebrow text-ink-faint">No results</span>}
 			{query.trim().length >= MESSAGE_SEARCH_MIN_LENGTH && results.length > 0 && (
 				<span className="meta shrink-0 text-ink-faint">

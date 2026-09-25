@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useLayoutEffect, useState } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useMessageDraft } from "@/features/chat/hooks/use-message-draft";
@@ -40,6 +40,25 @@ it("restores an existing draft through StrictMode replay and reopening", () => {
 	view.unmount();
 	const reopened = openDraft();
 	expect(reopened.result.current.content).toBe("Nháp tiếng Việt");
+});
+
+it("restores before the composer can receive its first browser input", () => {
+	const phases: string[] = [];
+	renderHook(() => {
+		useMessageDraft({
+			userId: "minh",
+			conversationId: "one",
+			content: "",
+			replyToId: null,
+			onRestore: () => {
+				phases.push("restore");
+			},
+		});
+		useLayoutEffect(() => {
+			phases.push("interactive");
+		}, []);
+	});
+	expect(phases).toEqual(["restore", "interactive"]);
 });
 
 it("keeps separate drafts through rapid conversation switches without remounting", () => {

@@ -1,5 +1,5 @@
 import type { UserDTO } from "@chatty/shared-types";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 
 interface UserSearch {
@@ -8,6 +8,7 @@ interface UserSearch {
 	results: UserDTO[];
 	isSearching: boolean;
 	error: string;
+	hasNoResults: boolean;
 	search: (event: React.FormEvent<HTMLFormElement>) => void;
 	reset: () => void;
 }
@@ -30,23 +31,57 @@ interface UserSearch {
 export function useUserSearch(excludeUserIds: string[] = []): UserSearch {
 	// query and results are kept apart on purpose: the query changes on every
 	// keystroke, the results only when a search completes.
-	const [query, setQuery] = useState("");
+	const [query, updateQuery] = useState("");
 	const [results, setResults] = useState<UserDTO[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [error, setError] = useState("");
+	const [hasSearched, setHasSearched] = useState(false);
+	const generationRef = useRef(0);
+	useEffect(
+		() => () => {
+			generationRef.current++;
+		},
+		[],
+	);
+
+	function setQuery(value: string) {
+		generationRef.current++;
+		updateQuery(value);
+		setResults([]);
+		setError("");
+		setIsSearching(false);
+		setHasSearched(false);
+	}
 
 	function search(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		const trimmed = query.trim();
 		if (!trimmed) return;
+		const generation = ++generationRef.current;
+		if (!navigator.onLine) {
+			setIsSearching(false);
+			setHasSearched(false);
+			setResults([]);
+			setError("Connect to find people.");
+
+			return;
+		}
 
 		setIsSearching(true);
 		setError("");
 		api.searchUsers(trimmed)
-			.then((found) => setResults(found.filter((user) => !excludeUserIds.includes(user.id))))
-			.catch((searchError: Error) => setError(searchError.message))
-			.finally(() => setIsSearching(false));
+			.then((found) => {
+				if (generation !== generationRef.current) return;
+				setResults(found);
+				setHasSearched(true);
+			})
+			.catch((searchError: Error) => {
+				if (generation === generationRef.current) setError(searchError.message);
+			})
+			.finally(() => {
+				if (generation === generationRef.current) setIsSearching(false);
+			});
 	}
 
 	function reset() {
@@ -55,5 +90,16 @@ export function useUserSearch(excludeUserIds: string[] = []): UserSearch {
 		setError("");
 	}
 
-	return { query, setQuery, results, isSearching, error, search, reset };
+	const visibleResults = results.filter((user) => !excludeUserIds.includes(user.id));
+
+	return {
+		query,
+		setQuery,
+		results: visibleResults,
+		isSearching,
+		error,
+		hasNoResults: hasSearched && !isSearching && !error && visibleResults.length === 0,
+		search,
+		reset,
+	};
 }

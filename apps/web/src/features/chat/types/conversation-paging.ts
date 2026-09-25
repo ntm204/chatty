@@ -9,6 +9,9 @@ export interface ConversationPaging {
 	/** Whether the server holds rows past the ones on screen. */
 	hasMore: boolean;
 	isLoadingMore: boolean;
+	isLoading?: boolean;
+	error?: string;
+	retry?: () => void;
 	/** Appends the next page, oldest-activity first. */
 	loadMore: () => void;
 }

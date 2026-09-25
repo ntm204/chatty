@@ -11,6 +11,7 @@ import { cn } from "@/utils/cn";
 import { useConversationMuted } from "../hooks/use-conversation-muted";
 import { useConversationMutation } from "../hooks/use-conversation-mutation";
 import { getDirectPeer } from "../utils";
+import { focusMenuItem } from "../utils/focus-menu-item";
 import { ConversationActionError } from "./conversation-action-error";
 import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { ConversationMuteMenu } from "./conversation-mute-menu";
@@ -60,6 +61,14 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 				close();
 		}
 		function closeFromKeyboard(event: KeyboardEvent) {
+			if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+			if (
+				!menuRef.current?.contains(document.activeElement) &&
+				!rootRef.current?.contains(document.activeElement) &&
+				!(event.key === "Escape" && document.activeElement === document.body)
+			) {
+				return;
+			}
 			// A portalled menu is last in the document: native Tab can move into
 			// browser chrome without a focusin event. Resume the row's tab order.
 			if (event.key === "Tab" && menuRef.current?.contains(document.activeElement)) {
@@ -69,33 +78,34 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 				return;
 			}
 			if (event.key === "Escape") {
+				event.preventDefault();
 				close();
 				rootRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")?.focus();
 
 				return;
 			}
 
-			if (!menuRef.current || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-			const items = [...menuRef.current.querySelectorAll<HTMLButtonElement>("[role='menuitem']")];
-			if (items.length === 0) return;
-			event.preventDefault();
-			const currentIndex = items.findIndex((item) => item === document.activeElement);
-			if (event.key === "Home") items[0]?.focus();
-			else if (event.key === "End") items[items.length - 1]?.focus();
-			else if (event.key === "ArrowDown") items[(currentIndex + 1 + items.length) % items.length]?.focus();
-			else items[(currentIndex - 1 + items.length) % items.length]?.focus();
+			if (menuRef.current && focusMenuItem(menuRef.current, event.key)) event.preventDefault();
 		}
 		document.addEventListener("pointerdown", closeFromOutside);
 		document.addEventListener("focusin", closeFromOutside);
-		document.addEventListener("keydown", closeFromKeyboard);
+		document.addEventListener("keydown", closeFromKeyboard, true);
 
 		return () => {
 			window.cancelAnimationFrame(focusFrame);
 			document.removeEventListener("pointerdown", closeFromOutside);
 			document.removeEventListener("focusin", closeFromOutside);
-			document.removeEventListener("keydown", closeFromKeyboard);
+			document.removeEventListener("keydown", closeFromKeyboard, true);
 		};
 	}, [isOpen, isChoosingMute]);
+
+	useLayoutEffect(() => {
+		// Disabling the focused action can leave Chromium's focus on body.
+		// Recover only an abandoned focus, never steal it from another control.
+		if (isOpen && error && !isSaving && document.activeElement === document.body && menuRef.current) {
+			focusMenuItem(menuRef.current, "Home");
+		}
+	}, [error, isOpen, isSaving]);
 
 	useLayoutEffect(() => {
 		if (!isOpen || !rootRef.current || !menuRef.current) return;

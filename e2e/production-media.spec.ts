@@ -57,6 +57,20 @@ test("built web previews and sends image/voice under the production CSP", async 
 		await openConversationWith(page, peer);
 		await expect(page.getByRole("main").getByAltText("Built photo")).toBeVisible();
 		await expect(page.getByRole("button", { name: "Play voice message" })).toBeVisible();
+		await page.getByLabel("Message", { exact: true }).fill("Offline draft stays here");
+		await page.evaluate(async () => {
+			await navigator.serviceWorker.ready;
+		});
+		await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+		await page.getByLabel("Message", { exact: true }).blur();
+		await sender.setOffline(true);
+		const offlineResponse = await page.reload();
+		expect(offlineResponse?.headers()["content-security-policy"]).toContain("media-src 'self' blob:");
+		await openConversationWith(page, peer);
+		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Offline draft stays here");
+		await expect(page.getByRole("button", { name: "Play voice message" })).toBeDisabled();
+		await sender.setOffline(false);
+		await expect(page.getByRole("button", { name: "Play voice message" })).toBeEnabled({ timeout: 15_000 });
 		expect(violations).toEqual([]);
 	} finally {
 		await sender.close();

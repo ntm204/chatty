@@ -36,14 +36,24 @@ export function ComposerUploadPreview({
 			)}
 
 			{isSending && (attachments.length > 0 || selectedFile) && (
-				<div className="px-4 pt-3" role="status" aria-label={`Uploading attachment ${uploadProgress}%`}>
+				<div
+					className="px-4 pt-3"
+					role="status"
+					aria-label={
+						uploadProgress >= 100
+							? "Uploaded. Waiting for server confirmation"
+							: `Uploading attachment ${uploadProgress}%`
+					}
+				>
 					<div className="mb-1.5 flex justify-between">
 						<span className="eyebrow text-ink-faint">
-							{selectedFile
-								? `Uploading ${selectedFile.name}`
-								: attachments.length > 1
-									? `Uploading ${attachments.length} images`
-									: "Uploading image"}
+							{uploadProgress >= 100
+								? "Waiting for server confirmation"
+								: selectedFile
+									? `Uploading ${selectedFile.name}`
+									: attachments.length > 1
+										? `Uploading ${attachments.length} images`
+										: "Uploading image"}
 						</span>
 						<span className="meta text-ink-faint">{uploadProgress}%</span>
 					</div>

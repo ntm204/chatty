@@ -263,6 +263,18 @@ describe("vault, forwarding, mentions, and pins", () => {
 		expect((await listSavedMessages(anId, { limit: 20 })).results[0]?.message.id).toBe(messages[0]!.id);
 		await removeSavedMessage(anId, conversation.id, messages[0]!.id);
 		expect((await listSavedMessages(anId, { limit: 20 })).results).toEqual([]);
+		expect(fakeIO.emits.filter((event) => event.event === "bookmark:changed")).toEqual([
+			{
+				room: `user:${anId}`,
+				event: "bookmark:changed",
+				payload: { conversationId: conversation.id, messageId: messages[0]!.id },
+			},
+			{
+				room: `user:${anId}`,
+				event: "bookmark:changed",
+				payload: { conversationId: conversation.id, messageId: messages[0]!.id },
+			},
+		]);
 
 		for (const message of messages.slice(0, 3)) await setMessagePinned(anId, conversation.id, message.id, true);
 		await expect(setMessagePinned(anId, conversation.id, messages[3]!.id, true)).rejects.toThrow(

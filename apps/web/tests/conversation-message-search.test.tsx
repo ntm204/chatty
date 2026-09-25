@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
@@ -28,6 +28,28 @@ afterEach(() => {
 });
 
 describe("ConversationMessageSearch", () => {
+	it("keeps IME keys local and clears the query without closing search", async () => {
+		const onClose = vi.fn();
+		const onSelect = vi.fn();
+		render(
+			<ConversationMessageSearch
+				conversationId="c1"
+				onClose={onClose}
+				onSelectResult={onSelect}
+				onClearResult={vi.fn()}
+			/>,
+		);
+		const field = screen.getByLabelText("Search in conversation");
+		await userEvent.type(field, "deployment");
+		await vi.advanceTimersByTimeAsync(500);
+		onSelect.mockClear();
+		for (const key of ["Enter", "Escape", "ArrowDown"]) fireEvent.keyDown(field, { key, isComposing: true });
+		expect(onClose).not.toHaveBeenCalled();
+		expect(onSelect).not.toHaveBeenCalled();
+		await userEvent.click(screen.getByRole("button", { name: "Clear conversation search" }));
+		expect(field).toHaveValue("");
+		expect(field).toHaveFocus();
+	});
 	it("focuses the input and scopes the request to the open conversation", async () => {
 		const onSelectResult = vi.fn();
 		render(

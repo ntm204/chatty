@@ -1,9 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { ConversationVaultPanel } from "@/features/chat/components/conversation-vault-panel";
 import { makeAttachment, makeConversation, makeParticipant } from "./factories";
+
+const { socketHandlers } = vi.hoisted(() => ({ socketHandlers: new Map<string, (event: unknown) => void>() }));
+vi.mock("@/features/chat/hooks/use-socket-event", () => ({
+	useSocketEvent: (name: string, handler: (event: unknown) => void) => socketHandlers.set(name, handler),
+}));
 
 vi.mock("@/api/client", () => ({
 	api: {
@@ -58,6 +63,23 @@ function renderPanel(overrides: { isGroup?: boolean } = {}) {
 }
 
 describe("ConversationVaultPanel", () => {
+	it("invalidates visible media and its viewer on retraction", async () => {
+		const user = userEvent.setup();
+		renderPanel();
+		await user.click(screen.getByRole("button", { name: "Media, files and links" }));
+		await user.click(await screen.findByRole("button", { name: "Media, 1" }));
+		await user.click(await screen.findByRole("button", { name: "Shared by An" }));
+		expect(screen.getByRole("dialog", { name: "Image preview" })).toBeInTheDocument();
+		vi.mocked(api.listConversationMedia).mockResolvedValue({ items: [], hasMore: false });
+		act(() =>
+			socketHandlers.get("message:updated")?.({
+				conversationId: makeConversation().id,
+				deletedAt: "2026-09-25T00:00:00Z",
+			}),
+		);
+		await waitFor(() => expect(screen.queryByRole("dialog", { name: "Image preview" })).not.toBeInTheDocument());
+		expect(screen.queryByRole("button", { name: "Shared by An" })).not.toBeInTheDocument();
+	});
 	/**
 	 * The counts are the reason this is a list and not a tab bar, and they have to
 	 * arrive before anything is opened — that is what answers "is there anything

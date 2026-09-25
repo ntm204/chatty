@@ -1,4 +1,5 @@
 import { OFFLINE_BINARY_URL } from "@/constants/offline-media";
+import { api } from "@/api/client";
 import type { AttachmentDTO, ConversationTheme } from "@chatty/shared-types";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { Button } from "@/components/button";
@@ -30,7 +31,11 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 		togglePlayback,
 		cyclePlaybackRate,
 		seek,
-	} = useVoicePlayer({ sourceUrl: isOffline ? undefined : attachment.url, durationMs: attachment.durationMs ?? 0 });
+	} = useVoicePlayer({
+		sourceUrl: isOffline ? undefined : attachment.url,
+		durationMs: attachment.durationMs ?? 0,
+		resolveSource: async () => (await api.getAttachmentUrls(attachment.id)).url,
+	});
 	const playedFraction = durationMs > 0 ? Math.min(1, elapsedMs / durationMs) : 0;
 	const elapsedLabel = formatDuration(Math.min(elapsedMs, durationMs));
 	const durationLabel = formatDuration(durationMs);
@@ -74,6 +79,9 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 							isMine ? theme.ring : "focus-within:ring-ink/25",
 						)}
 					>
+						<span className="sr-only">
+							Duration {durationLabel}. Playback speed {playbackRate} times.
+						</span>
 						<VoiceWaveform
 							waveform={attachment.waveform}
 							progress={playedFraction}

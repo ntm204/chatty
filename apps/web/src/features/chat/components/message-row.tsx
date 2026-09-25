@@ -122,6 +122,7 @@ export const MessageRow = memo(function MessageRow({
 
 	function revealTouchActions(event: ReactPointerEvent<HTMLDivElement>) {
 		if (event.pointerType === "mouse") return;
+		if (window.getSelection()?.toString()) return;
 		if ((event.target as HTMLElement).closest("a, button, input, textarea, [role='button']")) return;
 
 		// A phone has no hover. Focusing the row on a plain tap reveals only this
@@ -267,6 +268,8 @@ export const MessageRow = memo(function MessageRow({
 					isEdited={isEdited}
 					receipt={receipt}
 					deliveryState={deliveryState}
+					deliveryPhase={message.deliveryPhase}
+					uploadProgress={message.uploadProgress}
 					onShowHistory={onShowHistory}
 					onRetrySend={onRetrySend}
 					onDiscardDraft={onDiscardDraft}

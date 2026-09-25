@@ -8,7 +8,14 @@ export function scrollToMessage(messageId: string, behavior: ScrollBehavior = "s
 	const bounds = element.getBoundingClientRect();
 	const viewport = container.getBoundingClientRect();
 	const top = container.scrollTop + bounds.top - viewport.top - (container.clientHeight - bounds.height) / 2;
-	container.scrollTo({ top: Math.max(0, Math.min(top, container.scrollHeight - container.clientHeight)), behavior });
+	const shouldReduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+	container.scrollTo({
+		top: Math.max(0, Math.min(top, container.scrollHeight - container.clientHeight)),
+		behavior: shouldReduceMotion ? "auto" : behavior,
+	});
+	// A static outline also identifies the destination with reduced motion enabled.
+	element.classList.add("ring-2", "ring-signal-soft");
+	window.setTimeout(() => element.classList.remove("ring-2", "ring-signal-soft"), 1600);
 	if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
 		element.animate?.([{ backgroundColor: "var(--color-signal-soft)" }, { backgroundColor: "transparent" }], {
 			duration: 1600,

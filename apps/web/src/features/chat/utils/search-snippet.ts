@@ -1,3 +1,5 @@
+import { foldSearchText } from "./fold-search-text";
+
 interface SearchSnippetPart {
 	text: string;
 	isMatch: boolean;
@@ -5,13 +7,13 @@ interface SearchSnippetPart {
 
 /** Preserve original spelling while locating an accent-insensitive match, including decomposed Unicode. */
 export function getSearchSnippet(content: string, query: string): SearchSnippetPart[] {
-	const foldedQuery = query.trim().normalize("NFD").replace(/\p{M}/gu, "").replace(/[đĐ]/gu, "d").toLowerCase();
+	const foldedQuery = foldSearchText(query.trim());
 	let folded = "";
 	const starts: number[] = [];
 	const ends: number[] = [];
 	let offset = 0;
 	for (const character of content) {
-		const normalized = character.normalize("NFD").replace(/\p{M}/gu, "").replace(/[đĐ]/gu, "d").toLowerCase();
+		const normalized = foldSearchText(character);
 		for (let index = 0; index < normalized.length; index++) {
 			starts.push(offset);
 			ends.push(offset + character.length);

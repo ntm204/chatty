@@ -14,7 +14,16 @@ interface NewConversationPanelProps {
 }
 
 export function NewConversationPanel({ onConversationStarted }: NewConversationPanelProps) {
-	const { query, setQuery, results, isSearching, error: searchError, search, reset: resetSearch } = useUserSearch();
+	const {
+		query,
+		setQuery,
+		results,
+		isSearching,
+		hasNoResults,
+		error: searchError,
+		search,
+		reset: resetSearch,
+	} = useUserSearch();
 	const [selectedUsers, setSelectedUsers] = useState<UserDTO[]>([]);
 	const [groupName, setGroupName] = useState("");
 	const [isCreating, setIsCreating] = useState(false);
@@ -81,6 +90,11 @@ export function NewConversationPanel({ onConversationStarted }: NewConversationP
 			<SelectedParticipants participants={selectedUsers} onRemove={handleRemoveUser} />
 
 			{isSearching && <p className="eyebrow mt-3 text-ink-faint">Searching…</p>}
+			{hasNoResults && (
+				<p role="status" className="mt-3 text-sm text-ink-soft">
+					No people found. Try another name or handle.
+				</p>
+			)}
 			{(searchError || createError) && (
 				<p role="alert" className="eyebrow mt-3 text-signal">
 					{searchError || createError}

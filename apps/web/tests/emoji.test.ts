@@ -44,6 +44,11 @@ describe("countJumboEmoji", () => {
 });
 
 describe("searchEmoji", () => {
+	it("matches accented and decomposed Vietnamese and preserves emoji variation selectors", () => {
+		expect(searchEmoji("cười")).toEqual(searchEmoji("cuoi"));
+		expect(searchEmoji("cười".normalize("NFD"))).toEqual(searchEmoji("cuoi"));
+		expect(searchEmoji("❤️").map((entry) => entry.char)).toContain("❤️");
+	});
 	it("finds by an English keyword", () => {
 		expect(searchEmoji("laugh").map((entry) => entry.char)).toContain("😂");
 	});

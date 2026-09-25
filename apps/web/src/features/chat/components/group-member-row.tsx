@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
+import { focusMenuItem } from "../utils/focus-menu-item";
 
 interface GroupMemberRowProps {
 	participant: ParticipantDTO;
@@ -55,6 +56,9 @@ export function GroupMemberRow({
 
 		return () => document.removeEventListener("pointerdown", closeFromOutside);
 	}, [isExpanded]);
+	useEffect(() => {
+		if (!canChangeAdmin && !canRemove) setIsExpanded(false);
+	}, [canChangeAdmin, canRemove]);
 
 	useLayoutEffect(() => {
 		if (!isExpanded || !triggerRef.current || !menuRef.current) return;
@@ -71,6 +75,7 @@ export function GroupMemberRow({
 					? triggerBounds.bottom + gap
 					: Math.max(gap, triggerBounds.top - menuBounds.height - gap),
 		});
+		menuRef.current.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus();
 	}, [isExpanded]);
 
 	return (
@@ -82,7 +87,9 @@ export function GroupMemberRow({
 					{isSelf && <span className="font-normal text-ink-faint"> (you)</span>}
 				</span>
 				<span className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
-					<span className="truncate">@{participant.handle}</span>
+					<span className="truncate font-mono" title={`@${participant.handle}`}>
+						@{participant.handle}
+					</span>
 					{participant.role === "admin" && (
 						<>
 							<span aria-hidden="true">·</span>
@@ -118,6 +125,22 @@ export function GroupMemberRow({
 								role="menu"
 								aria-label={`Actions for ${participant.displayName}`}
 								style={menuPosition}
+								onKeyDown={(event) => {
+									if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+									if (event.key === "Escape") {
+										event.preventDefault();
+										event.stopPropagation();
+										setIsExpanded(false);
+										triggerRef.current?.focus();
+									} else if (focusMenuItem(event.currentTarget, event.key)) {
+										event.preventDefault();
+										event.stopPropagation();
+									}
+								}}
+								onBlur={(event) => {
+									if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+										setIsExpanded(false);
+								}}
 								className="fixed z-50 w-48 overflow-hidden rounded-panel border border-rule bg-paper-raised p-1.5 shadow-lift"
 							>
 								{canChangeAdmin && (
@@ -146,6 +169,7 @@ export function GroupMemberRow({
 										role="menuitem"
 										onClick={() => {
 											setIsExpanded(false);
+											triggerRef.current?.focus();
 											onRemove();
 										}}
 										disabled={isRemoving}

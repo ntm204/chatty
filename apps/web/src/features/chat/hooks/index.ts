@@ -27,8 +27,14 @@ export { useTypingParticipants } from "./use-typing-participants";
 export { useUserSearch } from "./use-user-search";
 export { useStickers } from "./use-stickers";
 export { useAttachmentZoom } from "./use-attachment-zoom";
+export { useImageRecovery } from "./use-image-recovery";
+export { useMessageNavigationPosition } from "./use-message-navigation-position";
+export { useComposerTextInsertion } from "./use-composer-text-insertion";
 
 export { useDraftPreviews } from "./use-draft-previews";
 export { useConversationMuted } from "./use-conversation-muted";
 export { useConversationMutation } from "./use-conversation-mutation";
 export { useMuteExpiry } from "./use-mute-expiry";
+export { useVaultReadingPosition } from "./use-vault-reading-position";
+export { useGroupMemberMutations } from "./use-group-member-mutations";
+export { useClampedMessageMenu } from "./use-clamped-message-menu";

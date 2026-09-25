@@ -1,5 +1,6 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { useCallback } from "react";
+import { api } from "@/api/client";
 import type { MessageSearchSession } from "../types/message-search";
 import { findFirstUnreadConversation, scrollToMessage } from "../utils";
 
@@ -13,6 +14,7 @@ interface ConversationNavigationParams {
 }
 
 interface ConversationNavigation {
+	openNotificationConversation: (conversationId: string) => Promise<void>;
 	handleConversationStarted: (conversationId: string, conversation?: ConversationDTO) => void;
 	handleConversationSelected: (conversationId: string) => void;
 	selectSearchResult: (session: MessageSearchSession) => void;
@@ -51,6 +53,16 @@ export function useConversationNavigation({
 		setSelectedConversationId(conversationId);
 	}
 
+	async function openNotificationConversation(conversationId: string) {
+		try {
+			// Archived/unpaged destinations need their DTO before rendering a thread.
+			const conversation = await api.getConversation(conversationId);
+			handleConversationStarted(conversation.id, conversation);
+		} catch {
+			// Losing membership must not replace the current thread with an empty pane.
+		}
+	}
+
 	function selectSearchResult(session: MessageSearchSession) {
 		const result = session.results[session.activeIndex];
 		if (!result) return;
@@ -82,6 +94,7 @@ export function useConversationNavigation({
 	);
 
 	return {
+		openNotificationConversation,
 		handleConversationStarted,
 		handleConversationSelected,
 		selectSearchResult,

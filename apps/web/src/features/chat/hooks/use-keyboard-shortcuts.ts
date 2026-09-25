@@ -29,7 +29,11 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions): void {
 			}
 			const currentOptions = optionsRef.current;
 			const target = event.target as HTMLElement | null;
-			const isTextField = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+			const isTextField =
+				target instanceof HTMLInputElement ||
+				target instanceof HTMLTextAreaElement ||
+				(target instanceof Element &&
+					Boolean(target.closest('[contenteditable]:not([contenteditable="false"]), select')));
 
 			if (event.key === "Escape") {
 				if (currentOptions.hasOpenPanel) currentOptions.onClosePanel();

@@ -1,7 +1,29 @@
-import { findAttachmentPath } from "../../lib/attachment-storage.js";
+import { buildAttachmentUrls, findAttachmentPath } from "../../lib/attachment-storage.js";
+import type { AttachmentDTO } from "@chatty/shared-types";
 import { isValidAttachmentToken } from "../../lib/attachment-token.js";
 import { NotFoundError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
+
+/** Renew only from current membership and message visibility, never from an expired token. */
+export async function getAttachmentUrls(
+	userId: string,
+	attachmentId: string,
+): Promise<Pick<AttachmentDTO, "url" | "thumbUrl">> {
+	const attachment = await prisma.attachment.findFirst({
+		where: {
+			id: attachmentId,
+			message: {
+				deletedAt: null,
+				hiddenFor: { none: { userId } },
+				conversation: { participants: { some: { userId } } },
+			},
+		},
+		select: { id: true, kind: true, hasThumbnail: true },
+	});
+	if (!attachment) throw new NotFoundError("Attachment no longer available");
+
+	return buildAttachmentUrls(attachment.id, attachment.kind === "IMAGE" && attachment.hasThumbnail);
+}
 
 /**
  * Path of the file to serve for `GET /attachments/:attachmentId`.

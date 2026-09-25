@@ -15,6 +15,19 @@ import { makeUser, register } from "./helpers.js";
  * by 404ing or by being blocked, in a way nothing else here would notice.
  */
 test.describe("appearance", () => {
+	test("system tracks changes live and reduced motion retains selected state", async ({ page }) => {
+		await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+		await register(page, makeUser("SystemTheme"));
+		await page.getByLabel("Account settings").click();
+		await page.getByRole("button", { name: "Appearance" }).click();
+		await page.getByRole("radio", { name: /System/ }).click();
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+		await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+		await expect(page.getByRole("radio", { name: /System/ })).toHaveAttribute("aria-checked", "true");
+		await page.reload();
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+	});
 	test("dark applies immediately and survives a reload", async ({ page }) => {
 		const user = makeUser("Noor");
 		await register(page, user);

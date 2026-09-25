@@ -13,6 +13,7 @@ interface UseComposerAttachmentsOptions {
 	isDisabled: boolean;
 	selectedFile: File | null;
 	onFileSelected: (file: File) => Promise<void>;
+	onPasteText?: (text: string) => void;
 }
 
 export function useComposerAttachments({
@@ -21,6 +22,7 @@ export function useComposerAttachments({
 	isDisabled,
 	selectedFile,
 	onFileSelected,
+	onPasteText,
 }: UseComposerAttachmentsOptions) {
 	const [attachments, setAttachments] = useState<File[]>([]);
 	const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -42,24 +44,31 @@ export function useComposerAttachments({
 
 				return;
 			}
-			const images = picked.filter((file) => file.type.startsWith("image/"));
-			if (images.length !== picked.length) {
-				setError("Only images can be added together");
+			const errors: string[] = [];
+			const images = picked.filter((file) => {
+				if (!file.type.startsWith("image/")) {
+					errors.push(`${file.name}: only images can be added together.`);
 
-				return;
-			}
-			if (images.some((file) => file.size > MAX_IMAGE_BYTES)) {
-				setError("Each image must be smaller than 10MB");
+					return false;
+				}
+				if (file.size > MAX_IMAGE_BYTES) {
+					errors.push(`${file.name}: each image must be smaller than 10MB.`);
 
-				return;
-			}
+					return false;
+				}
 
+				return true;
+			});
+			const available = Math.max(0, MAX_ATTACHMENTS_PER_MESSAGE - attachments.length);
+			if (images.length > available)
+				errors.push(
+					`A message may carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} images. Not added: ${images
+						.slice(available)
+						.map((file) => file.name)
+						.join(", ")}.`,
+				);
 			setAttachments((current) => [...current, ...images].slice(0, MAX_ATTACHMENTS_PER_MESSAGE));
-			setError(
-				images.length + attachments.length > MAX_ATTACHMENTS_PER_MESSAGE
-					? `A message may carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} images`
-					: "",
-			);
+			setError(errors.join(" "));
 		},
 		[attachments.length, isDisabled, selectedFile, setError],
 	);
@@ -124,7 +133,7 @@ export function useComposerAttachments({
 			setIsDragActive(false);
 			if (!canAcceptDrop(event)) return;
 			const files = [...(event.dataTransfer?.files ?? [])];
-			if (files.every((file) => file.type.startsWith("image/"))) addImages(files);
+			if (files.some((file) => file.type.startsWith("image/"))) addImages(files);
 			else if (files.length === 1 && files[0]) selectDocument(files[0]);
 			else setError("Drop images together, or one other file at a time");
 		}
@@ -158,9 +167,11 @@ export function useComposerAttachments({
 		const files = [...event.clipboardData.files];
 		if (files.length === 0) return;
 		event.preventDefault();
-		if (files.every((file) => file.type.startsWith("image/"))) addImages(files);
+		if (files.some((file) => file.type.startsWith("image/"))) addImages(files);
 		else if (files.length === 1 && files[0]) selectDocument(files[0]);
 		else setError("Paste images together, or one other file at a time");
+		const text = event.clipboardData.getData?.("text/plain");
+		if (text && !isDisabled) onPasteText?.(text);
 	}
 
 	function removeAttachment(index: number) {

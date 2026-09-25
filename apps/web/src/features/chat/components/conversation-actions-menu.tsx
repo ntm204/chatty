@@ -74,6 +74,7 @@ export function ConversationActionsMenu({
 					role="menuitem"
 					disabled={isSaving}
 					onClick={onToggleRestrict}
+					aria-description="Keep direct messages without alerts or unread badges. Shared groups are not affected."
 					className="w-full justify-start px-2.5 py-2 text-ink"
 				>
 					<EyeOff className="size-4 text-ink-faint" />
@@ -93,6 +94,11 @@ export function ConversationActionsMenu({
 					<Ban className="size-4" />
 					{isBlocked ? "Unblock" : "Block"}
 				</Button>
+			)}
+			{peer && (
+				<p className="px-2.5 py-2 text-xs leading-normal text-ink-soft">
+					Restrict keeps direct messages without alerts or unread badges. Shared groups are not affected.
+				</p>
 			)}
 		</>
 	);

@@ -14,7 +14,7 @@ interface VoiceRecorderProps {
 }
 
 export function VoiceRecorder({ isDisabled, onSend, onActiveChange }: VoiceRecorderProps) {
-	const { phase, elapsedMs, recording, error, waveform, start, stop, discard } = useVoiceRecorder();
+	const { phase, elapsedMs, recording, error, notice, waveform, start, stop, discard } = useVoiceRecorder();
 	const [isSending, setIsSending] = useState(false);
 	const [previewUrl, setPreviewUrl] = useState<string | undefined>();
 	const [uploadProgress, setUploadProgress] = useState(0);
@@ -205,8 +205,15 @@ export function VoiceRecorder({ isDisabled, onSend, onActiveChange }: VoiceRecor
 			)}
 			{isSending && (
 				<span role="status" className="meta px-2 text-ink-soft">
-					Uploading {uploadProgress}%
+					{uploadProgress >= 100
+						? "Upload complete. Waiting for confirmation…"
+						: `Uploading ${uploadProgress}%`}
 				</span>
+			)}
+			{notice && (
+				<p role="status" className="px-2 text-xs text-ink-soft">
+					{notice}
+				</p>
 			)}
 			{(sendError || preview.error) && (
 				<p role="alert" className="px-2 text-xs text-signal">

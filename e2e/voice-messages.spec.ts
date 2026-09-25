@@ -100,6 +100,8 @@ test("recording can be previewed, discarded and sent from the mobile composer", 
 	const peer = await browser.newContext();
 	try {
 		const page = await sender.newPage();
+		const pageErrors: string[] = [];
+		page.on("pageerror", (error) => pageErrors.push(error.message));
 		const peerPage = await peer.newPage();
 		await register(peerPage, peerUser);
 		await register(page, senderUser);
@@ -107,6 +109,7 @@ test("recording can be previewed, discarded and sent from the mobile composer", 
 		await openConversationWith(peerPage, senderUser);
 		const receivedId = await sendVoiceFixture(peerPage);
 		const receivedVoice = page.locator(`#message-${receivedId}`).getByRole("group", { name: "Voice message" });
+		await page.getByLabel("Message", { exact: true }).fill("Giữ nguyên bản nháp khi ghi âm");
 		await receivedVoice.getByRole("button", { name: "Play voice message" }).tap();
 		await expect(receivedVoice.getByRole("button", { name: "Pause voice message" })).toBeVisible();
 		await page.getByRole("button", { name: "Record a voice message" }).tap();
@@ -127,6 +130,7 @@ test("recording can be previewed, discarded and sent from the mobile composer", 
 		expect((await recorder.boundingBox())?.height).toBeLessThanOrEqual(48);
 		await page.screenshot({ animations: "disabled", path: "/tmp/chatty-voice-preview.png" });
 		await page.getByRole("button", { name: "Discard recording" }).tap();
+		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Giữ nguyên bản nháp khi ghi âm");
 		await expect(page.getByLabel("Message", { exact: true })).toBeEnabled();
 		await expect(page.getByRole("button", { name: "Send voice message" })).toBeHidden();
 		await page.getByRole("button", { name: "Record a voice message" }).tap();
@@ -139,6 +143,8 @@ test("recording can be previewed, discarded and sent from the mobile composer", 
 		});
 		await expect(page.getByLabel("Message", { exact: true })).toBeEnabled();
 		await expect(page.getByRole("button", { name: "Record a voice message" })).toBeVisible();
+		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("Giữ nguyên bản nháp khi ghi âm");
+		expect(pageErrors).toEqual([]);
 	} finally {
 		await sender.close();
 		await peer.close();

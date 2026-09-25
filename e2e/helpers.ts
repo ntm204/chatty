@@ -38,7 +38,13 @@ export function makeUser(name: string): TestUser {
 /** Registers through the form and waits until the chat screen is up. */
 export async function register(page: Page, user: TestUser): Promise<void> {
 	await page.goto("/login");
-	await page.getByRole("button", { name: "No account? Create one" }).click();
+	const createAccount = page.getByRole("button", { name: "No account? Create one" });
+	const skipIntro = page.getByRole("button", { name: "Skip intro" });
+	// The welcome sequence has its own suite. Ordinary fixtures should not pay
+	// its 3.8 seconds for every account, or depend on its animation to unlock auth.
+	await expect(skipIntro.or(createAccount).first()).toBeVisible();
+	if (await skipIntro.isVisible()) await skipIntro.click();
+	await createAccount.click();
 
 	await page.getByLabel("Display name").fill(user.displayName);
 	await page.getByLabel("Handle").fill(user.handle);
@@ -78,6 +84,7 @@ export async function startDirectChat(page: Page, peer: TestUser): Promise<void>
 
 	await page.getByRole("button", { name: `${peer.displayName} @${peer.handle}` }).click();
 	await page.getByRole("button", { name: `Chat with ${peer.displayName}` }).click();
+	await expect(page.getByRole("textbox", { name: "Message", exact: true })).toBeEnabled();
 }
 
 /**

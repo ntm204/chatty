@@ -21,6 +21,34 @@ beforeEach(() => {
 	vi.mocked(api.getConversation).mockReset();
 });
 
+it("exposes a failed initial load and a deliberate retry without fabricating an empty success", async () => {
+	vi.mocked(api.listConversations).mockRejectedValueOnce(new Error("Unavailable"));
+	const { result } = renderHook(() => useConversationList("me", vi.fn()));
+	await waitFor(() => expect(result.current.paging.error).toContain("Could not refresh"));
+	expect(result.current.paging.isLoading).toBe(false);
+	vi.mocked(api.listConversations).mockResolvedValue({ items: [makeConversation()], hasMore: false });
+	act(() => result.current.paging.retry());
+	await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+	expect(result.current.paging.error).toBe("");
+});
+
+it("does not let an older refresh overwrite a newer successful refresh", async () => {
+	let resolveOld!: (page: Awaited<ReturnType<typeof api.listConversations>>) => void;
+	vi.mocked(api.listConversations).mockReturnValueOnce(
+		new Promise((resolve) => {
+			resolveOld = resolve;
+		}),
+	);
+	const { result } = renderHook(() => useConversationList("me", vi.fn()));
+	await waitFor(() => expect(api.listConversations).toHaveBeenCalledOnce());
+	vi.mocked(api.listConversations).mockResolvedValue({ items: [makeConversation({ id: "new" })], hasMore: false });
+	act(() => result.current.refresh());
+	await waitFor(() => expect(result.current.conversations[0]?.id).toBe("new"));
+	await act(async () => resolveOld({ items: [makeConversation({ id: "old" })], hasMore: true }));
+	expect(result.current.conversations[0]?.id).toBe("new");
+	expect(result.current.paging.hasMore).toBe(false);
+});
+
 it("does not put a delayed active page into the archived list", async () => {
 	let resolveActive!: (page: Awaited<ReturnType<typeof api.listConversations>>) => void;
 	vi.mocked(api.listConversations).mockImplementationOnce(

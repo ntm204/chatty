@@ -58,6 +58,10 @@ export function useConversationList(
 	const [isShowingArchived, setIsShowingArchived] = useState(false);
 	const [hasMore, setHasMore] = useState(false);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState("");
+	const requestRef = useRef(0);
+	const failedPageRef = useRef(false);
 	const [loadedCacheScope, setLoadedCacheScope] = useState<string | null>(null);
 	const cacheScope = currentUserId ? `${currentUserId}:${isShowingArchived ? "archived" : "active"}` : null;
 
@@ -70,16 +74,23 @@ export function useConversationList(
 	const refresh = useCallback(() => {
 		if (!currentUserId) return;
 		const scope = scopeRef.current;
+		const request = ++requestRef.current;
+		failedPageRef.current = false;
+		setIsLoading(true);
+		setError("");
 		void api
 			.listConversations(isShowingArchived)
 			.then((page) => {
-				if (scopeRef.current !== scope) return;
+				if (scopeRef.current !== scope || request !== requestRef.current) return;
 				setConversations(page.items);
 				setHasMore(page.hasMore);
 			})
 			.catch(() => {
-				// An offline refresh keeps the snapshot already on screen. Reconnect is
-				// another refresh path, so no timer or request loop is needed here.
+				if (scopeRef.current === scope && request === requestRef.current)
+					setError("Could not refresh conversations. Displayed conversations may be out of date.");
+			})
+			.finally(() => {
+				if (scopeRef.current === scope && request === requestRef.current) setIsLoading(false);
 			});
 	}, [currentUserId, isShowingArchived]);
 
@@ -93,6 +104,8 @@ export function useConversationList(
 		}
 
 		let isCurrent = true;
+		setIsLoading(true);
+		setError("");
 		setIsLoadingMore(false);
 		setConversations([]);
 		setHasMore(false);
@@ -131,11 +144,13 @@ export function useConversationList(
 		if (!cursor || isLoadingMore) return;
 
 		const scope = scopeRef.current;
+		const request = requestRef.current;
 		setIsLoadingMore(true);
+		setError("");
 		void api
 			.listConversations(isShowingArchived, cursor.id)
 			.then((page) => {
-				if (scopeRef.current !== scope) return;
+				if (scopeRef.current !== scope || request !== requestRef.current) return;
 				setConversations((current) => {
 					// De-duplicated by id rather than trusted: while this request was in
 					// flight a message could have moved one of these rows to the top,
@@ -147,7 +162,9 @@ export function useConversationList(
 				setHasMore(page.hasMore);
 			})
 			.catch(() => {
-				// Keep the accumulated local page when pagination loses the network.
+				if (scopeRef.current !== scope || request !== requestRef.current) return;
+				failedPageRef.current = true;
+				setError("Could not load more conversations. Try again.");
 			})
 			.finally(() => {
 				if (scopeRef.current === scope) setIsLoadingMore(false);
@@ -372,9 +389,16 @@ export function useConversationList(
 	);
 
 	return {
-		conversations,
+		conversations: loadedCacheScope === cacheScope ? conversations : [],
 		refresh,
-		paging: { hasMore, isLoadingMore, loadMore },
+		paging: {
+			hasMore,
+			isLoadingMore,
+			loadMore,
+			isLoading,
+			error,
+			retry: () => (failedPageRef.current ? loadMore() : refresh()),
+		},
 		isShowingArchived,
 		setIsShowingArchived,
 	} satisfies ConversationList;

@@ -23,6 +23,10 @@ export function ConversationMuteMenu({ isMuted, isSaving, onBack, onUnmute, onMu
 				<ArrowLeft className="size-4" />
 				Mute duration
 			</Button>
+			<p className="px-2.5 py-2 text-xs leading-normal text-ink-soft">
+				Mute silences alerts, not messages or the conversation's unread badge. Mentions can still notify you
+				unless a stronger privacy setting applies.
+			</p>
 			{isMuted && (
 				<Button
 					variant="ghost"

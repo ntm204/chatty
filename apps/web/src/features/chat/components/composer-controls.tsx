@@ -13,6 +13,7 @@ interface ComposerControlsProps {
 	/** True at the attachment cap: the picker is disabled rather than silently trimming. */
 	isFull: boolean;
 	canSend: boolean;
+	isSendBlocked?: boolean;
 	isEmojiPickerOpen: boolean;
 	isStickerTrayOpen: boolean;
 	onToggleEmojiPicker: () => void;
@@ -41,6 +42,7 @@ export function ComposerControls({
 	isVoiceActive,
 	isFull,
 	canSend,
+	isSendBlocked = false,
 	isEmojiPickerOpen,
 	isStickerTrayOpen,
 	onToggleEmojiPicker,
@@ -104,14 +106,12 @@ export function ComposerControls({
 				</Button>
 			</div>
 
-			{(!canSend || isVoiceActive) && (
-				<div className={cn("shrink-0", isVoiceActive && "min-w-0 flex-1")}>{voiceRecorder}</div>
-			)}
+			<div className={cn("shrink-0", isVoiceActive && "min-w-0 flex-1")}>{voiceRecorder}</div>
 
 			{!isVoiceActive && canSend && (
 				<Button
 					type="submit"
-					disabled={isDisabled || isSending}
+					disabled={isDisabled || isSending || isSendBlocked}
 					aria-label="Send message"
 					className="size-9 shrink-0 rounded-bubble p-0"
 				>

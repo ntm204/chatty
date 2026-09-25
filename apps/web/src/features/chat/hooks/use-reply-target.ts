@@ -1,8 +1,12 @@
 import type { MessageDTO } from "@chatty/shared-types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api } from "@/api/client";
+import { useSocketEvent } from "./use-socket-event";
 import type { ThreadMessage } from "../types/thread-message";
 
 interface ReplyTarget {
+	pendingReplyId: string | null;
+	replyError: string;
 	/** The message the composer is answering, or null. */
 	replyTo: MessageDTO | null;
 	setReplyTo: (message: MessageDTO | null) => void;
@@ -23,29 +27,70 @@ interface ReplyTarget {
  * of state that only make sense together, plus the effect that resolves one into
  * the other, is one subject rather than three lines of a page.
  *
- * The queue exists because a restored draft knows only an **id**. Setting
- * `replyTo` from it directly would need the message, which may not be on screen
- * yet, so the id waits here until the thread has loaded something matching.
+ * A restored draft knows only an id. Resolve it through the membership-scoped
+ * context endpoint without moving the reader's history window. A failed lookup
+ * keeps that id until deliberate retry/removal, never silently sends without it.
  */
-export function useReplyTarget(messages: ThreadMessage[]): ReplyTarget {
+export function useReplyTarget(messages: ThreadMessage[], conversationId: string | null): ReplyTarget {
 	const [replyTo, setReplyTo] = useState<MessageDTO | null>(null);
 	const [pendingReplyId, setPendingReplyId] = useState<string | null>(null);
-
-	useEffect(() => {
-		if (!pendingReplyId) return;
-		const target = messages.find((message) => message.id === pendingReplyId);
-		if (target) {
-			setReplyTo(target);
-			setPendingReplyId(null);
-		}
-	}, [messages, pendingReplyId]);
-
-	const currentReply = replyTo ? (messages.find((message) => message.id === replyTo.id) ?? replyTo) : null;
-
-	const clearReply = useCallback(() => {
+	const [replyError, setReplyError] = useState("");
+	const scopeRef = useRef(conversationId);
+	const requestRef = useRef(0);
+	useEffect(
+		() => () => {
+			requestRef.current += 1;
+		},
+		[],
+	);
+	if (scopeRef.current !== conversationId) {
+		scopeRef.current = conversationId;
+		requestRef.current += 1;
 		setReplyTo(null);
 		setPendingReplyId(null);
+		setReplyError("");
+	}
+	const selectReply = useCallback((message: MessageDTO | null) => {
+		requestRef.current += 1;
+		setReplyTo(message);
+		setPendingReplyId(null);
+		setReplyError("");
 	}, []);
+	const clearReply = useCallback(() => selectReply(null), [selectReply]);
+	const requestReplyTo = useCallback(
+		async (messageId: string) => {
+			const scope = scopeRef.current;
+			if (!scope) return;
+			const request = ++requestRef.current;
+			setReplyTo(null);
+			setPendingReplyId(messageId);
+			setReplyError("");
+			try {
+				const context = await api.getMessageContext(scope, messageId);
+				if (request !== requestRef.current || scope !== scopeRef.current) return;
+				const target = context.messages.find((message) => message.id === messageId);
+				if (!target) throw new Error("Unavailable reply");
+				selectReply(target);
+			} catch {
+				if (request !== requestRef.current || scope !== scopeRef.current) return;
+				setReplyError("The reply could not be restored. Try again or remove the reply to send your draft.");
+			}
+		},
+		[selectReply],
+	);
+	useSocketEvent("message:updated", (message) => {
+		if (message.conversationId !== conversationId) return;
+		if (message.id === replyTo?.id || message.id === pendingReplyId) selectReply(message);
+	});
+	useSocketEvent("message:hidden", (event) => {
+		if (event.conversationId !== conversationId) return;
+		if (event.messageId !== replyTo?.id && event.messageId !== pendingReplyId) return;
+		requestRef.current += 1;
+		setReplyTo(null);
+		setPendingReplyId(event.messageId);
+		setReplyError("This reply is no longer available. Remove the reply to send your draft.");
+	});
+	const currentReply = replyTo ? (messages.find((message) => message.id === replyTo.id) ?? replyTo) : null;
 
-	return { replyTo: currentReply, setReplyTo, requestReplyTo: setPendingReplyId, clearReply };
+	return { replyTo: currentReply, pendingReplyId, replyError, setReplyTo: selectReply, requestReplyTo, clearReply };
 }

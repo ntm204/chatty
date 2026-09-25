@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Button } from "@/components/button";
 import { useDialog } from "@/hooks/use-dialog";
 
@@ -40,10 +40,14 @@ export function ConfirmDialog({
 	onConfirm,
 	onCancel,
 }: ConfirmDialogProps) {
-	// `useDialog` re-binds its listener whenever this identity changes, and the
-	// caller usually passes an inline arrow.
-	const handleCancel = useCallback(() => onCancel(), [onCancel]);
+	// Escape must respect the same pending boundary as the disabled Cancel button.
+	const handleCancel = useCallback(() => {
+		if (!isConfirming) onCancel();
+	}, [onCancel, isConfirming]);
 	const dialogRef = useDialog<HTMLDivElement>(handleCancel);
+	useEffect(() => {
+		dialogRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+	}, [dialogRef]);
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/20 px-4 dark:bg-scrim/50">

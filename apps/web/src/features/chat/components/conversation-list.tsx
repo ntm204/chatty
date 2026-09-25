@@ -1,4 +1,5 @@
 import type { ConversationDTO } from "@chatty/shared-types";
+import { Check } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { MAX_UNREAD_BADGE_COUNT } from "../constants/conversation-list";
@@ -32,7 +33,11 @@ export function ConversationList({
 	paging,
 }: ConversationListProps) {
 	useMuteExpiry(conversations.map((conversation) => conversation.mutedUntil));
-	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(paging.hasMore, paging.isLoadingMore, paging.loadMore);
+	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(
+		paging.hasMore && !paging.error,
+		paging.isLoadingMore,
+		paging.loadMore,
+	);
 	const draftPreviews = useDraftPreviews(
 		currentUserId,
 		conversations.map((conversation) => conversation.id),
@@ -40,14 +45,32 @@ export function ConversationList({
 
 	if (conversations.length === 0) {
 		return (
-			<p className="px-5 py-6 text-[13px] text-ink-faint">
-				No conversations yet. Find someone above to start one.
-			</p>
+			<div className="px-5 py-6 text-[13px] text-ink-faint">
+				<p role={paging.error ? "alert" : "status"}>
+					{paging.error ||
+						(paging.isLoading
+							? "Loading conversations…"
+							: "No conversations here. Find someone above or switch your inbox view.")}
+				</p>
+				{paging.error && (
+					<Button variant="ghost" onClick={paging.retry}>
+						Retry conversations
+					</Button>
+				)}
+			</div>
 		);
 	}
 
 	return (
 		<ul className="conversation-list flex flex-col gap-1.5 px-3 pb-3">
+			{paging.error && (
+				<li className="p-3 text-sm text-signal">
+					<p role="alert">{paging.error}</p>
+					<Button variant="ghost" onClick={paging.retry}>
+						Retry conversations
+					</Button>
+				</li>
+			)}
 			{conversations.map((conversation) => {
 				const hasUnread = conversation.unreadCount > 0;
 				const isSelected = conversation.id === selectedConversationId;
@@ -90,6 +113,7 @@ export function ConversationList({
 							<span className="flex min-w-0 flex-1 flex-col">
 								<span className="flex min-w-0 items-baseline gap-3 pr-14">
 									<span
+										title={getConversationTitle(conversation, currentUserId)}
 										className={cn(
 											"min-w-0 truncate text-[14px] leading-5 text-ink",
 											hasUnread ? "font-semibold" : "font-medium",
@@ -97,6 +121,9 @@ export function ConversationList({
 									>
 										{getConversationTitle(conversation, currentUserId)}
 									</span>
+									{isSelected && (
+										<Check aria-hidden="true" className="size-3.5 shrink-0 text-ink-soft" />
+									)}
 								</span>
 								<span
 									className={cn("flex min-w-0 items-center gap-2", isMuted && !hasUnread && "pr-8")}
@@ -131,7 +158,7 @@ export function ConversationList({
 											</span>
 										)}
 										{lastMessage && !hasDraft && !isSomeoneTyping && (
-											<span className="shrink-0 text-ink-faint">
+											<span className="shrink-0 font-mono text-ink-faint">
 												· {formatRelativeTime(conversation.updatedAt)}
 											</span>
 										)}

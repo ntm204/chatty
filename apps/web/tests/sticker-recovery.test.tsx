@@ -70,6 +70,43 @@ it("keeps the tray open with a retryable sticker when sending fails", async () =
 	expect(onPick).toHaveBeenCalledTimes(2);
 });
 
+it("explains a full tray and re-enables adding after a removal without sending a sticker", async () => {
+	vi.mocked(api.listStickers).mockResolvedValue(
+		Array.from({ length: 60 }, (_, index) => ({
+			id: `sticker-${index}`,
+			width: 128,
+			height: 128,
+			url: "https://example.test/sticker.png",
+			createdAt: "2026-09-25T00:00:00Z",
+		})),
+	);
+	vi.mocked(api.removeSticker).mockResolvedValue(undefined);
+	const onPick = vi.fn();
+	render(<StickerTray onPick={onPick} onClose={vi.fn()} />);
+	await screen.findByText(/Your tray holds 60 stickers/);
+	expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+	fireEvent.click(screen.getAllByRole("button", { name: "Remove this sticker" })[0]!);
+	await waitFor(() => expect(screen.getByRole("button", { name: "Add" })).toBeEnabled());
+	expect(screen.getAllByRole("button", { name: "Send this sticker" })).toHaveLength(59);
+	expect(onPick).not.toHaveBeenCalled();
+});
+
+it("keeps composition Escape local and returns focus to the opener on ordinary Escape", async () => {
+	const opener = document.createElement("button");
+	document.body.append(opener);
+	opener.focus();
+	const close = vi.fn();
+	render(<StickerTray onPick={vi.fn()} onClose={close} />);
+	const tray = screen.getByRole("dialog", { name: "Stickers" });
+	await screen.findByRole("button", { name: "Send this sticker" });
+	fireEvent.keyDown(tray, { key: "Escape", isComposing: true });
+	expect(close).not.toHaveBeenCalled();
+	fireEvent.keyDown(tray, { key: "Escape" });
+	expect(close).toHaveBeenCalledOnce();
+	expect(opener).toHaveFocus();
+	opener.remove();
+});
+
 it("does not clear the next conversation reply when a previous sticker finishes sending", async () => {
 	let finishSend!: () => void;
 	const onCancelReply = vi.fn();
