@@ -1,6 +1,6 @@
 import type { ReactionEmoji } from "@chatty/shared-types";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { QUICK_REACTIONS } from "../constants/reactions";
@@ -36,6 +36,14 @@ interface ReactionBarProps {
  */
 export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 	const [isBrowsingAll, setIsBrowsingAll] = useState(false);
+	const menuRef = useRef<HTMLDivElement>(null);
+	const wasBrowsingRef = useRef(false);
+	useEffect(() => {
+		if (!isBrowsingAll && wasBrowsingRef.current) {
+			menuRef.current?.querySelector<HTMLButtonElement>("[data-more-emoji]")?.focus();
+		}
+		wasBrowsingRef.current = isBrowsingAll;
+	}, [isBrowsingAll]);
 	const anchor = cn(
 		"absolute bottom-full z-30 mb-2",
 		align === "end" ? "right-0 origin-bottom-right" : "left-0 origin-bottom-left",
@@ -47,6 +55,7 @@ export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 
 	return (
 		<div
+			ref={menuRef}
 			role="menu"
 			aria-label="React to message"
 			className={cn(
@@ -83,6 +92,7 @@ export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 				role="menuitem"
 				onClick={() => setIsBrowsingAll(true)}
 				aria-label="Choose another emoji"
+				data-more-emoji
 				className="size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
 			>
 				<Plus className="size-4" />

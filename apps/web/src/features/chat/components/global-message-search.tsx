@@ -122,7 +122,7 @@ export function GlobalMessageSearch({
 						</p>
 					)}
 					{error && (
-						<Button variant="ghost" onClick={results.length ? loadMore : retry}>
+						<Button variant="ghost" onClick={retry}>
 							Try again
 						</Button>
 					)}

@@ -37,7 +37,14 @@ test("global search opens a message in an archived conversation outside the load
 		await page.getByRole("button", { name: "Search all messages", exact: true }).click();
 		const dialog = page.getByRole("dialog", { name: "Search all messages" });
 		await dialog.getByRole("textbox", { name: "Search all messages" }).fill("da nang");
+		await expect(dialog.locator("ul > li")).toHaveCount(20);
+		await context.setOffline(true);
 		await dialog.getByRole("button", { name: "More results" }).click();
+		await expect(dialog.getByRole("alert")).toContainText("Connect to load more");
+		await expect(dialog.locator("ul > li")).toHaveCount(20);
+		await context.setOffline(false);
+		await dialog.getByRole("button", { name: "Try again" }).click();
+		await expect(dialog.locator("ul > li")).toHaveCount(24);
 		const result = dialog.getByRole("button", { name: /Tài liệu chuyến đi Đà Nẵng/u });
 		await result.scrollIntoViewIfNeeded();
 		await expect(result.locator("mark")).toHaveText("Đà Nẵng");

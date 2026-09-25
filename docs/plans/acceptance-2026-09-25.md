@@ -7,12 +7,34 @@ Sổ XP: **40 done, 11 partial, 9 planned**; kết quả test không tự nâng 
 Lượt này đưa XP-60 từ planned sang partial nhờ nghiệm thu local và hợp nhất tài liệu,
 không đánh dấu done khi ma trận thiết bị thật và các tiêu chí còn lại chưa hoàn tất.
 [Experience polish](experience-polish.md) giữ tiêu chí gốc và trạng thái từng ID.
-Checkpoint trước chuỗi sửa là `22a388a`; báo cáo này xét cả phần thay đổi chưa commit sau checkpoint.
+Checkpoint trước chuỗi sửa là `22a388a`; phần nghiệm thu ban đầu đã được lưu trong
+`4ca3034`, `ee95090`, `82b0e05`. Đợt tiếp nối bên dưới được người dùng yêu cầu commit/push riêng.
 
 Phạm vi kiểm tra: cổng chất lượng toàn repo, API/PostgreSQL, luồng browser xuyên suốt,
 bản web build với CSP production, các đường phục hồi và quyền liên quan thay đổi,
 đối chiếu tài liệu và dọn file trùng. Không triển khai hosting/domain, không phát hành,
-không commit/push. Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
+Đợt nghiệm thu ban đầu không commit/push; đợt tiếp nối có yêu cầu đẩy code.
+Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
+
+## Tiếp nối nhỏ: bàn phím menu và Retry tìm kiếm
+
+- XP-51: menu không chiếm phím khi focus ở ngoài hoặc đang composition; Escape trả đúng
+  nút mở. Picker emoji lồng đóng trước, trả focus về nút chọn thêm rồi mới đóng reaction menu.
+- XP-56: tải trang tiếp khi offline báo cần kết nối nhưng giữ kết quả đã tải. Retry dùng lại
+  cursor của trang lỗi ở cả tìm kiếm toàn cục và trong hội thoại, kể cả khi live event ẩn hết
+  kết quả cũ. Bấm Retry liên tiếp không tạo hai request phân trang đồng thời.
+- Không thêm file tổng hợp. README bổ sung cách mở thư mục, chạy hai terminal và kiểm tra
+  database/port; không tạo hosting/domain hoặc đụng vào database phát triển đang chạy.
+- Sổ XP giữ **40 done / 11 partial / 9 planned**: đây là các ca con đã xử lý, không đánh dấu
+  hoàn tất toàn bộ tiêu chí XP-51/56 hoặc kiểm thử thiết bị thật.
+
+Kiểm chứng riêng đợt tiếp nối: `npm run verify` đạt (162 test web liên quan / 12 file;
+không có thay đổi server nên changed-suite server không chạy test), typecheck/lint/format
+và audit quy ước 0 hit. Hai spec `global-search` và `search-input-polish` đạt **3/3 Chromium**
+và **3/3 WebKit**, retries 0. Build web đạt; chunk chính 604,49 kB / gzip 178,78 kB,
+cảnh báo kích thước vẫn còn thuộc XP-59. Không gọi đây là lượt chạy lại full suite.
+Logs: `/tmp/chatty-easy-verify.log`, `/tmp/chatty-easy-chromium.log`,
+`/tmp/chatty-easy-webkit.log`, `/tmp/chatty-easy-build.log`.
 
 ## Bằng chứng của lần rà cuối
 

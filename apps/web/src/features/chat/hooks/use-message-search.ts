@@ -33,6 +33,7 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 	const updatesRef = useRef(new Map<string, MessageDTO>());
 	const hiddenRef = useRef(new Set<string>());
 	const cursorRef = useRef<MessageDTO | null>(null);
+	const retryPageRef = useRef(false);
 
 	function reconcile(found: MessageSearchResultDTO[]) {
 		return found.flatMap((result) => {
@@ -52,6 +53,7 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 		updatesRef.current.clear();
 		hiddenRef.current.clear();
 		cursorRef.current = null;
+		retryPageRef.current = false;
 		loadingMoreRef.current = false;
 		setResults([]);
 		setHasMore(false);
@@ -93,6 +95,12 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 	function loadMore() {
 		const oldest = cursorRef.current;
 		if (!oldest || !hasMore || isSearching || loadingMoreRef.current) return;
+		retryPageRef.current = true;
+		if (!navigator.onLine) {
+			setError("Connect to load more results. Previously loaded results are still available.");
+
+			return;
+		}
 		const generation = generationRef.current;
 		loadingMoreRef.current = true;
 		setIsLoadingMore(true);
@@ -109,6 +117,7 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 					return [...current, ...added.filter((result) => !known.has(result.message.id))];
 				});
 				setHasMore(page.hasMore);
+				retryPageRef.current = false;
 			})
 			.catch((caught: Error) => {
 				if (generation === generationRef.current) setError(caught.message);
@@ -167,6 +176,9 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 		hasMore,
 		isLoadingMore,
 		loadMore,
-		retry: () => setRetryCount((current) => current + 1),
+		retry: () => {
+			if (retryPageRef.current) loadMore();
+			else if (!isSearching) setRetryCount((current) => current + 1);
+		},
 	};
 }

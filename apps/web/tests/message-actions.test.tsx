@@ -13,6 +13,7 @@ describe("MessageActions", () => {
 		render(
 			<MessageActions
 				onEdit={vi.fn()}
+				onToggleReaction={vi.fn()}
 				onDeleteForEveryone={vi.fn()}
 				onDeleteForMe={vi.fn()}
 				myReaction={null}
@@ -35,6 +36,7 @@ describe("MessageActions", () => {
 		render(
 			<MessageActions
 				onEdit={vi.fn()}
+				onToggleReaction={vi.fn()}
 				onDeleteForEveryone={vi.fn()}
 				onDeleteForMe={vi.fn()}
 				myReaction={null}
@@ -44,12 +46,48 @@ describe("MessageActions", () => {
 		);
 		const trigger = screen.getByLabelText("Message actions");
 		fireEvent.click(trigger);
+		trigger.focus();
 		fireEvent.keyDown(document, { key: "ArrowDown" });
 		expect(screen.getByRole("menuitem", { name: "Edit message" })).toHaveFocus();
 		fireEvent.keyDown(document, { key: "ArrowDown" });
 		expect(screen.getByRole("menuitem", { name: "Delete message" })).toHaveFocus();
 
 		fireEvent.keyDown(document, { key: "Escape" });
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(trigger).toHaveFocus();
+	});
+
+	it("leaves outside focus and IME alone, and closes the nested picker before its menu", () => {
+		render(
+			<>
+				<input aria-label="Outside" />
+				<MessageActions
+					onDeleteForMe={vi.fn()}
+					onToggleReaction={vi.fn()}
+					myReaction={null}
+					authorActionExpiresAt={null}
+					align="end"
+				/>
+			</>,
+		);
+		const trigger = screen.getByRole("button", { name: "React to message" });
+		fireEvent.click(trigger);
+		const outside = screen.getByLabelText("Outside");
+		outside.focus();
+		expect(fireEvent.keyDown(outside, { key: "ArrowDown" })).toBe(true);
+		expect(outside).toHaveFocus();
+		trigger.focus();
+		fireEvent.keyDown(trigger, { key: "Escape", isComposing: true });
+		expect(screen.getByRole("menu")).toBeInTheDocument();
+		fireEvent.click(screen.getByRole("menuitem", { name: "Choose another emoji" }));
+		const picker = screen.getByRole("dialog", { name: "Choose an emoji" });
+		const input = picker.querySelector("input")!;
+		input.focus();
+		expect(fireEvent.keyDown(input, { key: "ArrowLeft" })).toBe(true);
+		fireEvent.keyDown(input, { key: "Escape" });
+		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+		expect(screen.getByRole("menuitem", { name: "Choose another emoji" })).toHaveFocus();
+		fireEvent.keyDown(document.activeElement!, { key: "Escape" });
 		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 		expect(trigger).toHaveFocus();
 	});

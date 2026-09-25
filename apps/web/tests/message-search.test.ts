@@ -60,8 +60,15 @@ it("reports a failed page and retries without losing the existing results", asyn
 	await act(async () => view.result.current.loadMore());
 	expect(view.result.current.error).toBe("Offline");
 	expect(view.result.current.results).toHaveLength(1);
-	await act(async () => view.result.current.loadMore());
+	await act(async () => view.result.current.retry());
 	expect(view.result.current.results).toHaveLength(2);
+	expect(api.searchMessages).toHaveBeenLastCalledWith(
+		"query",
+		20,
+		"conversation-1",
+		result("first").message.createdAt,
+		"first",
+	);
 	expect(view.result.current.error).toBe("");
 	act(() => view.result.current.setQuery(""));
 	expect(view.result.current.results).toEqual([]);
@@ -86,4 +93,31 @@ it("does not revive a retracted result from a response already in flight", async
 	await act(async () => finish({ results: [result("secret")], hasMore: false }));
 	expect(view.result.current.results).toEqual([]);
 	expect(api.searchMessages).toHaveBeenCalledWith("secret", 20, undefined);
+});
+
+it("keeps the pagination cursor offline even when all loaded results are hidden", async () => {
+	const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+	const search = vi
+		.spyOn(api, "searchMessages")
+		.mockResolvedValueOnce({ results: [result("first")], hasMore: true })
+		.mockResolvedValueOnce({ results: [result("second")], hasMore: false });
+	const view = renderHook(() => useMessageSearch("conversation-1"));
+	act(() => view.result.current.setQuery("query"));
+	await act(() => vi.advanceTimersByTimeAsync(500));
+	online.mockReturnValue(false);
+	act(() => view.result.current.loadMore());
+	expect(search).toHaveBeenCalledTimes(1);
+	expect(view.result.current.error).toContain("Connect to load more");
+	expect(view.result.current.results).toHaveLength(1);
+	act(() => handlers.get("message:hidden")?.({ conversationId: "conversation-1", messageId: "first" }));
+	expect(view.result.current.hasNoResults).toBe(false);
+	online.mockReturnValue(true);
+	await act(async () => {
+		view.result.current.retry();
+		view.result.current.retry();
+	});
+	expect(search).toHaveBeenCalledTimes(2);
+	expect(search).toHaveBeenLastCalledWith("query", 20, "conversation-1", result("first").message.createdAt, "first");
+	expect(view.result.current.results.map((found) => found.message.id)).toEqual(["second"]);
+	expect(view.result.current.error).toBe("");
 });

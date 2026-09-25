@@ -8,6 +8,9 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Keep message-menu keyboard handling within its focused layer, respect IME, and restore the correct action/reaction opener after Escape.
+- Retry the failed search page without clearing loaded results, including offline pagination and results hidden by live events.
+
 - Update vulnerable runtime dependencies (multer, nodemailer and sharp) and ESLint's transitive js-yaml dependency within existing major versions.
 - Restore sidebar-menu focus after a rejected mutation and keep Escape within that menu.
 - Schedule composer resize writes outside ResizeObserver delivery and cancel pending frames on cleanup.

@@ -59,7 +59,7 @@ web suite does not fail a test — it fails to start, with an error from deep in
 nothing like a version problem.
 
 ```bash
-npm install
+npm ci
 # First setup only: copy .env.example to apps/server/.env (do not overwrite an existing file).
 # PowerShell: Copy-Item .env.example apps/server/.env
 # macOS/Linux: cp .env.example apps/server/.env
@@ -68,7 +68,21 @@ npx prisma generate --schema apps/server/prisma/schema.prisma
 npm run db:migrate --workspace apps/server
 ```
 
+Open the repository folder in your editor (VS Code: **File → Open Folder → chatty**),
+and open terminals in that folder, where this README and the root `package.json` live.
+Start Docker Desktop before the setup commands. Keep an existing `apps/server/.env`;
+never replace it just to restart the app. Install/generate/migrate are setup or update
+steps, not commands to repeat every time you open a terminal.
+
+Before starting Postgres, check `docker compose ps` and `docker compose port postgres 5432`.
+The host-run API needs PostgreSQL reachable at the address in `DATABASE_URL` (the example
+uses `localhost:5432`). A running container with no published host port is not enough.
+Do not start another Postgres against the same `.data/postgres` directory or delete that
+directory to resolve a port conflict; inspect the existing container/Compose configuration first.
+
 For everyday development, run these in two terminals at the repository root:
+
+First ensure the local services are running: `docker compose up -d postgres mailpit`.
 
 ```bash
 npm run dev:server      # terminal 1: API + WebSocket on http://localhost:4000

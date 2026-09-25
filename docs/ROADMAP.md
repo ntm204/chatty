@@ -92,6 +92,10 @@ text preservation beside mixed media. Partial group additions retry only unfinis
 The two-tab outbox regression now covers both text and image bytes and checks durable queue cleanup.
 The current delivery scope remains local app completion and deploy-readiness, not public hosting/domain setup.
 
+The small follow-up closes keyboard ownership/focus gaps in message and nested reaction menus,
+and preserves loaded search results and their cursor during offline pagination/Retry.
+These complete bounded cases within XP-51/56, not the full remaining keyboard/offline matrix.
+
 The vault continuation preserves loaded category depth through live refresh and retries the failed
 request from its original cursor. Retraction/hide removes only the affected rows immediately;
 membership loss clears visible content. Bookmark edits also refresh the loaded window instead of

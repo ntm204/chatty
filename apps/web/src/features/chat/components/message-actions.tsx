@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { MAX_BROWSER_TIMEOUT_MS } from "../constants/message";
+import { useClampedMessageMenu } from "../hooks/use-clamped-message-menu";
 import { formatRemaining } from "../utils";
 import type { OpenMessagePanel } from "../types/message-actions";
 import { MessageActionsMenu } from "./message-actions-menu";
@@ -66,6 +67,7 @@ export function MessageActions({
 		() => !authorActionExpiresAt || Date.parse(authorActionExpiresAt) <= Date.now(),
 	);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const triggerRef = useRef<HTMLButtonElement | null>(null);
 	useClampedMessageMenu(rootRef, openPanel, isChoosingDeleteScope);
 
 	useEffect(() => {
@@ -117,9 +119,20 @@ export function MessageActions({
 		}
 
 		function closeFromKeyboard(event: KeyboardEvent) {
+			const active = document.activeElement;
+			if (
+				event.defaultPrevented ||
+				event.isComposing ||
+				event.keyCode === 229 ||
+				!rootRef.current?.contains(active) ||
+				(active instanceof Element && active.closest("[role='dialog']"))
+			) {
+				return;
+			}
 			if (event.key === "Escape") {
+				event.preventDefault();
 				close();
-				rootRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")?.focus();
+				triggerRef.current?.focus();
 
 				return;
 			}
@@ -130,7 +143,7 @@ export function MessageActions({
 			const previousKeys = ["ArrowUp", "ArrowLeft"];
 			const nextKeys = ["ArrowDown", "ArrowRight"];
 			if (!rootRef.current || ![...previousKeys, ...nextKeys, "Home", "End"].includes(event.key)) return;
-			const items = [...rootRef.current.querySelectorAll<HTMLButtonElement>("[role='menuitem']")];
+			const items = [...rootRef.current.querySelectorAll<HTMLButtonElement>("[role='menuitem']:not(:disabled)")];
 			if (items.length === 0) return;
 			event.preventDefault();
 			const currentIndex = items.findIndex((item) => item === document.activeElement);
@@ -141,12 +154,12 @@ export function MessageActions({
 		}
 
 		document.addEventListener("pointerdown", closeFromOutside);
-		document.addEventListener("keydown", closeFromKeyboard);
+		document.addEventListener("keydown", closeFromKeyboard, true);
 
 		return () => {
 			window.cancelAnimationFrame(focusFrame);
 			document.removeEventListener("pointerdown", closeFromOutside);
-			document.removeEventListener("keydown", closeFromKeyboard);
+			document.removeEventListener("keydown", closeFromKeyboard, true);
 		};
 	}, [openPanel, isChoosingDeleteScope]);
 
@@ -156,7 +169,8 @@ export function MessageActions({
 	// costs more than the minute of precision it would buy.
 	const remainingLabel = openPanel === "menu" && canChangeForEveryone ? formatRemaining(authorActionExpiresAt) : null;
 
-	function toggle(panel: Exclude<OpenMessagePanel, null>) {
+	function toggle(panel: Exclude<OpenMessagePanel, null>, trigger: HTMLButtonElement) {
+		triggerRef.current = trigger;
 		setOpenPanel((current) => (current === panel ? null : panel));
 		setIsChoosingDeleteScope(false);
 	}
@@ -177,7 +191,7 @@ export function MessageActions({
 			{onToggleReaction && (
 				<Button
 					variant="ghost"
-					onClick={() => toggle("reactions")}
+					onClick={(event) => toggle("reactions", event.currentTarget)}
 					disabled={isPending}
 					aria-label="React to message"
 					aria-haspopup="menu"
@@ -204,7 +218,7 @@ export function MessageActions({
 
 			<Button
 				variant="ghost"
-				onClick={() => toggle("menu")}
+				onClick={(event) => toggle("menu", event.currentTarget)}
 				disabled={isPending}
 				aria-label="Message actions"
 				aria-haspopup="menu"
@@ -223,6 +237,7 @@ export function MessageActions({
 					align={align}
 					onPick={(emoji) => {
 						setOpenPanel(null);
+						triggerRef.current?.focus();
 						onToggleReaction(emoji);
 					}}
 				/>
@@ -259,4 +274,3 @@ export function MessageActions({
 		</div>
 	);
 }
-import { useClampedMessageMenu } from "../hooks/use-clamped-message-menu";
