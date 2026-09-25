@@ -9,6 +9,8 @@ export function NotificationSettings() {
 	const permission = useNotificationSetting((state) => state.permission);
 	const enable = useNotificationSetting((state) => state.enable);
 	const disable = useNotificationSetting((state) => state.disable);
+	const isMessagePreviewEnabled = useNotificationSetting((state) => state.isMessagePreviewEnabled);
+	const setMessagePreviewEnabled = useNotificationSetting((state) => state.setMessagePreviewEnabled);
 	const isSoundEnabled = useSoundSetting((state) => state.isEnabled);
 	const enableSound = useSoundSetting((state) => state.enable);
 	const disableSound = useSoundSetting((state) => state.disable);
@@ -54,16 +56,29 @@ export function NotificationSettings() {
 								come back.
 							</p>
 						) : (
-							<div className="flex items-center gap-3">
-								<Button
-									variant={isEnabled ? "outline" : "primary"}
-									onClick={isEnabled ? disable : () => void enable()}
-								>
-									{isEnabled ? "Turn notifications off" : "Turn notifications on"}
-								</Button>
-								<span className="eyebrow text-ink-faint">
-									{isEnabled ? "On for this browser" : "Off"}
-								</span>
+							<div className="flex flex-col gap-3">
+								<div className="flex items-center gap-3">
+									<Button
+										variant={isEnabled ? "outline" : "primary"}
+										onClick={isEnabled ? disable : () => void enable()}
+									>
+										{isEnabled ? "Turn notifications off" : "Turn notifications on"}
+									</Button>
+									<span className="eyebrow text-ink-faint">
+										{isEnabled ? "On for this browser" : "Off"}
+									</span>
+								</div>
+								<div className="flex flex-wrap items-center gap-3">
+									<Button
+										variant={isMessagePreviewEnabled ? "outline" : "primary"}
+										onClick={() => setMessagePreviewEnabled(!isMessagePreviewEnabled)}
+									>
+										{isMessagePreviewEnabled ? "Hide message preview" : "Show message preview"}
+									</Button>
+									<span className="eyebrow text-ink-faint">
+										{isMessagePreviewEnabled ? "Sender and text shown" : "Details hidden"}
+									</span>
+								</div>
 							</div>
 						)}
 					</>

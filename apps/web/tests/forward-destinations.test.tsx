@@ -1,4 +1,5 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { useForwardDestinations } from "@/features/chat/hooks/use-forward-destinations";
@@ -48,7 +49,7 @@ it("keeps a failed page's existing rows and retries the same cursor", async () =
 	expect(api.searchConversations).toHaveBeenLastCalledWith("", "first");
 });
 
-it("retains a forwarding identity on failure and contains focus while open", async () => {
+it("retains a forwarding identity on failure and focuses confirmation on success", async () => {
 	vi.mocked(api.searchConversations).mockResolvedValue({
 		items: [makeConversation({ id: "target", isGroup: true, name: "Archived group", isArchived: true })],
 		hasMore: false,
@@ -64,10 +65,41 @@ it("retains a forwarding identity on failure and contains focus while open", asy
 	expect(onClose).not.toHaveBeenCalled();
 	fireEvent.click(destination);
 	await screen.findByText("Forwarded to Archived group.");
+	expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
 	expect(onClose).not.toHaveBeenCalled();
 	fireEvent.click(screen.getByRole("button", { name: "Done" }));
 	expect(onClose).toHaveBeenCalledTimes(1);
 	const calls = vi.mocked(api.forwardMessage).mock.calls;
 	expect(calls[0]?.[2]).toBeTruthy();
 	expect(calls[1]?.[2]).toBe(calls[0]?.[2]);
+});
+
+it("keeps focus inside the panel and blocks dismissal until forwarding finishes", async () => {
+	const user = userEvent.setup();
+	vi.mocked(api.searchConversations).mockResolvedValue({
+		items: [makeConversation({ id: "target", isGroup: true, name: "Target group" })],
+		hasMore: false,
+	});
+	let finishForward!: (message: Awaited<ReturnType<typeof api.forwardMessage>>) => void;
+	vi.mocked(api.forwardMessage).mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				finishForward = resolve;
+			}),
+	);
+	const onClose = vi.fn();
+	render(<ForwardMessagePanel message={makeMessage("source", "me", "hello")} currentUserId="me" onClose={onClose} />);
+	await user.click(await screen.findByRole("button", { name: /Target group/ }));
+	await user.tab();
+	expect(screen.getByRole("dialog", { name: "Forward message" })).toHaveFocus();
+	await user.tab({ shift: true });
+	expect(screen.getByRole("dialog", { name: "Forward message" })).toHaveFocus();
+	await user.keyboard("{Escape}");
+	expect(onClose).not.toHaveBeenCalled();
+	await act(async () => {
+		finishForward(makeMessage("forward", "me", "hello"));
+	});
+	expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
+	await user.keyboard("{Enter}");
+	expect(onClose).toHaveBeenCalledTimes(1);
 });

@@ -236,6 +236,15 @@ export async function readLocalOutbox(userId: string, conversationId: string): P
 	return records.sort((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
 
+/** Reads one account's durable sends so a closed thread cannot strand them. */
+export async function readLocalOutboxForUser(userId: string): Promise<LocalOutboxMessage[]> {
+	const records = await readIndex<LocalOutboxMessage>(OUTBOX_STORE, "by-user", userId);
+
+	return records.sort(
+		(left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
+	);
+}
+
 export async function removeLocalMessage(messageId: string): Promise<void> {
 	await deleteRecord(OUTBOX_STORE, messageId);
 }

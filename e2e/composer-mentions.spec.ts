@@ -47,6 +47,12 @@ test("mention completion preserves text after the caret and supports keyboard se
 	await field.press("Escape");
 	await expect(page.getByRole("listbox")).toHaveCount(0);
 	await expect(field).toHaveValue("@Mention");
+	for (const text of ["mention@example.com", "https://example.com/@Mention"]) {
+		await field.fill(text);
+		await field.press("End");
+		await expect(page.getByRole("listbox", { name: "Mention suggestions" })).toHaveCount(0);
+		await expect(field).toHaveValue(text);
+	}
 	await context.close();
 	await otherContext.close();
 	await thirdContext.close();

@@ -102,6 +102,9 @@
 .conversation-pane .conversation-header > button {
 	background: color-mix(in srgb, var(--color-paper) 76%, transparent);
 }
+.conversation-pane .conversation-message-search:focus-within {
+	border-color: var(--color-ink);
+}
 .conversation-message-content {
 	padding-top: var(--conversation-chrome-height);
 }

@@ -49,3 +49,4 @@ export { PinnedMessagesDialog } from "./pinned-messages-dialog";
 export { PinnedMessagesList } from "./pinned-messages-list";
 
 export { GlobalMessageSearch } from "./global-message-search";
+export { ConversationActionError } from "./conversation-action-error";

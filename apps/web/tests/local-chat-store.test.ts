@@ -9,6 +9,7 @@ import {
 	enqueueLocalMessage,
 	readCachedCurrentUser,
 	readConversationPage,
+	readLocalOutboxForUser,
 	readLocalOutbox,
 	readMessageSnapshot,
 	removeLocalMessage,
@@ -110,6 +111,38 @@ describe("local chat store", () => {
 
 		await removeLocalMessage(record.id);
 		await expect(readLocalOutbox("sender", "thread")).resolves.toEqual([]);
+	});
+
+	it("reads one account's queued messages across conversations in creation order", async () => {
+		const user = makeCurrentUser({ id: "outbox-index-user" });
+		const first = {
+			id: "draft:first",
+			userId: user.id,
+			conversationId: "first-thread",
+			author: user,
+			content: "First",
+			replyTo: null,
+			mentionedUserIds: [],
+			createdAt: "2026-09-18T10:00:00.000Z",
+			attachments: [],
+		};
+		const second = {
+			...first,
+			id: "draft:second",
+			conversationId: "second-thread",
+			content: "Second",
+			createdAt: "2026-09-18T10:01:00.000Z",
+		};
+		const anotherUser = { ...first, id: "draft:other", userId: "another-user" };
+
+		await enqueueLocalMessage(second);
+		await enqueueLocalMessage(anotherUser);
+		await enqueueLocalMessage(first);
+
+		await expect(readLocalOutboxForUser(user.id)).resolves.toMatchObject([first, second]);
+		await removeLocalMessage(first.id);
+		await removeLocalMessage(second.id);
+		await removeLocalMessage(anotherUser.id);
 	});
 
 	it("removes one signed-out user's local profile and chat data", async () => {

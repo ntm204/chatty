@@ -73,6 +73,8 @@ test.describe("account", () => {
 
 		await page.getByRole("button", { name: "Close settings" }).click();
 		await page.getByLabel("Sign out").click();
+		// The mounted login form is inert until the welcome curtain is dismissed.
+		await page.getByRole("button", { name: "Skip intro" }).click();
 
 		await page.getByLabel("Email").fill(user.email);
 		await page.getByLabel("Password").fill("BrandNewSecret456");

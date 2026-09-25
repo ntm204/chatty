@@ -5,7 +5,7 @@ import { ChangePasswordForm } from "@/features/profile/components/change-passwor
 
 const changePassword = vi.fn();
 const storeSession = vi.fn();
-const closeSocket = vi.fn();
+const reconnectSocket = vi.fn();
 
 vi.mock("@/api/client", () => ({
 	api: {
@@ -13,20 +13,21 @@ vi.mock("@/api/client", () => ({
 	},
 	// `useAuth` reaches for these as well, and the form goes through the store
 	// rather than calling the API itself — because a password change replaces
-	// this session's token and drops its socket.
+	// this session's token and reauthenticates its socket.
 	storeSession: (token: string) => storeSession(token),
 	getStoredToken: () => null,
 	clearStoredToken: () => undefined,
 }));
 
 vi.mock("@/lib/socket", () => ({
-	closeSocket: () => closeSocket(),
+	closeSocket: vi.fn(),
+	reconnectSocket: () => reconnectSocket(),
 }));
 
 beforeEach(() => {
 	changePassword.mockReset().mockResolvedValue({ token: "replacement-token" });
 	storeSession.mockReset();
-	closeSocket.mockReset();
+	reconnectSocket.mockReset();
 });
 
 /** Fills all three fields and submits. */
@@ -85,10 +86,9 @@ describe("ChangePasswordForm", () => {
 		expect(changePassword).not.toHaveBeenCalled();
 	});
 
-	it("stores the replacement token and drops the socket", async () => {
-		// The request that changed the password invalidated the token it was made
-		// with. Without both of these the user is signed out of their own tab and
-		// the socket reconnects forever with a token the server now refuses.
+	it("stores the replacement token and reconnects the existing socket", async () => {
+		// The server ended the old socket session. Reauthentication must use the
+		// replacement token while retaining the mounted chat's subscriptions.
 		const typist = userEvent.setup();
 		render(<ChangePasswordForm />);
 
@@ -96,7 +96,7 @@ describe("ChangePasswordForm", () => {
 
 		expect(await screen.findByText(/password changed/i)).toBeInTheDocument();
 		expect(storeSession).toHaveBeenCalledWith("replacement-token");
-		expect(closeSocket).toHaveBeenCalled();
+		expect(reconnectSocket).toHaveBeenCalled();
 	});
 
 	it("says the other sessions were signed out", async () => {

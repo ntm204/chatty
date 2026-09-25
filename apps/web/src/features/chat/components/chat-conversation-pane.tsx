@@ -33,6 +33,8 @@ interface ChatConversationPaneProps {
 	onOpenMessage: (messageId: string) => void;
 	onReturnToGlobalSearch?: (() => void) | undefined;
 	loadError: string;
+	navigationError?: string;
+	onDismissNavigationError?: () => void;
 	hasUnsavedMessages?: boolean;
 	onRetryLoad: () => void;
 	messageListProps: ComponentProps<typeof MessageList>;
@@ -57,6 +59,8 @@ export function ChatConversationPane({
 	onOpenMessage,
 	onReturnToGlobalSearch,
 	loadError,
+	navigationError = "",
+	onDismissNavigationError,
 	hasUnsavedMessages = false,
 	onRetryLoad,
 	messageListProps,
@@ -131,18 +135,37 @@ export function ChatConversationPane({
 						)}
 					</div>
 
-					<div className="min-h-0 flex-1">
-						{loadError ? (
-							<ThreadLoadError message={loadError} onRetry={onRetryLoad} />
-						) : (
-							<MessageList
-								{...messageListProps}
-								typingMessage={getTypingMessage(
-									typingUserIds.filter((userId) => userId !== currentUserId),
-									conversation.participants,
+					<div className="flex min-h-0 flex-1 flex-col">
+						{navigationError && (
+							<div
+								role="status"
+								className="flex shrink-0 items-center justify-between gap-3 border-b border-rule bg-paper-raised px-4 py-2 text-[13px] text-ink-soft"
+							>
+								<p>{navigationError}</p>
+								{onDismissNavigationError && (
+									<Button
+										variant="ghost"
+										onClick={onDismissNavigationError}
+										className="shrink-0 px-2 py-1 text-xs"
+									>
+										Dismiss
+									</Button>
 								)}
-							/>
+							</div>
 						)}
+						<div className="min-h-0 flex-1">
+							{loadError ? (
+								<ThreadLoadError message={loadError} onRetry={onRetryLoad} />
+							) : (
+								<MessageList
+									{...messageListProps}
+									typingMessage={getTypingMessage(
+										typingUserIds.filter((userId) => userId !== currentUserId),
+										conversation.participants,
+									)}
+								/>
+							)}
+						</div>
 					</div>
 					{hasUnsavedMessages && (
 						<p role="status" className="shrink-0 px-4 py-2 text-xs text-signal">

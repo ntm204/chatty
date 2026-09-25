@@ -66,6 +66,36 @@ describe("ConversationMessageSearch", () => {
 		expect(onClose).toHaveBeenCalledOnce();
 	});
 
+	it("moves between results with the arrow keys and applies the current result with Enter", async () => {
+		const onSelectResult = vi.fn();
+		render(
+			<ConversationMessageSearch
+				conversationId="c1"
+				onSelectResult={onSelectResult}
+				onClearResult={vi.fn()}
+				onClose={vi.fn()}
+			/>,
+		);
+
+		const box = screen.getByLabelText("Search in conversation");
+		await userEvent.type(box, "deployment");
+		await vi.advanceTimersByTimeAsync(500);
+		await waitFor(() => expect(screen.getByText("1 of 2")).toBeInTheDocument());
+		onSelectResult.mockClear();
+
+		await userEvent.keyboard("{ArrowDown}");
+		expect(screen.getByText("2 of 2")).toBeInTheDocument();
+		expect(onSelectResult).toHaveBeenLastCalledWith({ query: "deployment", results, activeIndex: 1 });
+
+		await userEvent.keyboard("{Enter}");
+		expect(onSelectResult).toHaveBeenCalledTimes(2);
+		expect(onSelectResult).toHaveBeenLastCalledWith({ query: "deployment", results, activeIndex: 1 });
+
+		await userEvent.keyboard("{ArrowUp}");
+		expect(screen.getByText("1 of 2")).toBeInTheDocument();
+		expect(onSelectResult).toHaveBeenLastCalledWith({ query: "deployment", results, activeIndex: 0 });
+	});
+
 	it("loads the next stable cursor page from the oldest result", async () => {
 		const olderResult = {
 			...results[1]!,

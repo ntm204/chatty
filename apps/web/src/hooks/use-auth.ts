@@ -4,7 +4,7 @@ import { api, clearStoredToken, getStoredToken, NetworkUnavailableError, storeSe
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { cacheCurrentUser, clearLocalUserData, readCachedCurrentUser } from "@/lib/local-chat-store";
-import { closeSocket } from "@/lib/socket";
+import { closeSocket, reconnectSocket } from "@/lib/socket";
 
 interface AuthState {
 	currentUser: CurrentUserDTO | null;
@@ -18,9 +18,8 @@ interface AuthState {
 	 * Here rather than in the form because it is a session operation, not a
 	 * profile one: the server invalidates every token on the account, so the
 	 * replacement has to be stored and the socket — which authenticated with the
-	 * old one and has just been disconnected by the server — has to be dropped so
-	 * the next consumer opens a fresh one. `logout` is in this store for exactly
-	 * the same reason.
+	 * old one and has just been disconnected by the server — must reauthenticate
+	 * while preserving listeners in the still-mounted chat.
 	 */
 	changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 	/**
@@ -81,11 +80,7 @@ export const useAuth = create<AuthState>((set) => ({
 	async changePassword(currentPassword, newPassword) {
 		const { token } = await api.changePassword({ currentPassword, newPassword });
 		storeSession(token);
-		// The old socket cannot be reused: the server closed it, and socket.io
-		// would reconnect with the token it captured when it was created — the one
-		// that no longer works. Dropping it makes the next getSocket() build one
-		// with the token just stored.
-		closeSocket();
+		reconnectSocket();
 	},
 
 	async deleteAccount(currentPassword) {

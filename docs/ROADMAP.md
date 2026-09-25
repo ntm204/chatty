@@ -152,6 +152,48 @@ Acceptance and remaining limitations are recorded in the product assessment and 
 
 ---
 
+## September 17 — concurrent actions and mute deadlines
+
+Forwarding now locks source and destination in a consistent order and rechecks source membership and
+hidden/retracted state after copying media. Concurrent edits supply the current caption, failed sends
+clean prepared files, and an already committed forward still replays after source retraction.
+Bookmark removal invalidates overlapping refreshes without allowing old-account requests to affect the
+current list. Pending dialogs contain keyboard focus even with no enabled controls; forward success
+focuses Done. Mute icons, actions and unread title counts update at expiry and after tab suspension.
+Sidebar/details mutations retain late errors after menu dismissal and reject duplicate clicks.
+
+Password changes now reauthenticate the same socket so mounted message/presence listeners keep working.
+Conversation theme styles preserve the search field's focus border in both light and dark modes.
+The account login regression now dismisses the welcome curtain before filling its inert form.
+
+New acceptance covers real editor expiry while open, mute expiry, mutation retries, and forward source
+changes during attachment preparation. `npm run verify:full` passes with 495 server and 530 web tests
+and a 0-hit audit, and the whole browser suite was re-run once: 76 of 76 Chromium scenarios pass.
+Exact results and remaining XP criteria are in the
+[assessment](plans/product-assessment-2026-09-15.md) and [XP ledger](plans/experience-polish.md).
+
+---
+
+## September 20 — resilient navigation, notifications and replay
+
+Replying to a retracted parent now presents a tombstone rather than a link that cannot succeed. If a parent is
+hidden or otherwise becomes unavailable after its quote was rendered, the context request keeps the current
+thread visible, clears the target and shows an inline explanation. Conversation search now uses ArrowUp/Down to
+choose a result, Enter to apply it and Escape to close without reaching the page shortcut.
+
+Desktop notifications elect one eligible hidden tab per account, handle click-to-focus/navigation, close
+notifications owned by the chat lifecycle, and offer a preview privacy setting. Navigation resolves the
+conversation before rendering, so archive/unpaged destinations work. Durable text/image outbox entries now replay
+from closed threads when the app starts, regains browser connectivity or reconnects its socket; an in-tab claim
+prevents competing replay from the open thread.
+
+The final verification gate passes with 496 server tests and 546 web tests, typecheck, lint, formatting and a
+0-hit audit. Notification, outbox and search-keyboard regressions add focused unit coverage. Browser acceptance
+for native notification arbitration and cross-tab replay remains in the XP matrix rather than being inferred from
+unit tests.
+
+---
+
 ## Phase 1 — Fix what is wrong — `done`
 
 Not new features: three things that were broken or silently incomplete.

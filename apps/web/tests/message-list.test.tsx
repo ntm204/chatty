@@ -359,6 +359,32 @@ describe("MessageList", () => {
 
 		expect(onJumpToMessage).toHaveBeenCalledWith("older-message");
 	});
+
+	it("explains a deleted quoted message without offering a dead-end jump", () => {
+		const onJumpToMessage = vi.fn();
+		renderList({
+			messages: [
+				makeMessage("reply", "an", "answer", [], {
+					replyTo: {
+						id: "removed-message",
+						authorName: "Minh",
+						content: "",
+						hasAttachment: false,
+						attachmentUrl: null,
+						isDeleted: true,
+					},
+				}),
+			],
+			onJumpToMessage,
+		});
+
+		expect(screen.getByRole("note", { name: "Original message was deleted" })).toHaveTextContent(
+			"This message was deleted",
+		);
+		expect(screen.queryByRole("button", { name: "Jump to original message" })).not.toBeInTheDocument();
+		fireEvent.click(screen.getByText("This message was deleted"));
+		expect(onJumpToMessage).not.toHaveBeenCalled();
+	});
 });
 
 describe("MessageList editing and deleting", () => {

@@ -9,7 +9,9 @@ export function useBookmarkedMessages(currentUserId: string) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [removingId, setRemovingId] = useState<string | null>(null);
-	const removingRef = useRef<string | null>(null);
+	const removingRef = useRef<object | null>(null);
+	const accountScopeRef = useRef({ currentUserId });
+	if (accountScopeRef.current.currentUserId !== currentUserId) accountScopeRef.current = { currentUserId };
 	const isMountedRef = useRef(true);
 	const generationRef = useRef(0);
 	const pendingRef = useRef<number | null>(null);
@@ -51,10 +53,12 @@ export function useBookmarkedMessages(currentUserId: string) {
 	}, [load]);
 	useEffect(() => {
 		isMountedRef.current = true;
+		setRemovingId(null);
 		reload();
 
 		return () => {
 			isMountedRef.current = false;
+			removingRef.current = null;
 			generationRef.current++;
 		};
 	}, [reload, currentUserId]);
@@ -78,19 +82,25 @@ export function useBookmarkedMessages(currentUserId: string) {
 
 	async function remove(result: MessageSearchResultDTO) {
 		if (removingRef.current) return;
-		const generation = generationRef.current;
-		removingRef.current = result.message.id;
+		const accountScope = accountScopeRef.current;
+		const removal = {};
+		removingRef.current = removal;
 		setRemovingId(result.message.id);
 		setError("");
 		try {
 			await api.removeBookmark(result.conversation.id, result.message.id);
-			if (generation === generationRef.current) reload();
+			// A socket refresh can finish before this deletion commits. Confirmed
+			// removal must supersede that page without affecting another account.
+			if (isMountedRef.current && accountScope === accountScopeRef.current && removingRef.current === removal)
+				reload();
 		} catch (caught) {
-			if (generation === generationRef.current)
+			if (isMountedRef.current && accountScope === accountScopeRef.current && removingRef.current === removal)
 				setError(caught instanceof Error ? caught.message : "Could not remove bookmark");
 		} finally {
-			removingRef.current = null;
-			if (isMountedRef.current) setRemovingId(null);
+			if (removingRef.current === removal) {
+				removingRef.current = null;
+				if (isMountedRef.current && accountScope === accountScopeRef.current) setRemovingId(null);
+			}
 		}
 	}
 

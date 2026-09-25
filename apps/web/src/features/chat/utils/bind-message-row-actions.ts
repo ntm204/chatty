@@ -20,7 +20,7 @@ export function bindMessageRowActions(message: ThreadMessage, isPinned: boolean,
 		onForward: () => actions.onForwardMessage(message),
 		onTogglePin: () => actions.onTogglePinMessage(message.id, isPinned),
 		onJumpToReplyOriginal: () => {
-			const originalId = message.replyTo?.id;
+			const originalId = message.replyTo?.isDeleted ? null : message.replyTo?.id;
 			if (originalId && !scrollToMessage(originalId)) actions.onJumpToMessage(originalId);
 		},
 	};

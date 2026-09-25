@@ -337,14 +337,47 @@ describe("history navigation", () => {
 		expect(view.result.current.messages).toEqual([updated]);
 	});
 
-	it("reports a missing history target despite a valid cached latest page", async () => {
+	it("keeps the current thread when a cited original is no longer available", async () => {
+		const onUnavailableNavigation = vi.fn();
+		const view = renderHook(
+			({ target }) => useConversationMessages("conversation", vi.fn(), target, onUnavailableNavigation),
+			{
+				initialProps: { target: null as string | null },
+			},
+		);
+		await waitFor(() => expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-100"]));
+		vi.mocked(api.getMessageContext).mockRejectedValueOnce(new Error("Message no longer exists"));
+
+		view.rerender({ target: "removed-message" });
+
+		await waitFor(() =>
+			expect(view.result.current.navigationError).toBe("The original message is no longer available."),
+		);
+		expect(view.result.current.loadError).toBe("");
+		expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-100"]);
+		expect(view.result.current.targetMessageId).toBeNull();
+		expect(onUnavailableNavigation).toHaveBeenCalledOnce();
+
+		act(() => view.result.current.dismissNavigationError());
+		expect(view.result.current.navigationError).toBe("");
+	});
+
+	it("shows an unavailable-target notice instead of a thread error with a cached latest page", async () => {
 		localStore.readMessageSnapshot.mockResolvedValue([makeHistoryMessage(100)]);
 		vi.mocked(api.getMessageContext).mockRejectedValue(new Error("Message no longer exists"));
-		const view = renderHook(() => useConversationMessages("conversation", vi.fn(), "removed-message"));
+		const onUnavailableNavigation = vi.fn();
+		const view = renderHook(() =>
+			useConversationMessages("conversation", vi.fn(), "removed-message", onUnavailableNavigation),
+		);
 
-		await waitFor(() => expect(view.result.current.loadError).toBe("Message no longer exists"));
+		await waitFor(() =>
+			expect(view.result.current.navigationError).toBe("The original message is no longer available."),
+		);
+		expect(view.result.current.loadError).toBe("");
+		expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-100"]);
 		expect(view.result.current.isLoadingThread).toBe(false);
 		expect(view.result.current.targetMessageId).toBeNull();
+		expect(onUnavailableNavigation).toHaveBeenCalledOnce();
 	});
 
 	it("still opens a cached conversation offline when no history navigation was requested", async () => {

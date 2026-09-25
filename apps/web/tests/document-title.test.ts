@@ -1,11 +1,12 @@
-import { renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildDocumentTitle } from "@/features/chat/utils";
 import { useDocumentTitle } from "@/features/chat/hooks/use-document-title";
 import { makeConversation } from "./factories";
 
 afterEach(() => {
 	document.title = "";
+	vi.useRealTimers();
 });
 
 describe("buildDocumentTitle", () => {
@@ -38,5 +39,23 @@ describe("buildDocumentTitle", () => {
 		);
 
 		expect(document.title).toBe("(2) Chatty");
+	});
+
+	it("restores unread totals at successive mute deadlines without a new message", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime("2026-09-17T08:00:00Z");
+		const conversations = [
+			makeConversation({ unreadCount: 4, mutedUntil: "2026-09-17T08:00:01Z" }),
+			makeConversation({ id: "later", unreadCount: 2, mutedUntil: "2026-09-17T08:00:02Z" }),
+		];
+		const { unmount } = renderHook(() => useDocumentTitle(conversations));
+		expect(document.title).toBe("Chatty");
+		act(() => vi.advanceTimersByTime(1000));
+		expect(document.title).toBe("(4) Chatty");
+		act(() => vi.advanceTimersByTime(1000));
+		expect(document.title).toBe("(6) Chatty");
+		unmount();
+		expect(vi.getTimerCount()).toBe(0);
+		expect(document.title).toBe("Chatty");
 	});
 });

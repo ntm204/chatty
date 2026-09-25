@@ -1660,6 +1660,8 @@ export async function removeUserFromEveryGroup(
 ): Promise<DepartureEffects> {
 	const memberships = await transaction.conversationParticipant.findMany({
 		where: { userId, conversation: { isGroup: true } },
+		// Forwarding also locks multiple conversations in this database order.
+		orderBy: { conversationId: "asc" },
 		select: { conversationId: true, role: true },
 	});
 

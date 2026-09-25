@@ -8,7 +8,10 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { cn } from "@/utils/cn";
-import { getDirectPeer, isConversationMuted } from "../utils";
+import { useConversationMuted } from "../hooks/use-conversation-muted";
+import { useConversationMutation } from "../hooks/use-conversation-mutation";
+import { getDirectPeer } from "../utils";
+import { ConversationActionError } from "./conversation-action-error";
 import { ConversationActionsMenu } from "./conversation-actions-menu";
 import { ConversationMuteMenu } from "./conversation-mute-menu";
 
@@ -32,12 +35,11 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	const [isOpen, setIsOpen] = useState(false);
 	const [isChoosingMute, setIsChoosingMute] = useState(false);
 	const [isConfirmingBlock, setIsConfirmingBlock] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState("");
+	const { isSaving, error, clearError, run } = useConversationMutation(conversation.id);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [menuPosition, setMenuPosition] = useState({ left: 8, top: 8 });
-	const isMuted = isConversationMuted(conversation);
+	const isMuted = useConversationMuted(conversation.mutedUntil);
 
 	useEffect(() => {
 		// On open rather than on mount: the sidebar renders one of these per row
@@ -117,21 +119,10 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	function close(): void {
 		setIsOpen(false);
 		setIsChoosingMute(false);
-		setError("");
 	}
 
 	async function update(action: () => Promise<unknown>): Promise<void> {
-		if (isSaving) return;
-		setIsSaving(true);
-		setError("");
-		try {
-			await action();
-			close();
-		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not update conversation");
-		} finally {
-			setIsSaving(false);
-		}
+		if (await run(action)) close();
 	}
 
 	function muteFor(milliseconds: number | null): void {
@@ -141,17 +132,9 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 	}
 
 	async function confirmBlock(): Promise<void> {
-		if (!peer || isSaving) return;
-		setIsSaving(true);
-		setError("");
-		try {
-			await blockUser(peer.id);
+		if (peer && (await run(() => blockUser(peer.id)))) {
 			setIsConfirmingBlock(false);
 			close();
-		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not update conversation");
-		} finally {
-			setIsSaving(false);
 		}
 	}
 
@@ -167,15 +150,24 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 				aria-label="Conversation actions"
 				aria-haspopup="menu"
 				aria-expanded={isOpen}
+				aria-busy={isSaving}
 				className={cn(
 					"size-7 rounded-full p-0 text-ink-faint opacity-0 transition-opacity hover:bg-transparent hover:text-ink",
 					"group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-70",
 					isOpen && "bg-paper-raised text-ink opacity-100 shadow-sm",
+					(isSaving || Boolean(error)) && "opacity-100",
 				)}
 			>
 				<MoreHorizontal className="size-4" />
 			</Button>
 			{isMuted && <BellOff role="img" aria-label="Muted" className="size-3.5 shrink-0 text-ink-faint" />}
+			{error && !isOpen && !isConfirmingBlock && (
+				<ConversationActionError
+					error={error}
+					onDismiss={clearError}
+					className="absolute right-0 top-full z-30 mt-2 w-52 shadow-lift"
+				/>
+			)}
 
 			{isOpen &&
 				createPortal(
@@ -249,7 +241,7 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 					error={error}
 					onConfirm={() => void confirmBlock()}
 					onCancel={() => {
-						setError("");
+						clearError();
 						setIsConfirmingBlock(false);
 					}}
 				/>

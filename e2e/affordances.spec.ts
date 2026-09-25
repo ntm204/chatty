@@ -74,12 +74,19 @@ test.describe("affordances", () => {
 		await maiPage.getByRole("button", { name: "Search in conversation" }).click();
 		const field = maiPage.getByRole("textbox", { name: "Search in conversation" });
 		const barColour = () => field.evaluate((element) => getComputedStyle(element.parentElement!).borderBottomColor);
-
-		// The field drops its own outline on purpose and the bar around it carries
-		// the focus instead, so the assertion is on the bar. Polled because the
-		// bar transitions its colour rather than switching it.
-		const resting = await barColour();
-		await field.focus();
-		await expect.poll(barColour).not.toBe(resting);
+		for (const theme of ["light", "dark"]) {
+			await maiPage.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
+			await expect(field).toBeFocused();
+			const ink = await field.evaluate((element) => getComputedStyle(element).color);
+			await expect.poll(barColour).toBe(ink);
+			await field.press("Shift+Tab");
+			await expect(field).not.toBeFocused();
+			await expect.poll(barColour).not.toBe(ink);
+			await maiPage.keyboard.press("Tab");
+			await expect(field).toBeFocused();
+			await expect.poll(barColour).toBe(ink);
+		}
+		await maiContext.close();
+		await linhContext.close();
 	});
 });

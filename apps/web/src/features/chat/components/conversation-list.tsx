@@ -10,6 +10,7 @@ import type { ConversationPaging } from "../types/conversation-paging";
 import { ConversationActions } from "./conversation-actions";
 import { TypingDots } from "./typing-dots";
 import { useDraftPreviews } from "../hooks/use-draft-previews";
+import { useMuteExpiry } from "../hooks/use-mute-expiry";
 
 interface ConversationListProps {
 	conversations: ConversationDTO[];
@@ -30,6 +31,7 @@ export function ConversationList({
 	typingByConversation,
 	paging,
 }: ConversationListProps) {
+	useMuteExpiry(conversations.map((conversation) => conversation.mutedUntil));
 	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(paging.hasMore, paging.isLoadingMore, paging.loadMore);
 	const draftPreviews = useDraftPreviews(
 		currentUserId,

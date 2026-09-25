@@ -255,6 +255,9 @@ survive failure and are cleared on confirmed success; a subsequent intentional s
 Files/recordings use weak object keys. These media attempts are not a durable cross-reload outbox.
 Composer instances are scoped to account/conversation so a recording or upload preview cannot migrate
 into a different thread. A pending server request may still complete for its original destination.
+An account-level replay coordinator also scans durable text/image entries for closed threads on app start,
+browser `online` and socket reconnect. It skips the open thread and shares an in-tab delivery claim with it;
+the existing author/client-id database uniqueness remains the cross-tab convergence boundary.
 
 Read selection lives beside the scroll container. A non-draft message qualifies when a readable portion
 (at least 48px, or its full height for short rows) is visible. Selection is frame-coalesced, monotonic within
@@ -265,6 +268,13 @@ Sound and popup alerts share bounded in-flight metadata lookups, then apply per-
 restriction. Failed/unknown metadata and policy changes during lookup suppress alerts. Group membership
 is distinct from direct-chat restriction. Global search retains query/results/scroll in the mounted chat
 session; it does not persist those results across logout or reload.
+Native popup creation is coordinated per account with Web Locks where available, then a short-lived storage
+receipt or BroadcastChannel election. The hook owns and closes the notifications it creates, and a click
+resolves the conversation DTO before navigation so an archived conversation can render safely.
+
+Reply-context navigation retains the displayed thread until a context response succeeds. A hidden or missing
+parent clears only the requested target and produces an inline navigation notice; known tombstones are not
+rendered as jump controls.
 
 Message-row mutations await their HTTP result for pending/error feedback, while socket events remain
 the source of rendered message/pin state. One row permits one mutation at a time. Failures are caught
@@ -279,12 +289,19 @@ matching group names or other participants' display names, handles and shared ni
 archived memberships, caps pages at 50 (20 by default), and uses descending conversation ids as a
 stable cursor. It returns the existing viewer-specific DTO projection. Forward sends still use the
 message endpoint's membership checks and author-scoped clientId; the panel retains identities on failure.
+Source and destination conversation rows are locked in ascending database id order, matching account
+deletion's group traversal. After preparing immutable attachments outside the transaction, send rechecks
+source membership, hidden/deleted state and reads the current caption before creating the copy. Hide uses
+the same conversation lock as edit/delete/removal. Prepared copies are discarded on rejection or replay;
+already committed forwards remain independently readable and retryable after source retraction.
 
 Personal bookmarks reuse `/me/saved` and the idempotent PUT/DELETE message `star` endpoints. They remain
 references to originals, distinct from the self-conversation used for notes. The mounted bookmark list
 invalidates old page generations and clears its rows on observed retraction, hide, or membership loss;
 reloading from page one avoids a cursor pointing at a removed bookmark. Separate tabs do not yet receive
-bookmark add/remove events. Opening the list always fetches current server state.
+bookmark add/remove events. Opening the list always fetches current server state. Removal attempts use
+a separate account identity from pagination generations: confirmed deletion invalidates any simultaneous
+socket refresh, while old-account completions cannot refresh or unlock the new account.
 
 Mention completion follows the textarea selection and updates the caret in a layout effect after its
 controlled value renders; it never mutates the text after the completed handle. Composition guards stay
@@ -301,3 +318,19 @@ bounded around the first match and avoid splitting surrogate pairs at their boun
 The global drag listeners prevent browser file navigation, but only accept drops whose target is inside
 the mounted composer and while no modal dialog covers it. Outside drops do not mutate the draft or send
 files. Paste remains a textarea handler, so a clipboard event has only one attachment consumer.
+
+
+### Mute deadlines and pending dialog controls
+
+A shared deadline hook schedules the earliest live mute expiration, clamps long timers to the browser
+limit and refreshes on focus/visibility recovery. Sidebar spacing/icons, details actions and unread title
+counts derive from the current time. Conversation mutations take a synchronous per-component lock and
+ignore completions from an unmounted or replaced conversation; menu dismissal does not clear failures.
+The shared modal focus trap contains Tab even when all controls are disabled and recovers focus from
+outside the top dialog. Forward confirmation focuses Done after replacing the pending destination list.
+
+
+Password rotation stores the replacement token and reconnects the existing Socket.IO instance.
+The auth callback reads the new token; mounted event listeners survive and the reconnect hook resyncs
+messages missed during rotation. Logout/account removal still dispose of the socket. Conversation chrome
+styles explicitly restore the search bar's `focus-within` border after its translucent base border.

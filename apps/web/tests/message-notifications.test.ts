@@ -8,9 +8,10 @@ import { useNotificationSetting } from "@/hooks/use-notification-setting";
 import { makeCurrentUser, makeConversation, makeMessage } from "./factories";
 
 type SocketHandler = (payload: unknown) => void;
-const { handlers, notificationSpy } = vi.hoisted(() => ({
+const { handlers, notificationSpy, notificationCloseSpy } = vi.hoisted(() => ({
 	handlers: new Map<string, SocketHandler>(),
 	notificationSpy: vi.fn(),
+	notificationCloseSpy: vi.fn(),
 }));
 
 vi.mock("@/features/chat/hooks/use-socket-event", () => ({
@@ -20,26 +21,50 @@ vi.mock("@/api/client", () => ({ api: { getConversation: vi.fn(), getRestriction
 
 class NotificationMock {
 	static permission = "granted";
+	static instances: NotificationMock[] = [];
+	onclick: ((event: Event) => void) | null = null;
+	onclose: ((event: Event) => void) | null = null;
 
 	constructor(title: string, options?: NotificationOptions) {
 		notificationSpy(title, options);
+		NotificationMock.instances.push(this);
+	}
+
+	close() {
+		notificationCloseSpy();
+		this.onclose?.(new Event("close"));
 	}
 }
 
 beforeEach(() => {
 	useAuth.setState({ currentUser: makeCurrentUser() });
-	useNotificationSetting.setState({ isEnabled: true });
+	useNotificationSetting.setState({ isEnabled: true, isMessagePreviewEnabled: true });
 	useRestrictedUsers.setState({ restrictedIds: new Set(), checkedIds: new Set(["an"]) });
 	vi.mocked(api.getConversation).mockReset();
 	vi.mocked(api.getRestrictionStatus).mockReset().mockResolvedValue({ isRestricted: false });
 	handlers.clear();
 	notificationSpy.mockReset();
+	notificationCloseSpy.mockReset();
+	NotificationMock.instances = [];
+	localStorage.clear();
 	vi.stubGlobal("Notification", NotificationMock);
+	vi.stubGlobal("BroadcastChannel", undefined);
+	Object.defineProperty(navigator, "locks", {
+		configurable: true,
+		value: {
+			request: <Value>(
+				_name: string,
+				_options: LockOptions,
+				callback: LockGrantedCallback<Value>,
+			): Promise<Value> => Promise.resolve(callback({ name: "test", mode: "exclusive" } as Lock)),
+		},
+	});
 	Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
 });
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	delete (navigator as { locks?: unknown }).locks;
 	Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
 });
 
@@ -94,7 +119,46 @@ describe("useMessageNotifications", () => {
 		await act(async () => {
 			handlers.get("message:new")?.({ ...message, conversationId: "group" });
 		});
-		expect(notificationSpy).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(notificationSpy).toHaveBeenCalledTimes(1));
+	});
+
+	it("focuses the tab and opens the received conversation when a popup is clicked", async () => {
+		const openConversation = vi.fn();
+		const focusWindow = vi.spyOn(window, "focus").mockImplementation(() => undefined);
+		renderHook(() => useMessageNotifications("minh", [makeConversation()], openConversation));
+		handlers.get("message:new")?.(makeMessage("click-message", "an", "open this"));
+
+		await waitFor(() => expect(NotificationMock.instances).toHaveLength(1));
+		await act(async () => {
+			NotificationMock.instances[0]?.onclick?.(new Event("click"));
+		});
+
+		expect(focusWindow).toHaveBeenCalledTimes(1);
+		expect(openConversation).toHaveBeenCalledWith("conversation-1");
+		expect(notificationCloseSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it("hides sender and message text when the preview setting is off", async () => {
+		useNotificationSetting.setState({ isMessagePreviewEnabled: false });
+		renderHook(() => useMessageNotifications("minh", [makeConversation()]));
+		handlers.get("message:new")?.(makeMessage("private-preview", "an", "do not reveal this"));
+
+		await waitFor(() =>
+			expect(notificationSpy).toHaveBeenCalledWith("Chatty", expect.objectContaining({ body: "New message" })),
+		);
+	});
+
+	it("closes hook-owned popups when the signed-in account changes", async () => {
+		const { rerender } = renderHook(
+			({ userId }: { userId: string }) => useMessageNotifications(userId, [makeConversation()]),
+			{ initialProps: { userId: "minh" } },
+		);
+		handlers.get("message:new")?.(makeMessage("logout-popup", "an", "bye"));
+		await waitFor(() => expect(NotificationMock.instances).toHaveLength(1));
+
+		rerender({ userId: "" });
+
+		expect(notificationCloseSpy).toHaveBeenCalledTimes(1);
 	});
 
 	it("drops a delayed notification after the reader logs out", async () => {

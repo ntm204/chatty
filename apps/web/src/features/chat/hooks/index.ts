@@ -5,6 +5,7 @@ export { useConversationNavigation } from "./use-conversation-navigation";
 export { useConversationVault } from "./use-conversation-vault";
 export { useReplyTarget } from "./use-reply-target";
 export { useConversationMessages } from "./use-conversation-messages";
+export { useOutboxReplay } from "./use-outbox-replay";
 export { useDocumentTitle } from "./use-document-title";
 export { useMarkRead } from "./use-mark-read";
 export { useKeyboardShortcuts } from "./use-keyboard-shortcuts";
@@ -28,3 +29,6 @@ export { useStickers } from "./use-stickers";
 export { useAttachmentZoom } from "./use-attachment-zoom";
 
 export { useDraftPreviews } from "./use-draft-previews";
+export { useConversationMuted } from "./use-conversation-muted";
+export { useConversationMutation } from "./use-conversation-mutation";
+export { useMuteExpiry } from "./use-mute-expiry";

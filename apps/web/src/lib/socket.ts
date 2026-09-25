@@ -77,3 +77,10 @@ export function closeSocket(): void {
 	socket?.disconnect();
 	socket = undefined;
 }
+
+/** Reauthenticate the current account without stranding the mounted chat's listeners. */
+export function reconnectSocket(): void {
+	// The auth callback reads the replacement token on this connection attempt.
+	// Keeping the instance lets existing subscriptions and reconnect recovery run.
+	socket?.disconnect().connect();
+}

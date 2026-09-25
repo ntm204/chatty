@@ -76,7 +76,9 @@ export function ForwardMessagePanel({ message, currentUserId, onClose }: Forward
 						<p role="status" className="text-sm text-ink">
 							Forwarded to {forwardedTo}.
 						</p>
-						<Button onClick={close}>Done</Button>
+						<Button autoFocus onClick={close}>
+							Done
+						</Button>
 					</div>
 				) : (
 					<>

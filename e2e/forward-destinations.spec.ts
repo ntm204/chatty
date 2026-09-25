@@ -59,9 +59,14 @@ test("finds an archived destination outside loaded pages and retries a committed
 	const target = dialog.getByRole("button", { name: /Remote archive destination/ });
 	await expect(target).toBeVisible();
 	let shouldLoseResponse = true;
+	let releaseForward!: () => void;
+	const canCompleteForward = new Promise<void>((resolve) => {
+		releaseForward = resolve;
+	});
 	await page.route(`**/conversations/${destinationId}/messages`, async (route) => {
 		if (route.request().method() === "POST" && shouldLoseResponse) {
 			shouldLoseResponse = false;
+			await canCompleteForward;
 			const response = await route.fetch();
 			expect(response.ok()).toBe(true);
 			await route.fulfill({
@@ -72,10 +77,17 @@ test("finds an archived destination outside loaded pages and retries a committed
 		} else await route.continue();
 	});
 	await target.click();
+	await expect(target).toBeDisabled();
+	await page.keyboard.press("Tab");
+	await expect(dialog).toBeFocused();
+	await page.keyboard.press("Shift+Tab");
+	await expect(dialog).toBeFocused();
+	releaseForward();
 	await expect(dialog.getByRole("alert")).toContainText("Forward response lost");
 	await target.click();
 	await expect(dialog.getByRole("status")).toHaveText("Forwarded to Remote archive destination.");
-	await dialog.getByRole("button", { name: "Done", exact: true }).click();
+	await expect(dialog.getByRole("button", { name: "Done", exact: true })).toBeFocused();
+	await page.keyboard.press("Enter");
 	await expect(dialog).toHaveCount(0);
 	const count = await page.evaluate(async (id) => {
 		const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {

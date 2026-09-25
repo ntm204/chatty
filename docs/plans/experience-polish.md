@@ -346,12 +346,16 @@ danh sách đầy đủ để triển khai dần, không phải yêu cầu làm 
 
 | ID | Trạng thái thay đổi so với mặc định | Kết quả/kiểm chứng | Ngày |
 | --- | --- | --- | --- |
-| XP-27 | partial | Preview nguồn, pending/error và retry cùng clientId; browser server commit mất response → retry một bản pass. Thành công hiện đích + Done; Chromium thu hồi nguồn khi panel mở báo lỗi, không gửi. Ma trận mất membership giữa request còn lại | 2026-09-15 |
-| XP-29 | partial | Save idempotent ở thread, remove lỗi giữ mục trong Bookmarks; chưa có trạng thái chung viewer/vault và sự kiện nhiều tab | 2026-09-15 |
+| XP-15 | partial | Quote đã thu hồi là tombstone không bấm được; context 404/hidden giữ thread, xóa target và báo inline thay vì thay cả màn hình bằng lỗi. Unit history/list đạt. Cần nghiệm thu quay lại đúng vị trí đọc sau một jump thành công | 2026-09-20 |
+| XP-20 | partial | Điều phối popup theo account giữa các tab với Locks/receipt/channel fallback; click resolve archived thread, logout/unmount đóng popup do hook tạo, có tùy chọn ẩn preview. 11 unit đạt; cần browser/native-popup nghiệm thu đa tab thực | 2026-09-20 |
+| XP-22 | partial | ArrowUp/Down chọn, Enter áp dụng và Escape đóng search không lan shortcut; 4 unit đạt. Shortcut/matrix bàn phím đầy đủ vẫn cần nghiệm thu browser/thiết bị | 2026-09-20 |
+| XP-57 | partial | Outbox text/image toàn account replay khi mở app/online/socket reconnect, bỏ thread mở và chia sẻ claim cùng tab; 19 unit IndexedDB/replay đạt. Nghiệm thu browser hai tab vẫn cần chạy riêng | 2026-09-20 |
+| XP-27 | done | Preview/đích, retry cùng clientId và mất response sau commit; Chromium pass. Khóa nguồn/đích theo thứ tự, kiểm tra lại membership/thu hồi/ẩn sau copy file; 6 test PostgreSQL race, caption mới nhất, replay và dọn file pass. Modal giữ focus khi pending, Done nhận focus | 2026-09-17 |
+| XP-29 | partial | Remove thành công vô hiệu hóa refresh chạy đồng thời; đổi tài khoản không nhận completion cũ. Regression deferred request pass. Save idempotent ở thread, lỗi remove giữ mục; trạng thái chung viewer/vault và sự kiện nhiều tab còn lại | 2026-09-17 |
 | XP-28 | done | API vault toàn tài khoản; Chromium >20 mục, mở archived original, remove lỗi/retry và thu hồi live pass; unit loại trang cũ sau mất membership. Không tải media trực tiếp từ danh sách | 2026-09-15 |
 | XP-26 | done | Tìm phía server theo membership gồm archived, cursor phân trang, hiển thị handle phân biệt đích. Service scope/paging và Chromium ngoài page đầu pass | 2026-09-15 |
 | XP-05 | done | Giới hạn drop vào đúng composer, chặn khi modal mở, không gửi file từ vùng sidebar/ngoài input; hai lần drop chủ ý vẫn giữ hai ảnh riêng. Emoji thay đúng vùng chọn tại caret và giữ focus. Chromium `composer-input-boundaries` pass 3/3 lần chạy lặp | 2026-09-15 |
-| XP-04 | partial | Mention tại caret, giữ suffix, mũi tên/Enter/Escape, email/URL; 41 composer test và Chromium pass. Emoji/caret với picker và thiết bị thật còn lại | 2026-09-15 |
+| XP-04 | done | Chromium emoji thay vùng chọn và tiếp tục nhập đúng caret; mention giữ suffix, mũi tên/Enter/Escape; email/URL không mở gợi ý. Unit và browser đạt; IME/thiết bị thật vẫn ghi riêng tại XP-03/ma trận tổng thể | 2026-09-17 |
 | XP-01 | done | Thêm guard cho outbox/dispatch trễ sau logout; localStorage lỗi không ngăn dọn IndexedDB. Account/browser và regression generation pass | 2026-09-15 |
 | XP-11 | done | Transaction + migration; HTTP/service, race edit/delete, history đang mở và cached quotes. HTTP, migration và toàn bộ suite pass | 2026-09-15 |
 | XP-02 | partial | Composer textarea tự tăng tới 160px, scroll nội bộ; unit và Chromium multiline/mobile viewport pass. Bàn phím điện thoại thực và ma trận reply/media đầy đủ chưa nghiệm thu | 2026-09-15 |
@@ -364,13 +368,14 @@ danh sách đầy đủ để triển khai dần, không phải yêu cầu làm 
 | XP-56 | partial | File/image/voice placeholders inert với thông báo kết nối; không tải placeholder làm bản gốc. Search offline/server-only và policy reconnect còn lại | 2026-09-15 |
 | XP-09 | partial | File/voice/sticker dùng clientId ổn định trong phiên; sticker lỗi giữ tray, pending rõ; composer đổi scope không kéo media/reply theo. Chưa hứa giữ file/voice qua reload/đổi thread | 2026-09-15 |
 | XP-12 | partial | Edit/delete/hide/reaction/pin có pending/error tại hàng; khóa request lặp, không tự retry toggle. Unit và Chromium lỗi → thử lại cho reaction/pin/delete/hide pass; nháp mới giữ nguyên. Save ở thread và remove trong Bookmarks đã có feedback; thống nhất trạng thái các bề mặt còn lại | 2026-09-15 |
-| XP-14 | partial | Editor giữ text khi lỗi; mention nhóm và links tái tạo cùng transaction từ nội dung sửa; service 35 test và Chromium edit mention pass. Cửa sổ 8h khi editor đang mở còn cần browser | 2026-09-15 |
+| XP-14 | done | Editor giữ chữ khi save lỗi, multiline/IME guards; mention nhóm/link cập nhật transaction. Chromium deadline 8h thật khi editor đang mở: PATCH 400, giữ nguyên bản gốc/history, copy/paste chữ sửa sang composer được | 2026-09-17 |
 | XP-16 | done | Marker theo hàng thấy được ở tab visible, không theo toàn mảng loaded; lịch sử search tạm dừng cursor. Chromium cuộn lên → nhận tin còn unread → về cuối đọc pass | 2026-09-15 |
 | XP-19 | done | Popup/sound resolve metadata ngoài sidebar với request gộp/có giới hạn; unknown/đổi policy không phát alert. Unit mute/restrict/nhóm/logout và browser archived DM pass | 2026-09-15 |
 | XP-21 | done | First page và pagination cùng generation; đổi query/scope bỏ response cũ, loading/error/retry riêng; hook regression và browser search/history pass | 2026-09-15 |
 | XP-35 | partial | File cache không có href tải giả, ảnh placeholder không cho Save; helper không fetch bytes giả. URL hết hạn và retry cấp quyền mới còn lại | 2026-09-15 |
 | XP-39 | partial | Loading/add/pending rõ; send lỗi giữ tray, remove lỗi giữ tile; chống nhấp lặp, nút remove hiện trên mobile. Chưa nghiệm thu giới hạn/tray đầy trên thiết bị thật | 2026-09-15 |
-| XP-42 | partial | Tin đến ở archived không chèn vào active; gộp lookup và bỏ page/response scope cũ. Pending/error và mute hết hạn đầy đủ còn lại | 2026-09-15 |
+| XP-42 | done | Chromium: giới hạn 5 pin báo lỗi, unpin rồi pin lại được; archive/unarchive quay về active; mute icon/menu/title tự hết hạn không reload. Lỗi sau đóng menu vẫn hiện, retry chủ ý không gửi trùng; unit đổi scope/unmount và timer tab ngủ/Forever đạt | 2026-09-17 |
+| XP-48 | partial | Focus trap lớp trên cùng chặn Tab khi tất cả control disabled, khôi phục focus từ ngoài modal; Done nhận focus khi forward thành công. Unit nested/empty/escaped focus pass. Ma trận backdrop/return trigger trên các panel còn lại | 2026-09-17 |
 
 Khi triển khai, thêm/cập nhật dòng đúng ID tại đây. Trạng thái `done` cần ghi môi trường, lệnh hoặc
 kịch bản đã kiểm tra và giới hạn còn lại. Nếu một mục được bỏ sau kiểm tra vì hành vi hiện tại đã đúng,

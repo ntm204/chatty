@@ -82,3 +82,91 @@ it("clears visible results immediately on loss of membership", async () => {
 	expect(state.current.results).toEqual([]);
 	await waitFor(() => expect(state.current.error).toBe("Offline"));
 });
+
+it("invalidates a socket refresh when removal finishes before its stale page arrives", async () => {
+	let finishRefresh!: (page: SavedMessagePageDTO) => void;
+	let finishRemoval!: () => void;
+	vi.mocked(api.listBookmarkedMessages)
+		.mockResolvedValueOnce({ results: [result("first")], hasMore: false })
+		.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishRefresh = resolve;
+				}),
+		)
+		.mockResolvedValueOnce({ results: [], hasMore: false });
+	vi.mocked(api.removeBookmark).mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				finishRemoval = resolve;
+			}),
+	);
+	const { result: state } = renderHook(() => useBookmarkedMessages("me"));
+	await waitFor(() => expect(state.current.results).toHaveLength(1));
+	let removal!: Promise<void>;
+	act(() => {
+		removal = state.current.remove(result("first"));
+	});
+	act(() => handlers.get("message:updated")?.(makeMessage("first", "me", "Edited content")));
+	expect(api.listBookmarkedMessages).toHaveBeenCalledTimes(2);
+	await act(async () => {
+		finishRemoval();
+		await removal;
+	});
+	await waitFor(() => expect(api.listBookmarkedMessages).toHaveBeenCalledTimes(3));
+	await act(async () => {
+		finishRefresh({ results: [result("first")], hasMore: false });
+	});
+	expect(state.current.results).toEqual([]);
+	expect(state.current.isLoading).toBe(false);
+});
+
+it("does not refresh or unlock another account's pending removal", async () => {
+	let finishOldRemoval!: () => void;
+	let finishNewRemoval!: () => void;
+	vi.mocked(api.listBookmarkedMessages)
+		.mockResolvedValueOnce({ results: [result("first")], hasMore: false })
+		.mockResolvedValueOnce({ results: [result("second")], hasMore: false })
+		.mockResolvedValueOnce({ results: [], hasMore: false });
+	vi.mocked(api.removeBookmark)
+		.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishOldRemoval = resolve;
+				}),
+		)
+		.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishNewRemoval = resolve;
+				}),
+		);
+	const { result: state, rerender } = renderHook(({ userId }) => useBookmarkedMessages(userId), {
+		initialProps: { userId: "first-account" },
+	});
+	await waitFor(() => expect(state.current.results).toHaveLength(1));
+	let oldRemoval!: Promise<void>;
+	act(() => {
+		oldRemoval = state.current.remove(result("first"));
+	});
+	rerender({ userId: "second-account" });
+	await waitFor(() => expect(state.current.results[0]?.message.id).toBe("second"));
+	expect(state.current.removingId).toBeNull();
+	let newRemoval!: Promise<void>;
+	act(() => {
+		newRemoval = state.current.remove(result("second"));
+	});
+	await act(async () => {
+		finishOldRemoval();
+		await oldRemoval;
+	});
+	expect(api.listBookmarkedMessages).toHaveBeenCalledTimes(2);
+	expect(state.current.results[0]?.message.id).toBe("second");
+	expect(state.current.removingId).toBe("second");
+	await act(async () => {
+		finishNewRemoval();
+		await newRemoval;
+	});
+	await waitFor(() => expect(state.current.results).toEqual([]));
+	expect(state.current.removingId).toBeNull();
+});

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { NOTIFICATIONS_STORAGE_KEY } from "@/constants/notifications";
+import { NOTIFICATION_MESSAGE_PREVIEW_STORAGE_KEY, NOTIFICATIONS_STORAGE_KEY } from "@/constants/notifications";
 
 /**
  * Whether this browser shows a notification for a message that arrives while
@@ -21,18 +21,23 @@ interface NotificationSettingState {
 	/** The stored preference. True does not on its own mean a notification will appear. */
 	isEnabled: boolean;
 	permission: NotificationPermissionState;
+	/** Whether a desktop popup may include the sender and message text. */
+	isMessagePreviewEnabled: boolean;
 	/** Asks the browser if it has to, then stores the preference if it was granted. */
 	enable: () => Promise<void>;
 	disable: () => void;
+	setMessagePreviewEnabled: (isEnabled: boolean) => void;
 }
 
-function readStoredPreference(): boolean {
+function readStoredBoolean(key: string, fallback: boolean): boolean {
 	try {
-		return localStorage.getItem(NOTIFICATIONS_STORAGE_KEY) === "true";
+		const storedValue = localStorage.getItem(key);
+
+		return storedValue === null ? fallback : storedValue === "true";
 	} catch {
 		// Private modes and blocked site data throw on access rather than
 		// returning null, and a settings toggle is not worth a crashed render.
-		return false;
+		return fallback;
 	}
 }
 
@@ -44,8 +49,11 @@ export const useNotificationSetting = create<NotificationSettingState>((set) => 
 	// Read once at module load. The preference only changes through this store,
 	// so there is nothing to re-read; the permission is refreshed on every
 	// `enable`, which is the only moment it can change from inside this app.
-	isEnabled: readStoredPreference(),
+	isEnabled: readStoredBoolean(NOTIFICATIONS_STORAGE_KEY, false),
 	permission: readPermission(),
+	// Existing readers already receive message text today. Defaulting to true
+	// preserves that choice until they explicitly turn previews off.
+	isMessagePreviewEnabled: readStoredBoolean(NOTIFICATION_MESSAGE_PREVIEW_STORAGE_KEY, true),
 
 	async enable() {
 		if (typeof Notification === "undefined") {
@@ -80,5 +88,16 @@ export const useNotificationSetting = create<NotificationSettingState>((set) => 
 		}
 
 		set({ isEnabled: false });
+	},
+
+	setMessagePreviewEnabled(isEnabled) {
+		try {
+			localStorage.setItem(NOTIFICATION_MESSAGE_PREVIEW_STORAGE_KEY, String(isEnabled));
+		} catch {
+			// Keep the choice for this tab when storage is unavailable, matching the
+			// popup toggle's session-only fallback above.
+		}
+
+		set({ isMessagePreviewEnabled: isEnabled });
 	},
 }));

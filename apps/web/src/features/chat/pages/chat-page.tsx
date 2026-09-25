@@ -2,6 +2,7 @@ import { GlobalMessageSearch } from "../components/global-message-search";
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useState } from "react";
 import { useGlobalSearchSession } from "../hooks/use-global-search-session";
+import { api } from "@/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
@@ -17,6 +18,7 @@ import {
 	useMessageListHandlers,
 	useMessageNotifications,
 	useMessageSound,
+	useOutboxReplay,
 	usePresence,
 	useRestrictedUsersSync,
 	useSocketConnection,
@@ -39,6 +41,7 @@ export function ChatPage() {
 	const [cancelEditRequest, setCancelEditRequest] = useState(0);
 	const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
 	const globalSearch = useGlobalSearchSession();
+	const handleUnavailableMessageNavigation = useCallback(() => setRequestedMessageId(null), []);
 
 	const refreshBlockedUsers = useBlockedUsersSync();
 	const refreshRestrictedUsers = useRestrictedUsersSync();
@@ -65,36 +68,16 @@ export function ChatPage() {
 	);
 
 	useDocumentTitle(conversations);
-	useMessageNotifications(currentUser?.id ?? "", conversations);
 	useMessageSound(currentUser?.id ?? "", conversations, selectedConversationId);
+	useOutboxReplay({ userId: currentUser?.id, activeConversationId: selectedConversationId });
 
-	const {
-		messages,
-		hasMoreOlder,
-		isLoadingOlder,
-		loadOlder,
-		hasMoreNewer,
-		isLoadingNewer,
-		loadNewer,
-		isLoadingThread,
-		loadError,
-		hasUnsavedMessages,
-		retryLoad,
-		resync,
-		sendMessage,
-		sendSticker,
-		sendFile,
-		sendVoice,
-		retrySend,
-		discardDraft,
-		trimHistory,
-		editMessage,
-		deleteMessage,
-		toggleReaction,
-		hideMessage,
-		targetMessageId,
-	} = useConversationMessages(selectedConversationId, refreshConversations, requestedMessageId);
-	const { replyTo, setReplyTo, requestReplyTo, clearReply } = useReplyTarget(messages);
+	const messageState = useConversationMessages(
+		selectedConversationId,
+		refreshConversations,
+		requestedMessageId,
+		handleUnavailableMessageNavigation,
+	);
+	const { replyTo, setReplyTo, requestReplyTo, clearReply } = useReplyTarget(messageState.messages);
 
 	useKeyboardShortcuts({
 		hasOpenPanel,
@@ -119,10 +102,10 @@ export function ChatPage() {
 	const isConnectionLost = useSocketConnection(
 		useCallback(() => {
 			refreshConversations();
-			resync();
+			messageState.resync();
 			void refreshBlockedUsers();
 			void refreshRestrictedUsers();
-		}, [refreshBlockedUsers, refreshConversations, refreshRestrictedUsers, resync]),
+		}, [messageState.resync, refreshBlockedUsers, refreshConversations, refreshRestrictedUsers]),
 	);
 
 	useEffect(() => {
@@ -156,6 +139,21 @@ export function ChatPage() {
 		setRequestedMessageId,
 		setIsConversationSearchOpen,
 	});
+	const openNotificationConversation = useCallback(
+		async (conversationId: string) => {
+			try {
+				// A hidden or archived conversation may not be in the sidebar page, so
+				// navigation needs its DTO before ChatPage can render the thread.
+				const conversation = await api.getConversation(conversationId);
+				handleConversationStarted(conversation.id, conversation);
+			} catch {
+				// Lost membership or a transient request must not replace the current
+				// conversation with an empty pane after a notification click.
+			}
+		},
+		[handleConversationStarted],
+	);
+	useMessageNotifications(currentUser?.id ?? "", conversations, openNotificationConversation);
 
 	if (!currentUser) return null;
 
@@ -233,41 +231,43 @@ export function ChatPage() {
 									? globalSearch.open
 									: undefined
 							}
-							loadError={loadError}
-							hasUnsavedMessages={hasUnsavedMessages}
-							onRetryLoad={retryLoad}
+							loadError={messageState.loadError}
+							navigationError={messageState.navigationError}
+							onDismissNavigationError={messageState.dismissNavigationError}
+							hasUnsavedMessages={messageState.hasUnsavedMessages}
+							onRetryLoad={messageState.retryLoad}
 							messageListProps={{
 								conversationId: selectedConversation.id,
-								messages,
+								messages: messageState.messages,
 								unreadCount: selectedConversation.unreadCount,
 								currentUserId: currentUser.id,
 								participants: selectedConversation.participants,
 								isGroup: selectedConversation.isGroup,
 								themeColor: selectedConversation.themeColor,
 								areReceiptsShared: currentUser.readReceiptsEnabled,
-								isLoadingThread,
-								hasMoreOlder,
-								isLoadingOlder,
-								onLoadOlder: loadOlder,
-								hasMoreNewer,
-								isLoadingNewer,
-								onLoadNewer: loadNewer,
-								onEditMessage: editMessage,
-								onDeleteMessage: deleteMessage,
-								onHideMessage: hideMessage,
-								onRetrySend: retrySend,
-								onDiscardDraft: discardDraft,
-								onToggleReaction: toggleReaction,
+								isLoadingThread: messageState.isLoadingThread,
+								hasMoreOlder: messageState.hasMoreOlder,
+								isLoadingOlder: messageState.isLoadingOlder,
+								onLoadOlder: messageState.loadOlder,
+								hasMoreNewer: messageState.hasMoreNewer,
+								isLoadingNewer: messageState.isLoadingNewer,
+								onLoadNewer: messageState.loadNewer,
+								onEditMessage: messageState.editMessage,
+								onDeleteMessage: messageState.deleteMessage,
+								onHideMessage: messageState.hideMessage,
+								onRetrySend: messageState.retrySend,
+								onDiscardDraft: messageState.discardDraft,
+								onToggleReaction: messageState.toggleReaction,
 								onReplyToMessage: setReplyTo,
 								onForwardMessage: setForwardingMessage,
 								onTogglePinMessage,
 								pinnedMessageIds,
 								onJumpToMessage: jumpToMessage,
-								onTrimHistory: trimHistory,
+								onTrimHistory: messageState.trimHistory,
 								requestEditLast: editLastRequest,
 								requestCancelEdit: cancelEditRequest,
 								onEditingStateChange: setIsEditingMessage,
-								targetMessageId,
+								targetMessageId: messageState.targetMessageId,
 								onReturnToLatest: closeMessageSearch,
 							}}
 							messageInputProps={{
@@ -277,10 +277,10 @@ export function ChatPage() {
 								currentUserId: currentUser.id,
 								replyTo,
 								onCancelReply: () => setReplyTo(null),
-								onSend: sendMessage,
-								onSendSticker: sendSticker,
-								onSendFile: sendFile,
-								onSendVoice: sendVoice,
+								onSend: messageState.sendMessage,
+								onSendSticker: messageState.sendSticker,
+								onSendFile: messageState.sendFile,
+								onSendVoice: messageState.sendVoice,
 								onRestoreReply: requestReplyTo,
 							}}
 						/>

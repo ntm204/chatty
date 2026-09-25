@@ -45,9 +45,20 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 			const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
 			const first = focusable[0];
 			const last = focusable[focusable.length - 1];
-			if (!first || !last) return;
+			if (!first || !last) {
+				event.preventDefault();
+				dialogRef.current.focus();
 
-			if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+				return;
+			}
+			if (!dialogRef.current.contains(document.activeElement) || document.activeElement === dialogRef.current) {
+				event.preventDefault();
+				(event.shiftKey ? last : first).focus();
+
+				return;
+			}
+
+			if (event.shiftKey && document.activeElement === first) {
 				event.preventDefault();
 				last.focus();
 			} else if (!event.shiftKey && document.activeElement === last) {

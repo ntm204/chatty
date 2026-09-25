@@ -238,6 +238,12 @@ File, voice and sticker retries reuse the same send identity within the current 
 stays available in its tray. Editing keeps the text and shows the error when saving fails.
 Delete, hide, reaction and pin actions lock while pending and show failures beside the message.
 Reaction toggles are never retried automatically; check the resulting state before trying again.
+When the app reconnects, durable text/image outbox entries from threads that are no longer open replay in
+bounded order for the signed-in account. The visible thread and background replay share a delivery claim;
+the server-side client ID remains the authority against duplicate cross-tab sends.
+
+Changing a password reconnects the existing chat socket with the replacement session, keeping the open
+thread live. Conversation search shows its keyboard focus border in both light and dark themes.
 
 Group-message edits rebuild mentions from current participant handles and rebuild links in the same
 transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
@@ -248,12 +254,14 @@ Enter inserts it, and Escape dismisses the list; email addresses and URL segment
 
 Forwarding searches conversations on the server, including archived destinations, with paged results and
 participant handles to distinguish matching names. Failed forwards retain their send identity for retry.
-Success names the destination and offers Done; a retracted source fails visibly. File drops are accepted
+Success names the destination and focuses Done. Source membership, hiding and retraction are checked again
+under transaction locks after media preparation; rejected sends discard their prepared files. File drops are accepted
 only inside the composer, and are ignored while a modal covers it. Pasting remains scoped to the textarea.
 Bookmarked messages is a separate sidebar list of marked originals across conversations. Bookmark message
 adds an original; Remove bookmark leaves it intact. Results show their source and open the original thread.
 The Saved messages shortcut continues to open personal notes. Bookmarks refresh on observed retraction,
-hiding or loss of membership and do not provide offline media downloads.
+hiding or loss of membership and do not provide offline media downloads. A confirmed removal supersedes
+concurrent refreshes so a stale response cannot restore the removed bookmark.
 
 Search all messages in the sidebar searches across conversations, including archived threads. Opening
 a result fetches its conversation before jumping to the original message, even outside loaded sidebar pages.
@@ -267,6 +275,17 @@ Popup and sound alerts resolve missing conversation metadata before applying mut
 mentions may override mute; restriction suppresses direct-chat alerts. Unknown or changing permissions
 suppress a pending alert. Cached file/image placeholders explain that reconnecting is required and cannot
 be downloaded as though they were the original media.
+Desktop notifications are coordinated between tabs of the same account when browser capabilities allow it.
+Clicking one focuses Chatty and resolves the conversation before opening it, including an archived thread.
+Notification settings can hide the sender and message text, and app-owned notifications close on sign-out.
+
+Reply quotes jump to their original when it remains available. A deleted parent is an informative tombstone;
+if an older parent disappears between rendering and navigation, the current thread stays on screen with a
+short explanation. In-conversation search supports ArrowUp/ArrowDown, Enter and Escape as well as its controls.
+
+Mute deadlines update the sidebar, details menu and unread tab title without reloading, including after
+returning to a suspended tab. Conversation actions block duplicate requests and retain errors when their
+menu closes; retrying is deliberate and a successful response clears the error.
 
 The sidebar shows `Draft: <text>` immediately while composing, including the selected conversation.
 A reply without text shows `Draft: Reply`; whitespace alone does not create an indicator. Drafts take

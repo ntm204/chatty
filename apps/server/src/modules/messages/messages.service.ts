@@ -67,6 +67,16 @@ interface StoredMessageAttachment {
 	hasThumbnail: boolean;
 }
 
+async function discardPreparedAttachments(attachmentIds: string[]): Promise<void> {
+	await Promise.all(
+		attachmentIds.map((attachmentId) =>
+			deleteAttachment(attachmentId).catch((error: unknown) => {
+				logger.error({ err: error, attachmentId }, "failed to clean up an uncommitted upload");
+			}),
+		),
+	);
+}
+
 export async function sendMessage(
 	currentUserId: string,
 	conversationId: string,
@@ -103,6 +113,8 @@ export async function sendMessage(
 	let content = input.content;
 	let forwardedSource:
 		| {
+				id: string;
+				conversationId: string;
 				isSticker: boolean;
 				attachments: {
 					id: string;
@@ -126,6 +138,7 @@ export async function sendMessage(
 				hiddenFor: { none: { userId: currentUserId } },
 			},
 			select: {
+				id: true,
 				conversationId: true,
 				content: true,
 				isSticker: true,
@@ -160,136 +173,266 @@ export async function sendMessage(
 	// a full-size image, and ten of them at once is ten sharp pipelines competing
 	// for the same cores — slower in wall-clock terms and a memory spike besides.
 	const storedAttachments: StoredMessageAttachment[] = [];
-
-	// A sticker is *copied* into a fresh attachment rather than referenced.
-	// Referencing would tie every message it was ever sent in to one row, so
-	// removing it from the tray would blank pictures out of other people's
-	// conversations — the same failure that made a message delete a tombstone.
-	if (input.stickerId) {
-		const stickerPath = await readOwnedStickerPath(currentUserId, input.stickerId);
-		const id = randomUUID();
-		storedAttachments.push({
-			id,
-			conversationId,
-			position: 0,
-			kind: "IMAGE",
-			mediaType: "image/webp",
-			fileName: null,
-			durationMs: null,
-			waveform: [],
-			hasThumbnail: true,
-			...(await saveAttachment(id, await readFile(stickerPath))),
-		});
-	}
-
-	for (const [position, buffer] of (input.attachments ?? []).entries()) {
-		const id = randomUUID();
-		storedAttachments.push({
-			id,
-			conversationId,
-			position,
-			kind: "IMAGE",
-			mediaType: "image/webp",
-			fileName: null,
-			durationMs: null,
-			waveform: [],
-			hasThumbnail: true,
-			...(await saveAttachment(id, buffer)),
-		});
-	}
-
-	if (input.file) {
-		const id = randomUUID();
-		storedAttachments.push({
-			id,
-			conversationId,
-			position: 0,
-			kind: "FILE",
-			mediaType: await sniffFileMediaType(input.file.buffer),
-			fileName: normalizeFileName(input.file.fileName),
-			width: null,
-			height: null,
-			durationMs: null,
-			waveform: [],
-			hasThumbnail: false,
-			...(await saveFileAttachment(id, input.file.buffer)),
-		});
-	}
-
-	if (input.voice) {
-		const id = randomUUID();
-		const storedVoice = await saveVoiceAttachment(id, input.voice);
-		storedAttachments.push({
-			id,
-			conversationId,
-			position: 0,
-			kind: "AUDIO",
-			fileName: null,
-			width: null,
-			height: null,
-			hasThumbnail: false,
-			...storedVoice,
-		});
-	}
-
-	if (forwardedSource) {
-		for (const [position, source] of forwardedSource.attachments.entries()) {
-			const sourcePath = await findAttachmentPath(source.id, source.kind);
-			if (!sourcePath) throw new NotFoundError("Message attachment not found");
-			const bytes = await readFile(sourcePath);
-			const id = randomUUID();
-			if (source.kind === "IMAGE") {
-				storedAttachments.push({
-					id,
-					conversationId,
-					position,
-					kind: "IMAGE",
-					mediaType: "image/webp",
-					fileName: null,
-					durationMs: null,
-					waveform: [],
-					hasThumbnail: true,
-					...(await saveAttachment(id, bytes)),
-				});
-			} else {
-				storedAttachments.push({
-					id,
-					conversationId,
-					position,
-					kind: source.kind,
-					mediaType: source.mediaType,
-					fileName: source.fileName,
-					width: null,
-					height: null,
-					durationMs: source.durationMs,
-					waveform: source.waveform,
-					hasThumbnail: false,
-					...(await saveFileAttachment(id, bytes)),
-				});
-			}
-		}
-	}
+	// A writer can make a file and then reject (for example when writing one of
+	// an image's two representations fails). Record its key before invoking it,
+	// because a row-shaped `StoredMessageAttachment` only exists after success.
+	const preparedAttachmentIds: string[] = [];
 
 	let result: { message: MessageRow; isReplay: boolean };
 	try {
-		result = await prisma.$transaction(async (transaction) => {
-			// Membership changes take the same conversation lock. Re-checking after it
-			// means a send racing with a kick has one honest order: it either commits
-			// before the removal, or observes the removal and is refused afterwards.
-			await transaction.$queryRaw`
-			SELECT id
-			FROM "Conversation"
-			WHERE id = ${conversationId}
-			FOR UPDATE
-		`;
+		// A sticker is *copied* into a fresh attachment rather than referenced.
+		// Referencing would tie every message it was ever sent in to one row, so
+		// removing it from the tray would blank pictures out of other people's
+		// conversations — the same failure that made a message delete a tombstone.
+		if (input.stickerId) {
+			const stickerPath = await readOwnedStickerPath(currentUserId, input.stickerId);
+			const id = randomUUID();
+			preparedAttachmentIds.push(id);
+			storedAttachments.push({
+				id,
+				conversationId,
+				position: 0,
+				kind: "IMAGE",
+				mediaType: "image/webp",
+				fileName: null,
+				durationMs: null,
+				waveform: [],
+				hasThumbnail: true,
+				...(await saveAttachment(id, await readFile(stickerPath))),
+			});
+		}
 
-			await assertParticipant(currentUserId, conversationId, transaction);
+		for (const [position, buffer] of (input.attachments ?? []).entries()) {
+			const id = randomUUID();
+			preparedAttachmentIds.push(id);
+			storedAttachments.push({
+				id,
+				conversationId,
+				position,
+				kind: "IMAGE",
+				mediaType: "image/webp",
+				fileName: null,
+				durationMs: null,
+				waveform: [],
+				hasThumbnail: true,
+				...(await saveAttachment(id, buffer)),
+			});
+		}
 
-			// The conversation lock serialises two tabs replaying the same send in the
-			// same thread. This second lookup closes the race after the cheap lookup
-			// above while keeping expensive image work outside the transaction.
-			if (input.clientId) {
-				const previous = await transaction.message.findFirst({
+		if (input.file) {
+			const id = randomUUID();
+			preparedAttachmentIds.push(id);
+			storedAttachments.push({
+				id,
+				conversationId,
+				position: 0,
+				kind: "FILE",
+				mediaType: await sniffFileMediaType(input.file.buffer),
+				fileName: normalizeFileName(input.file.fileName),
+				width: null,
+				height: null,
+				durationMs: null,
+				waveform: [],
+				hasThumbnail: false,
+				...(await saveFileAttachment(id, input.file.buffer)),
+			});
+		}
+
+		if (input.voice) {
+			const id = randomUUID();
+			preparedAttachmentIds.push(id);
+			const storedVoice = await saveVoiceAttachment(id, input.voice);
+			storedAttachments.push({
+				id,
+				conversationId,
+				position: 0,
+				kind: "AUDIO",
+				fileName: null,
+				width: null,
+				height: null,
+				hasThumbnail: false,
+				...storedVoice,
+			});
+		}
+
+		if (forwardedSource) {
+			for (const [position, source] of forwardedSource.attachments.entries()) {
+				const sourcePath = await findAttachmentPath(source.id, source.kind);
+				if (!sourcePath) throw new NotFoundError("Message attachment not found");
+				const bytes = await readFile(sourcePath);
+				const id = randomUUID();
+				preparedAttachmentIds.push(id);
+				if (source.kind === "IMAGE") {
+					storedAttachments.push({
+						id,
+						conversationId,
+						position,
+						kind: "IMAGE",
+						mediaType: "image/webp",
+						fileName: null,
+						durationMs: null,
+						waveform: [],
+						hasThumbnail: true,
+						...(await saveAttachment(id, bytes)),
+					});
+				} else {
+					storedAttachments.push({
+						id,
+						conversationId,
+						position,
+						kind: source.kind,
+						mediaType: source.mediaType,
+						fileName: source.fileName,
+						width: null,
+						height: null,
+						durationMs: source.durationMs,
+						waveform: source.waveform,
+						hasThumbnail: false,
+						...(await saveFileAttachment(id, bytes)),
+					});
+				}
+			}
+		}
+
+		try {
+			result = await prisma.$transaction(async (transaction) => {
+				// Forwarding depends on two memberships. Lock in one deterministic order
+				// so simultaneous A → B and B → A forwards cannot deadlock, and source
+				// edits, retractions, hides and removals have one order with the send.
+				const conversationIds = [
+					...new Set([conversationId, ...(forwardedSource ? [forwardedSource.conversationId] : [])]),
+				];
+				await transaction.$queryRaw`
+					SELECT id FROM "Conversation"
+					WHERE id IN (${Prisma.join(conversationIds)})
+					ORDER BY id
+					FOR UPDATE
+				`;
+
+				await assertParticipant(currentUserId, conversationId, transaction);
+
+				// The conversation lock serialises two tabs replaying the same send in the
+				// same thread. This second lookup closes the race after the cheap lookup
+				// above while keeping expensive image work outside the transaction.
+				if (input.clientId) {
+					const previous = await transaction.message.findFirst({
+						where: { authorId: currentUserId, clientId: input.clientId },
+						select: messageSelect,
+					});
+					if (previous) {
+						if (previous.conversationId !== conversationId) {
+							throw new ValidationError("A message id cannot be reused in another conversation");
+						}
+
+						return { message: previous, isReplay: true };
+					}
+				}
+
+				if (forwardedSource) {
+					await assertParticipant(currentUserId, forwardedSource.conversationId, transaction);
+					const source = await transaction.message.findFirst({
+						where: {
+							id: forwardedSource.id,
+							conversationId: forwardedSource.conversationId,
+							kind: "USER",
+							deletedAt: null,
+							hiddenFor: { none: { userId: currentUserId } },
+						},
+						select: { content: true },
+					});
+					if (!source) throw new NotFoundError("Message not found");
+					// Attachments are immutable while a message is live. Text can be edited
+					// during media preparation, so copy the current caption under the lock.
+					content = source.content;
+				}
+
+				// The half of the reply rule no foreign key can express. Scoping the lookup
+				// by `conversationId` rather than fetching the message and comparing is
+				// deliberate: it cannot be got wrong by a later edit, and it never reveals
+				// that an id exists somewhere the sender cannot see — a miss is a miss
+				// whether the message is in another conversation or in none.
+				//
+				// Inside the transaction, after the membership re-check, so a reply racing
+				// with a kick is refused on the same honest ordering the send itself is.
+				if (input.replyToId) {
+					const parent = await transaction.message.findFirst({
+						where: { id: input.replyToId, conversationId },
+						select: { id: true },
+					});
+					if (!parent) throw new ValidationError("You can only reply to a message in this conversation");
+				}
+
+				const conversation = await transaction.conversation.findUniqueOrThrow({
+					where: { id: conversationId },
+					select: { isGroup: true, participants: { select: { userId: true } } },
+				});
+				const participantIds = new Set(conversation.participants.map((participant) => participant.userId));
+
+				// The check that actually enforces blocking. Refusing to *create* a direct
+				// conversation is not enough on its own: two people who have been talking
+				// for months already have one, so a block that only guarded creation would
+				// stop nothing. Inside the transaction, after the lock, for the same reason
+				// the membership re-check is — a send racing a block gets one honest order.
+				//
+				// Groups are exempt on purpose; see `blocks.service`.
+				if (!conversation.isGroup) {
+					const otherId = [...participantIds].find((id) => id !== currentUserId);
+					if (otherId) await assertDirectContactAvailable(currentUserId, otherId, transaction);
+				}
+
+				const mentionedUserIds = [...new Set(input.mentionedUserIds ?? [])];
+				if (mentionedUserIds.length > 0 && !conversation.isGroup) {
+					throw new ValidationError("Mentions are only available in group conversations");
+				}
+				if (mentionedUserIds.some((userId) => !participantIds.has(userId))) {
+					throw new ValidationError("You can only mention conversation participants");
+				}
+
+				const links = extractLinks(content);
+				const created = await transaction.message.create({
+					data: {
+						conversationId,
+						authorId: currentUserId,
+						...(input.clientId ? { clientId: input.clientId } : {}),
+						content,
+						...(input.replyToId ? { replyToId: input.replyToId } : {}),
+						...(input.stickerId || forwardedSource?.isSticker ? { isSticker: true } : {}),
+						...(input.forwardOfMessageId ? { isForwarded: true } : {}),
+						...(storedAttachments.length > 0
+							? { attachments: { createMany: { data: storedAttachments } } }
+							: {}),
+						...(links.length > 0
+							? {
+									links: {
+										createMany: {
+											data: links.map((url, position) => ({ conversationId, url, position })),
+										},
+									},
+								}
+							: {}),
+						...(mentionedUserIds.length > 0
+							? { mentions: { createMany: { data: mentionedUserIds.map((userId) => ({ userId })) } } }
+							: {}),
+					},
+					select: messageSelect,
+				});
+
+				// A conversation whose updatedAt disagrees with its newest message sorts
+				// wrongly in the conversation list forever after.
+				await transaction.conversation.update({
+					where: { id: conversationId },
+					data: { updatedAt: new Date() },
+					select: { id: true },
+				});
+
+				return { message: created, isReplay: false };
+			});
+		} catch (error) {
+			// Different conversations use different row locks. The database's partial
+			// unique index is the final authority if two such requests race with one
+			// client id; recover the winner instead of surfacing a false failure.
+			if (input.clientId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+				const previous = await prisma.message.findFirst({
 					where: { authorId: currentUserId, clientId: input.clientId },
 					select: messageSelect,
 				});
@@ -297,125 +440,24 @@ export async function sendMessage(
 					if (previous.conversationId !== conversationId) {
 						throw new ValidationError("A message id cannot be reused in another conversation");
 					}
-
-					return { message: previous, isReplay: true };
+					result = { message: previous, isReplay: true };
+				} else {
+					throw error;
 				}
-			}
-
-			// The half of the reply rule no foreign key can express. Scoping the lookup
-			// by `conversationId` rather than fetching the message and comparing is
-			// deliberate: it cannot be got wrong by a later edit, and it never reveals
-			// that an id exists somewhere the sender cannot see — a miss is a miss
-			// whether the message is in another conversation or in none.
-			//
-			// Inside the transaction, after the membership re-check, so a reply racing
-			// with a kick is refused on the same honest ordering the send itself is.
-			if (input.replyToId) {
-				const parent = await transaction.message.findFirst({
-					where: { id: input.replyToId, conversationId },
-					select: { id: true },
-				});
-				if (!parent) throw new ValidationError("You can only reply to a message in this conversation");
-			}
-
-			const conversation = await transaction.conversation.findUniqueOrThrow({
-				where: { id: conversationId },
-				select: { isGroup: true, participants: { select: { userId: true } } },
-			});
-			const participantIds = new Set(conversation.participants.map((participant) => participant.userId));
-
-			// The check that actually enforces blocking. Refusing to *create* a direct
-			// conversation is not enough on its own: two people who have been talking
-			// for months already have one, so a block that only guarded creation would
-			// stop nothing. Inside the transaction, after the lock, for the same reason
-			// the membership re-check is — a send racing a block gets one honest order.
-			//
-			// Groups are exempt on purpose; see `blocks.service`.
-			if (!conversation.isGroup) {
-				const otherId = [...participantIds].find((id) => id !== currentUserId);
-				if (otherId) await assertDirectContactAvailable(currentUserId, otherId, transaction);
-			}
-
-			const mentionedUserIds = [...new Set(input.mentionedUserIds ?? [])];
-			if (mentionedUserIds.length > 0 && !conversation.isGroup) {
-				throw new ValidationError("Mentions are only available in group conversations");
-			}
-			if (mentionedUserIds.some((userId) => !participantIds.has(userId))) {
-				throw new ValidationError("You can only mention conversation participants");
-			}
-
-			const links = extractLinks(content);
-			const created = await transaction.message.create({
-				data: {
-					conversationId,
-					authorId: currentUserId,
-					...(input.clientId ? { clientId: input.clientId } : {}),
-					content,
-					...(input.replyToId ? { replyToId: input.replyToId } : {}),
-					...(input.stickerId || forwardedSource?.isSticker ? { isSticker: true } : {}),
-					...(input.forwardOfMessageId ? { isForwarded: true } : {}),
-					...(storedAttachments.length > 0
-						? { attachments: { createMany: { data: storedAttachments } } }
-						: {}),
-					...(links.length > 0
-						? {
-								links: {
-									createMany: {
-										data: links.map((url, position) => ({ conversationId, url, position })),
-									},
-								},
-							}
-						: {}),
-					...(mentionedUserIds.length > 0
-						? { mentions: { createMany: { data: mentionedUserIds.map((userId) => ({ userId })) } } }
-						: {}),
-				},
-				select: messageSelect,
-			});
-
-			// A conversation whose updatedAt disagrees with its newest message sorts
-			// wrongly in the conversation list forever after.
-			await transaction.conversation.update({
-				where: { id: conversationId },
-				data: { updatedAt: new Date() },
-				select: { id: true },
-			});
-
-			return { message: created, isReplay: false };
-		});
-	} catch (error) {
-		// Different conversations use different row locks. The database's partial
-		// unique index is the final authority if two such requests race with one
-		// client id; recover the winner instead of surfacing a false failure.
-		if (input.clientId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-			const previous = await prisma.message.findFirst({
-				where: { authorId: currentUserId, clientId: input.clientId },
-				select: messageSelect,
-			});
-			if (previous) {
-				if (previous.conversationId !== conversationId) {
-					throw new ValidationError("A message id cannot be reused in another conversation");
-				}
-				result = { message: previous, isReplay: true };
 			} else {
 				throw error;
 			}
-		} else {
-			throw error;
 		}
+	} catch (error) {
+		await discardPreparedAttachments(preparedAttachmentIds);
+		throw error;
 	}
 
 	if (result.isReplay) {
 		// A concurrent request may have passed the first lookup and prepared files
 		// before the locked lookup found the winner. They have no rows and are safe
 		// to remove immediately instead of waiting for the orphan sweeper.
-		await Promise.all(
-			storedAttachments.map((attachment) =>
-				deleteAttachment(attachment.id).catch((error: unknown) => {
-					logger.error({ err: error, attachmentId: attachment.id }, "failed to clean up a replayed upload");
-				}),
-			),
-		);
+		await discardPreparedAttachments(preparedAttachmentIds);
 
 		return input.clientId
 			? { ...toMessageDTO(result.message), clientId: input.clientId }
@@ -811,14 +853,20 @@ export async function hideMessageForUser(
 	conversationId: string,
 	messageId: string,
 ): Promise<void> {
-	await assertParticipant(currentUserId, conversationId);
-	const message = await prisma.message.findFirst({ where: { id: messageId, conversationId }, select: { id: true } });
-	if (!message) throw new NotFoundError("Message not found");
+	await prisma.$transaction(async (transaction) => {
+		await transaction.$queryRaw`SELECT id FROM "Conversation" WHERE id = ${conversationId} FOR UPDATE`;
+		await assertParticipant(currentUserId, conversationId, transaction);
+		const message = await transaction.message.findFirst({
+			where: { id: messageId, conversationId },
+			select: { id: true },
+		});
+		if (!message) throw new NotFoundError("Message not found");
 
-	await prisma.messageHiddenFor.upsert({
-		where: { messageId_userId: { messageId, userId: currentUserId } },
-		create: { messageId, userId: currentUserId },
-		update: {},
+		await transaction.messageHiddenFor.upsert({
+			where: { messageId_userId: { messageId, userId: currentUserId } },
+			create: { messageId, userId: currentUserId },
+			update: {},
+		});
 	});
 	getIO().to(userRoom(currentUserId)).emit("message:hidden", { conversationId, messageId });
 }

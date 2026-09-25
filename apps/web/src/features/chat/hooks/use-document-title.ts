@@ -1,6 +1,8 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { useEffect } from "react";
 import { buildDocumentTitle } from "../utils/document-title";
+import { isConversationMuted } from "../utils/conversation-mute";
+import { useMuteExpiry } from "./use-mute-expiry";
 
 /**
  * Puts the unread total in the tab title.
@@ -10,16 +12,13 @@ import { buildDocumentTitle } from "../utils/document-title";
  * the badge, the ordering, the preview — is only visible to somebody already
  * looking at the screen it is on.
  *
- * Summed from the same `unreadCount` the sidebar badges render, so the number
- * in the title and the badges under it can never disagree.
+ * Muted conversations keep their sidebar badges but do not contribute to the
+ * tab count until notifications resume.
  */
 export function useDocumentTitle(conversations: ConversationDTO[]): void {
+	useMuteExpiry(conversations.map((conversation) => conversation.mutedUntil));
 	const unreadCount = conversations.reduce(
-		(total, conversation) =>
-			total +
-			(conversation.mutedUntil && new Date(conversation.mutedUntil).getTime() > Date.now()
-				? 0
-				: conversation.unreadCount),
+		(total, conversation) => total + (isConversationMuted(conversation) ? 0 : conversation.unreadCount),
 		0,
 	);
 

@@ -24,6 +24,25 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 - Conversation details now dock beside chat on wide screens and become a dedicated view on smaller screens, with clearer shared-content navigation and keyboard focus restoration.
 
+### Concurrent actions and mute expiry
+
+- Coordinate desktop notifications across a signed-in account's tabs, let a notification open an archived or
+  unpaged conversation, close app-owned popups on session teardown, and let people hide notification previews.
+- Replay durable text/image outbox entries after leaving their thread when the app reconnects, while sharing an
+  in-tab delivery claim with the visible thread.
+- Keep a thread visible when a quoted original is no longer available, show an inline explanation, and render a
+  deleted quote as an informative tombstone rather than a dead-end button.
+- Let ArrowUp/ArrowDown choose an in-conversation search result, Enter open it, and Escape close the search once.
+- Keep an open thread connected after a password change by reauthenticating its existing socket.
+- Restore the conversation-search focus border overridden by translucent header styling in both themes.
+
+- Recheck forward source access after media preparation under ordered conversation locks; reject
+  concurrent hiding/retraction/removal, use the latest edited caption and clean abandoned copies.
+- Prevent completed bookmark removal from being undone by an older refresh or another account's request.
+- Keep keyboard focus inside a pending modal with no enabled controls and focus Done after forwarding.
+- Update mute icons, menus and unread tab totals at expiry; preserve conversation action errors after
+  menu dismissal and block duplicate requests.
+
 ### Mentions, forwarding and bookmarks
 
 - Confirm successful forwards with the destination name; report a retracted source without sending.

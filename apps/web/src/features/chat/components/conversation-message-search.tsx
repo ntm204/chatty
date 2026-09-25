@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { MESSAGE_SEARCH_MIN_LENGTH } from "../constants/search";
@@ -45,27 +46,49 @@ export function ConversationMessageSearch({
 		onSelectResult({ query: query.trim(), results, activeIndex: index });
 	}
 
+	function moveSelection(direction: -1 | 1) {
+		const nextIndex = Math.min(Math.max(activeIndex + direction, 0), results.length - 1);
+		if (nextIndex !== activeIndex) selectIndex(nextIndex);
+	}
+
+	function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			onClose();
+
+			return;
+		}
+		if (!results.length || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+		if (event.key === "ArrowUp") {
+			event.preventDefault();
+			moveSelection(-1);
+
+			return;
+		}
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			moveSelection(1);
+
+			return;
+		}
+		if (event.key === "Enter") {
+			event.preventDefault();
+			selectIndex(activeIndex);
+		}
+	}
+
 	// `focus-within` on the bar, because the field inside drops its own outline
 	// and carries no ring — without it, tabbing into the search lands on
 	// something with no visible focus at all. Same treatment the group-members
 	// search bar already gives its own bottom border.
 	return (
-		<div className="conversation-message-search flex min-h-12 shrink-0 items-center gap-2 border-b border-rule bg-paper-raised px-7 transition-colors focus-within:border-ink">
+		<div className="conversation-message-search flex min-h-12 shrink-0 items-center gap-2 border-b border-rule bg-paper-raised px-7 transition-colors">
 			<Search className="size-4 shrink-0 text-ink-faint" />
 			<input
 				ref={inputRef}
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
-				onKeyDown={(event) => {
-					if (event.key === "Escape") onClose();
-					if (event.key === "Enter" && results.length > 0) {
-						selectIndex(
-							event.shiftKey
-								? Math.max(0, activeIndex - 1)
-								: Math.min(results.length - 1, activeIndex + 1),
-						);
-					}
-				}}
+				onKeyDown={handleKeyDown}
 				placeholder="Search in conversation"
 				aria-label="Search in conversation"
 				className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-faint"

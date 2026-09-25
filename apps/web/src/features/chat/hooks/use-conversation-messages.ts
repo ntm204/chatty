@@ -18,6 +18,7 @@ import { toDraftAttachments } from "../utils/draft-attachment";
 import { restoreLocalOutboxMessage, toLocalOutboxMessage } from "../utils/local-outbox";
 import { mergeReloadedMessages } from "../utils/merge-messages";
 import { optimizeImagesForUpload } from "../utils/optimize-image-upload";
+import { claimOutboxDelivery, releaseOutboxDelivery } from "../utils/outbox-delivery";
 import { toReplyQuote } from "../utils/reply-quote";
 import { useMessageActions } from "./use-message-actions";
 import { useSessionMessageSends } from "./use-session-message-sends";
@@ -69,6 +70,11 @@ function releaseUpload(pending: Map<string, PendingUpload>, draftId: string): vo
 	pending.delete(draftId);
 }
 
+/** A hidden target and a conversation the reader can no longer access both deliberately answer 404. */
+function isUnavailableContextError(error: unknown): boolean {
+	return error instanceof Error && /\bnot found\b|\bno longer (?:exists|available)\b/i.test(error.message);
+}
+
 interface ConversationMessages {
 	/** Oldest first, which is the order the view reads. */
 	messages: ThreadMessage[];
@@ -80,6 +86,9 @@ interface ConversationMessages {
 	isLoadingThread: boolean;
 	/** Why the first page could not be fetched, or "" when it could. */
 	loadError: string;
+	/** A target outside the current page disappeared, while the surrounding thread remains readable. */
+	navigationError: string;
+	dismissNavigationError: () => void;
 	hasUnsavedMessages: boolean;
 	/** Fetches the first page again after `loadError`. */
 	retryLoad: () => void;
@@ -146,6 +155,7 @@ export function useConversationMessages(
 	conversationId: string | null,
 	onConversationsChanged: () => void,
 	requestedMessageId: string | null = null,
+	onUnavailableMessageNavigation?: () => void,
 ): ConversationMessages {
 	const [messages, setMessages] = useState<ThreadMessage[]>([]);
 	const [hasMoreOlder, setHasMoreOlder] = useState(false);
@@ -154,12 +164,15 @@ export function useConversationMessages(
 	const [isLoadingNewer, setIsLoadingNewer] = useState(false);
 	const [isLoadingThread, setIsLoadingThread] = useState(false);
 	const [loadError, setLoadError] = useState("");
+	const [navigationError, setNavigationError] = useState("");
 	// Bumped by `retryLoad` to re-run the effect below without changing which
 	// conversation or message it is loading.
 	const [reloadCount, setReloadCount] = useState(0);
 	const [targetMessageId, setTargetMessageId] = useState<string | null>(null);
 	const [loadedCacheScope, setLoadedCacheScope] = useState<string | null>(null);
 	const [restoredDraftIds, setRestoredDraftIds] = useState<string[]>([]);
+	const messagesRef = useRef(messages);
+	messagesRef.current = messages;
 	const pendingUploadsRef = useRef(new Map<string, PendingUpload>());
 	const sendingDraftIdsRef = useRef(new Set<string>());
 	const currentUserId = useAuth((state) => state.currentUser?.id);
@@ -168,6 +181,10 @@ export function useConversationMessages(
 	const deliverRef = useRef<(draft: ThreadMessage) => Promise<void>>(async () => undefined);
 	const navigationGenerationRef = useRef(0);
 	const activeCacheScopeRef = useRef<string | null>(null);
+	// A failed context request asks the page to clear its target. Let the normal
+	// latest-page fetch that follows keep the reader's existing thread visible
+	// instead of replacing it with an empty loading state for a round trip.
+	const preserveVisibleThreadRef = useRef(false);
 	// A cached historical window cannot establish that a return reached latest.
 	// Keep requiring the server across retries until that navigation succeeds.
 	const requiresServerPageRef = useRef(false);
@@ -175,6 +192,9 @@ export function useConversationMessages(
 	const retractionsRef = useRef(new Map<string, MessageDTO>());
 	useEffect(() => {
 		retractionsRef.current.clear();
+	}, [conversationId, currentUserId]);
+	useEffect(() => {
+		setNavigationError("");
 	}, [conversationId, currentUserId]);
 	const olderRequestRef = useRef<number | null>(null);
 	const newerRequestRef = useRef<number | null>(null);
@@ -205,9 +225,20 @@ export function useConversationMessages(
 
 	useEffect(() => {
 		const generation = ++navigationGenerationRef.current;
-		if (activeCacheScopeRef.current !== cacheScope) requiresServerPageRef.current = false;
+		const isSameCacheScope = activeCacheScopeRef.current === cacheScope;
+		const hasVisibleThread = messagesRef.current.length > 0;
+		const preserveVisibleThread =
+			hasVisibleThread && isSameCacheScope && (Boolean(requestedMessageId) || preserveVisibleThreadRef.current);
+		// This only lasts through the latest-page load immediately after an
+		// unavailable target. A normal return-to-latest retains its existing
+		// loading behaviour and is not mistaken for that recovery path.
+		if (!requestedMessageId) preserveVisibleThreadRef.current = false;
+		if (!isSameCacheScope) requiresServerPageRef.current = false;
 		activeCacheScopeRef.current = cacheScope;
-		if (requestedMessageId) requiresServerPageRef.current = true;
+		if (requestedMessageId) {
+			requiresServerPageRef.current = true;
+			setNavigationError("");
+		}
 		const requiresServerPage = requiresServerPageRef.current;
 		olderRequestRef.current = null;
 		newerRequestRef.current = null;
@@ -219,17 +250,20 @@ export function useConversationMessages(
 			hiddenIds: new Set(),
 		};
 		loadingChangesRef.current = loadingChanges;
-		setHasMoreOlder(false);
-		setHasMoreNewer(false);
+		if (!preserveVisibleThread) {
+			setHasMoreOlder(false);
+			setHasMoreNewer(false);
+			setTargetMessageId(null);
+		}
 		setIsLoadingOlder(false);
 		setIsLoadingNewer(false);
-		setTargetMessageId(null);
 
 		if (!conversationId || !currentUserId || !cacheScope) {
 			loadingChangesRef.current = null;
 			setMessages([]);
 			setIsLoadingThread(false);
 			setLoadError("");
+			setNavigationError("");
 			setLoadedCacheScope(null);
 			setRestoredDraftIds([]);
 
@@ -269,16 +303,22 @@ export function useConversationMessages(
 
 		setIsLoadingThread(true);
 		setLoadError("");
-		setMessages([]);
-		setLoadedCacheScope(null);
-		setRestoredDraftIds([]);
+		if (!preserveVisibleThread) {
+			setMessages([]);
+			setLoadedCacheScope(null);
+			setRestoredDraftIds([]);
+		}
 
-		const localRequest = Promise.all([
-			readMessageSnapshot(currentUserId, conversationId),
-			readLocalOutbox(currentUserId, conversationId),
-		])
+		const localRequest = (
+			preserveVisibleThread
+				? Promise.resolve<[MessageDTO[], Awaited<ReturnType<typeof readLocalOutbox>>]>([[], []])
+				: Promise.all([
+						readMessageSnapshot(currentUserId, conversationId),
+						readLocalOutbox(currentUserId, conversationId),
+					])
+		)
 			.then(([cached, queued]) => {
-				if (!isCurrent) return;
+				if (!isCurrent || preserveVisibleThread) return;
 				const restored = queued.map(restoreLocalOutboxMessage);
 				for (const item of restored) {
 					if (item.files.length === 0) continue;
@@ -339,6 +379,14 @@ export function useConversationMessages(
 				// offered nothing to try again with.
 				await localRequest;
 				if (!isCurrent || (hasLocalMessages && !requiresServerPage)) return;
+				if (requestedMessageId && isUnavailableContextError(error)) {
+					setNavigationError("The original message is no longer available.");
+					setTargetMessageId(null);
+					preserveVisibleThreadRef.current = hasVisibleThread && isSameCacheScope;
+					onUnavailableMessageNavigation?.();
+
+					return;
+				}
 				setLoadError(error.message);
 			});
 
@@ -352,7 +400,7 @@ export function useConversationMessages(
 			isCurrent = false;
 			if (navigationGenerationRef.current === generation) navigationGenerationRef.current += 1;
 		};
-	}, [cacheScope, conversationId, currentUserId, requestedMessageId, reloadCount]);
+	}, [cacheScope, conversationId, currentUserId, onUnavailableMessageNavigation, requestedMessageId, reloadCount]);
 
 	useEffect(() => {
 		if (!currentUserId || !conversationId || loadedCacheScope !== cacheScope) return;
@@ -361,6 +409,7 @@ export function useConversationMessages(
 	}, [cacheScope, conversationId, currentUserId, loadedCacheScope, messages]);
 
 	const retryLoad = useCallback(() => setReloadCount((current) => current + 1), []);
+	const dismissNavigationError = useCallback(() => setNavigationError(""), []);
 
 	/**
 	 * Refetches the newest page and folds it into what is on screen.
@@ -503,9 +552,9 @@ export function useConversationMessages(
 	 * survives the failure, so the second attempt finds the same bytes.
 	 */
 	const deliver = useCallback(async (draft: ThreadMessage) => {
-		if (sendingDraftIdsRef.current.has(draft.id)) return;
-		sendingDraftIdsRef.current.add(draft.id);
 		const authorId = draft.author?.id;
+		if (!authorId || sendingDraftIdsRef.current.has(draft.id) || !claimOutboxDelivery(authorId, draft.id)) return;
+		sendingDraftIdsRef.current.add(draft.id);
 		const generation = authorId ? getMessageDraftGeneration(authorId) : -1;
 		try {
 			const pendingUpload = pendingUploadsRef.current.get(draft.id);
@@ -551,6 +600,7 @@ export function useConversationMessages(
 			throw error;
 		} finally {
 			sendingDraftIdsRef.current.delete(draft.id);
+			releaseOutboxDelivery(authorId, draft.id);
 		}
 	}, []);
 
@@ -749,6 +799,8 @@ export function useConversationMessages(
 		loadNewer,
 		isLoadingThread,
 		loadError,
+		navigationError,
+		dismissNavigationError,
 		hasUnsavedMessages: messages.some((message) => message.hasLocalStorageError),
 		retryLoad,
 		resync,

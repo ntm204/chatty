@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
  * Takes no props: the server identifies the account from the token, and the
  * current password is typed rather than remembered. It does reach the auth
  * store, but only for the action — changing a password replaces this session's
- * token and drops its socket, which is the store's job rather than a form's.
+ * token and reconnects its socket, which is the store's job rather than a form's.
  *
  * The confirmation field never leaves the browser. It exists to catch a typo in
  * a value the user cannot see, which is a client-side problem — sending it would

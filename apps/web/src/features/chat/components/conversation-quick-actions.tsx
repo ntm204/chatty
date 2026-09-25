@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
-import { isConversationMuted } from "../utils";
+import { useConversationMuted } from "../hooks/use-conversation-muted";
+import { useConversationMutation } from "../hooks/use-conversation-mutation";
+import { ConversationActionError } from "./conversation-action-error";
 import { ConversationMuteMenu } from "./conversation-mute-menu";
 
 interface ConversationQuickActionsProps {
@@ -15,9 +17,11 @@ interface ConversationQuickActionsProps {
 /** The two icon-button quick actions at the top of the details panel, matching Messenger's row. */
 export function ConversationQuickActions({ conversation, onOpenSearch }: ConversationQuickActionsProps) {
 	const [isChoosingMute, setIsChoosingMute] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
+	const { isSaving, error, clearError, run } = useConversationMutation(conversation.id);
 	const rootRef = useRef<HTMLDivElement>(null);
-	const isMuted = isConversationMuted(conversation);
+	const isMuted = useConversationMuted(conversation.mutedUntil);
+
+	useEffect(() => setIsChoosingMute(false), [conversation.id]);
 
 	useEffect(() => {
 		if (!isChoosingMute) return;
@@ -30,13 +34,7 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 	}, [isChoosingMute]);
 
 	async function apply(action: () => Promise<unknown>): Promise<void> {
-		setIsSaving(true);
-		try {
-			await action();
-			setIsChoosingMute(false);
-		} finally {
-			setIsSaving(false);
-		}
+		if (await run(action)) setIsChoosingMute(false);
 	}
 
 	function muteFor(milliseconds: number | null): void {
@@ -46,7 +44,7 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 	}
 
 	return (
-		<div className="flex justify-center gap-8 border-b border-rule px-5 py-4">
+		<div className="flex flex-wrap justify-center gap-x-8 gap-y-3 border-b border-rule px-5 py-4">
 			<div ref={rootRef} className="relative flex flex-col items-center gap-1.5">
 				<Button
 					variant="ghost"
@@ -54,6 +52,7 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 					aria-label={isMuted ? "Turn notifications back on" : "Mute notifications"}
 					aria-haspopup="menu"
 					aria-expanded={isChoosingMute}
+					aria-busy={isSaving}
 					className={cn("size-11 rounded-full border border-rule p-0", isMuted && "text-signal")}
 				>
 					<BellOff className="size-4" />
@@ -74,6 +73,7 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 							onUnmute={() => void apply(() => api.setConversationMuted(conversation.id, null))}
 							onMuteFor={muteFor}
 						/>
+						{error && <ConversationActionError error={error} onDismiss={clearError} />}
 					</div>
 				)}
 			</div>
@@ -89,6 +89,9 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 				</Button>
 				<span className="eyebrow text-ink-faint">Search</span>
 			</div>
+			{error && !isChoosingMute && (
+				<ConversationActionError error={error} onDismiss={clearError} className="basis-full" />
+			)}
 		</div>
 	);
 }

@@ -1,8 +1,9 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { ConversationActions } from "@/features/chat/components/conversation-actions";
+import { ConversationQuickActions } from "@/features/chat/components/conversation-quick-actions";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { makeConversation, makeParticipant } from "./factories";
@@ -204,5 +205,59 @@ describe("ConversationActions", () => {
 		expect(screen.queryByRole("menuitem", { name: /restrict|block/iu })).not.toBeInTheDocument();
 		expect(api.getRestrictionStatus).not.toHaveBeenCalled();
 		expect(api.getBlockStatus).not.toHaveBeenCalled();
+	});
+
+	it("keeps a late error visible after closing the menu without reopening it", async () => {
+		let rejectRequest!: (error: Error) => void;
+		vi.mocked(api.setConversationPinned).mockReturnValue(
+			new Promise((_, reject) => {
+				rejectRequest = reject;
+			}),
+		);
+		const user = userEvent.setup();
+		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" />);
+		await user.click(screen.getByRole("button", { name: "Conversation actions" }));
+		await user.click(screen.getByRole("menuitem", { name: "Pin conversation" }));
+		await user.keyboard("{Escape}");
+		await act(async () => rejectRequest(new Error("Could not pin conversation")));
+		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+		expect(screen.getByRole("alert")).toHaveTextContent("Could not pin conversation");
+		await user.click(screen.getByRole("button", { name: "Dismiss conversation error" }));
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+	});
+
+	it("shares a mute request and its recovery feedback with the details controls", async () => {
+		let rejectRequest!: (error: Error) => void;
+		vi.mocked(api.setConversationMuted).mockReturnValue(
+			new Promise((_, reject) => {
+				rejectRequest = reject;
+			}),
+		);
+		const user = userEvent.setup();
+		const conversation = makeConversation();
+		render(
+			<>
+				<ConversationActions conversation={conversation} currentUserId="minh" />
+				<ConversationQuickActions conversation={conversation} onOpenSearch={() => undefined} />
+			</>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Conversation actions" }));
+		await user.click(screen.getByRole("menuitem", { name: "Mute" }));
+		fireEvent.click(screen.getByRole("menuitem", { name: "Forever" }));
+		expect(api.setConversationMuted).toHaveBeenCalledTimes(1);
+
+		const detailsTrigger = screen.getByRole("button", { name: "Mute notifications" });
+		await user.click(detailsTrigger);
+		expect(detailsTrigger).toHaveAttribute("aria-busy", "true");
+		expect(screen.getByRole("menuitem", { name: "Forever" })).toBeDisabled();
+		await user.click(screen.getByRole("menuitem", { name: "Forever" }));
+		expect(api.setConversationMuted).toHaveBeenCalledTimes(1);
+
+		await act(async () => rejectRequest(new Error("Mute was not confirmed")));
+		expect(screen.getAllByRole("alert")).toHaveLength(2);
+		for (const alert of screen.getAllByRole("alert")) expect(alert).toHaveTextContent("Mute was not confirmed");
+		await user.click(screen.getAllByRole("button", { name: "Dismiss conversation error" })[0]!);
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 	});
 });

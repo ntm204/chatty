@@ -13,6 +13,13 @@
 export const NOTIFICATIONS_STORAGE_KEY = "chatty:notifications";
 
 /**
+ * The content-preview choice is separate from whether desktop popups appear.
+ * A person can keep an arrival alert without putting a sender or message on a
+ * locked screen.
+ */
+export const NOTIFICATION_MESSAGE_PREVIEW_STORAGE_KEY = "chatty:notification-message-preview";
+
+/**
  * Unlike the popup preference, sound needs no browser permission — so it
  * defaults to on rather than requiring an explicit first opt-in.
  */

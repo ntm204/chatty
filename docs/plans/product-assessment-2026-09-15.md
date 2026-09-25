@@ -1,6 +1,6 @@
 # Chatty — đánh giá sản phẩm và thứ tự triển khai
 
-Ngày: **2026-09-15**. Được chủ dự án yêu cầu lưu và bắt đầu triển khai.
+Ngày lập: **2026-09-15**. Cập nhật: **2026-09-20**. Được chủ dự án yêu cầu lưu và bắt đầu triển khai.
 
 ## Kết luận
 
@@ -14,6 +14,16 @@ messenger tập trung vào quan hệ, dùng được trên điện thoại phổ
 đơn dịch vụ định kỳ. Kế hoạch này bổ sung thứ tự ưu tiên cho
 [60 đầu việc trải nghiệm](experience-polish.md), không thay đổi trạng thái các ID
 khi chưa nghiệm thu hết tiêu chí.
+
+## Tiến độ hiện tại — 2026-09-20
+
+**15/60 XP đã nghiệm thu, 15 partial, 30 planned.** Đợt này hoàn tất phần triển khai cho reply-context,
+notification nhiều tab, bàn phím tìm trong hội thoại và replay outbox ngoài thread mở; chúng vẫn là `partial`
+cho đến khi hoàn thành matrix browser/thiết bị còn lại. Đây là số mục theo tiêu chí, không phải tỷ lệ sẵn
+sàng production. Kết quả chi tiết cuối tài liệu và trong [sổ XP](experience-polish.md).
+
+Phần tiếp theo: trạng thái bookmark chung/multi-tab, Back giữ vị trí đọc sau context jump, nghiệm thu native
+notification/replay ở hai tab, offline app shell, ma trận mobile/IME/Safari và đo hiệu năng.
 
 ## Đánh giá ban đầu từng nhóm tính năng
 
@@ -220,7 +230,7 @@ ngoài trang đầu với mất response sau commit, và bookmark >20 kết qu�
 Toàn bộ 508 frontend test đạt. Backend chạy toàn bộ có 488 pass và 1 lỗi fixture nhóm thiếu admin;
 đã sửa fixture tạo nhóm qua service, chạy lại 35 test editing đều đạt. Gate tiếp theo đã đạt **489 backend + 512 frontend**, audit 0 hit.
 
-Tiến độ hiện tại: **10 done, 14 partial, 36 planned**. Chưa hoàn tất toàn bộ backlog.
+Tiến độ tại cuối đợt mention (trước XP-05): **10 done, 14 partial, 36 planned**. Chưa hoàn tất toàn bộ backlog.
 
 XP-25 bổ sung snippet quanh chỗ khớp và highlight không dấu, giữ chữ gốc và không render HTML.
 4 test Unicode/tiếng Việt, nội dung dài, emoji biên và HTML literal đã đạt; Chromium tìm không dấu/Back giữ scroll đạt. Ảnh giao diện đã xem tại `/tmp/chatty-search-highlight.png`.
@@ -246,3 +256,43 @@ Gate cuối `npm run verify` và `npm run verify:full` đều đạt: **489 back
 không liên quan đến bookmark/chuyển tiếp/mention/snippet của đợt này, không phải regression, chưa sửa
 trong đợt này. Toàn bộ kịch bản mới (bookmark, forward, mention, global search, composer boundaries)
 đều pass trong lần chạy đầy đủ này.
+
+
+## Tiếp tục ngày 2026-09-17 — thao tác đồng thời và mute hết hạn
+
+- Chuyển tiếp khóa conversation nguồn/đích theo thứ tự ID, kiểm tra lại quyền và trạng thái tin
+  sau khi chuẩn bị attachment; hide dùng cùng lock, caption lấy bản mới nhất. Từ chối thì dọn
+  file vừa copy. Retry của forward đã commit vẫn trả cùng tin khi nguồn bị thu hồi sau đó.
+- Bookmark remove không bị refresh chạy trước khi delete commit làm hiện lại; completion tài khoản
+  cũ không làm thay đổi hoặc mở khóa danh sách tài khoản mới.
+- Modal giữ Tab/Shift+Tab khi mọi nút đều disabled; forward thành công chuyển focus sang Done.
+- Mute hết hạn cập nhật icon, menu và unread title mà không reload; tab ngủ trở lại được tính lại,
+  mute Forever không tràn bộ đếm timer. Sidebar/details giữ lỗi sau khi đóng menu, chặn nhấp lặp.
+- Chromium đã qua emoji/caret, email/URL không mở mention; deadline edit 8h thật khi editor đang
+  mở trả 400 và giữ chữ để copy/paste, không làm đổi nội dung gốc hoặc lịch sử.
+
+### Các lỗi phát hiện thêm và kết quả browser
+
+- **Đổi mật khẩu mất realtime:** tái hiện bằng hai context Chromium, peer gửi tin sau khi đổi mật khẩu
+  nhưng người đổi không nhận được, màn hình kẹt Reconnecting. Nguyên nhân là bỏ socket cũ nhưng các
+  hook đang mount vẫn giữ listener trên nó. Sửa bằng reconnect cùng instance với token thay thế;
+  test gửi/nhận cả hai chiều sau đổi mật khẩu đã đạt.
+- **Focus tìm kiếm:** ngoài việc bài test cũ đo resting khi input đã autofocus, CSS conversation chrome
+  thực sự ghi đè border focus. Bổ sung `focus-within` ở lớp CSS tương ứng; Chromium Tab/Shift+Tab
+  trên light và dark đều đạt, có kiểm tra màu thực từ computed style.
+- **Bài account cũ:** login form được mount phía dưới màn chào nhưng còn inert. Bài test giờ bấm Skip
+  intro trước khi nhập; luồng đổi mật khẩu → logout → đăng nhập lại đã đạt.
+- **Fixture retry mute:** tên test dài hơn giới hạn handle 20 ký tự; đã rút gọn, không đổi validation.
+
+6 regression PostgreSQL forwarding và 37 unit frontend liên quan đạt. **20 kịch bản Chromium khác
+nhau liên quan đã đạt qua các lượt**: account (6), affordances (3), conversation actions (3), sidebar (2),
+bookmark, composer boundaries, mention, editor expiry, forward và password realtime (mỗi nhóm 1).
+Lượt browser cuối chạy 10/10 đạt. Sau đó toàn bộ bộ E2E đã chạy lại một lượt trên Chromium:
+**76/76 kịch bản đạt trong 12,7 phút**, không có bài flaky hay phải thử lại.
+XP-04, XP-14, XP-27 và XP-42 chuyển sang done theo tiêu chí đã kiểm tra.
+
+`verify:full` trước hai bản sửa bổ sung đạt 495 backend + 530 frontend, audit 0 hit. Lượt full chạy lại
+sau hai bản sửa (socket reauth khi đổi mật khẩu, border focus của search) cũng đạt: **495 backend +
+530 frontend, 116 test file, audit 0 hit**, typecheck/lint/format sạch. Số test không đổi vì hai bản
+sửa mở rộng bài `change-password-form` sẵn có và thêm kịch bản browser `password-realtime`, không
+thêm unit mới.
