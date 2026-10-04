@@ -284,7 +284,8 @@ test("returns from search across live arrivals, a delayed latest page and a retr
 			await readerPage.getByRole("textbox", { name: "Search in conversation" }).fill("amber-orchid");
 			await expect(readerPage.getByText("1 of 1")).toBeVisible();
 			await expect(history.getByText("Historical checkpoint amber-orchid")).toBeInViewport();
-			await expect(readerPage.getByRole("button", { name: "Load newer messages" })).toBeAttached();
+			// Newer history pages load by scrolling, never through an extra control.
+			await expect(readerPage.getByRole("button", { name: "Load newer messages" })).toHaveCount(0);
 			await expect(jump).toBeVisible();
 		}
 
@@ -298,8 +299,16 @@ test("returns from search across live arrivals, a delayed latest page and a retr
 		expect(await settledScrollPosition(history)).toBeCloseTo(readingPosition, 0);
 		// The live message must not become the history paging cursor and silently
 		// skip all the messages between the search window and today.
-		await readerPage.getByRole("button", { name: "Load newer messages" }).click();
+		await history.hover();
+		await readerPage.mouse.wheel(0, 20_000);
 		await expect(history.getByText("History line 40", { exact: true })).toBeAttached();
+		// Paging closed the gap to today, so the window joins the live thread in
+		// place: the live arrival sits at its end and no reload is offered.
+		await readerPage.mouse.wheel(0, 20_000);
+		await expect(history.getByText("A live arrival while search is open")).toBeInViewport();
+		await expect(jump).toBeHidden();
+		await readerPage.getByRole("button", { name: "Close conversation search" }).click();
+		await openHistoricalCheckpoint();
 
 		const latestUrl = `**/conversations/${conversationId}/messages?limit=50`;
 		const released = new Promise<void>((resolve) => {

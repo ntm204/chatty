@@ -61,5 +61,6 @@ export interface MessageListProps {
 	requestCancelEdit: number;
 	onEditingStateChange: (isEditing: boolean) => void;
 	targetMessageId?: string | null;
+	navigationError?: string;
 	onReturnToLatest?: () => void;
 }

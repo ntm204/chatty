@@ -21,7 +21,6 @@ interface MessageRowsProps extends MessageRowActions {
 	unreadDividerMessageId: string | null;
 	unreadCount: number;
 	editingMessageId: string | null;
-	targetMessageId?: string | null | undefined;
 	pinnedMessageIds: string[];
 }
 
@@ -40,7 +39,6 @@ export const MessageRows = memo(function MessageRows({
 	unreadDividerMessageId,
 	unreadCount,
 	editingMessageId,
-	targetMessageId,
 	pinnedMessageIds,
 	...actions
 }: MessageRowsProps) {
@@ -106,7 +104,6 @@ export const MessageRows = memo(function MessageRows({
 					isFirstOfRun={isFirstOfRun}
 					isLastMessage={isLastMessage}
 					clusterPosition={getClusterPosition(isFirstOfRun, isLastOfRun)}
-					isTargeted={message.id === targetMessageId}
 					isEditing={editingMessageId === message.id}
 					receipt={readReceipt?.messageId === message.id ? readReceipt : null}
 					currentUserId={currentUserId}

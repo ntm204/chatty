@@ -9,6 +9,9 @@ export const MESSAGE_PAGE_SIZE = 50;
  */
 export const LOAD_OLDER_THRESHOLD_PX = 120;
 
+/** The same early start for a historical window that still has newer pages below it. */
+export const LOAD_NEWER_THRESHOLD_PX = 120;
+
 /** Leaving the live edge stops automatic following and exposes the same way back. */
 export const LATEST_MESSAGE_THRESHOLD_PX = 120;
 
@@ -37,3 +40,6 @@ export const RETURN_TO_LATEST_THRESHOLD_PX = 80;
  * dropped, on a loop.
  */
 export const MAX_RETAINED_MESSAGES = MESSAGE_PAGE_SIZE * 4;
+
+/** Threads whose scroll position is remembered for the tab; the least recent is forgotten first. */
+export const MAX_REMEMBERED_READING_POSITIONS = 50;

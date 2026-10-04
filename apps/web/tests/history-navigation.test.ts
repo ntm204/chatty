@@ -93,7 +93,8 @@ describe("history navigation", () => {
 			act(() => view.result.current[loadPage]());
 			view.rerender({ target: null });
 			expect(view.result.current.isLoadingThread).toBe(true);
-			expect(view.result.current.targetMessageId).toBeNull();
+			// The historical window stays on screen until the latest page replaces it.
+			expect(view.result.current.targetMessageId).toBe("message-10");
 			expect(view.result.current.isLoadingOlder).toBe(false);
 			expect(view.result.current.isLoadingNewer).toBe(false);
 			await act(async () => latestPage.resolve([makeHistoryMessage(100)]));
@@ -283,7 +284,8 @@ describe("history navigation", () => {
 			emit("message:new", original);
 			emit("message:updated", updated);
 			await act(async () => cachedPage.resolve([original]));
-			expect(view.result.current.messages).toEqual([updated]);
+			// The visible window keeps its edits through `useMessageActions`, mocked here.
+			expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-10", "message-101"]);
 			await act(async () => latestPage.resolve([original, makeHistoryMessage(100)]));
 
 			expect(view.result.current.messages).toEqual([makeHistoryMessage(100), updated]);
@@ -303,7 +305,7 @@ describe("history navigation", () => {
 		emit("message:new", makeHistoryMessage(101));
 		emit("message:hidden", { conversationId: "conversation", messageId: "message-101" });
 		await act(async () => cachedPage.resolve([makeHistoryMessage(101)]));
-		expect(view.result.current.messages).toEqual([]);
+		expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-10"]);
 		await act(async () => latestPage.resolve([makeHistoryMessage(101), makeHistoryMessage(100)]));
 
 		expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-100"]);

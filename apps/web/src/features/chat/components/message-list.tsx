@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVisibleMessageRead } from "../hooks/use-visible-message-read";
-import { Button } from "@/components/button";
 import type { MessageListProps } from "../types/message-list";
 import { MAX_RETAINED_MESSAGES } from "../constants/pagination";
 import { useMessageEditing, useMessageScroll, useUnreadDivider } from "../hooks";
@@ -9,6 +8,7 @@ import { getReadReceipt } from "../utils";
 import { MessageEditHistory } from "./message-edit-history";
 import { MessageRows } from "./message-rows";
 import { ReactionDetailsPanel } from "./reaction-details-panel";
+import { ReturnToReplyButton } from "./return-to-reply-button";
 import { ScrollToLatestButton } from "./scroll-to-latest-button";
 import { ThreadTypingIndicator } from "./thread-typing-indicator";
 
@@ -53,9 +53,19 @@ export function MessageList({
 	requestCancelEdit,
 	onEditingStateChange,
 	targetMessageId,
+	navigationError = "",
 	onReturnToLatest,
 }: MessageListProps) {
-	const isViewingHistory = Boolean(targetMessageId) || hasMoreNewer;
+	// A jumped-to window stays historical until newer paging reaches the live
+	// edge; from then on it is the live thread, with read marks and following.
+	const [joinedTargetMessageId, setJoinedTargetMessageId] = useState<string | null>(null);
+	const wasLoadingNewerRef = useRef(isLoadingNewer);
+	useEffect(() => {
+		if (wasLoadingNewerRef.current && !isLoadingNewer && !hasMoreNewer && targetMessageId)
+			setJoinedTargetMessageId(targetMessageId);
+		wasLoadingNewerRef.current = isLoadingNewer;
+	}, [hasMoreNewer, isLoadingNewer, targetMessageId]);
+	const isViewingHistory = hasMoreNewer || (Boolean(targetMessageId) && joinedTargetMessageId !== targetMessageId);
 	const canReturnToLatest = isViewingHistory && Boolean(onReturnToLatest);
 	const [returningConversationId, setReturningConversationId] = useState<string | null>(null);
 	const isReturningToLatest = returningConversationId === conversationId;
@@ -77,6 +87,9 @@ export function MessageList({
 		hasMoreOlder,
 		isLoadingOlder,
 		onLoadOlder,
+		hasMoreNewer,
+		isLoadingNewer,
+		onLoadNewer,
 	});
 	// Historical search windows can skip unread messages; resume the cursor at latest.
 	useVisibleMessageRead(containerRef, conversationId, currentUserId, messages, !isLoadingThread && !isViewingHistory);
@@ -107,14 +120,16 @@ export function MessageList({
 		unreadCount,
 	});
 
-	const { hasReadingPosition, jumpWithReturn, returnToReadingPosition } = useMessageNavigationPosition({
-		conversationId,
-		targetMessageId,
-		messages,
-		containerRef,
-		isLoadingThread,
-		onJumpToMessage,
-	});
+	const { hasReadingPosition, jumpWithReturn, returnToReadingPosition, dismissReadingPosition } =
+		useMessageNavigationPosition({
+			conversationId,
+			targetMessageId,
+			messages,
+			containerRef,
+			isLoadingThread,
+			navigationError,
+			onJumpToMessage,
+		});
 
 	useEffect(() => {
 		if (isReturningToLatest && isLoadingThread) hasObservedReturnLoadRef.current = true;
@@ -140,10 +155,10 @@ export function MessageList({
 	 */
 	useEffect(() => {
 		if (messages.length <= MAX_RETAINED_MESSAGES) return;
-		if (targetMessageId || hasMoreNewer || isFarFromBottom || isJumpingToLatest) return;
+		if (isViewingHistory || isFarFromBottom || isJumpingToLatest) return;
 
 		onTrimHistory();
-	}, [messages, targetMessageId, hasMoreNewer, isFarFromBottom, isJumpingToLatest, onTrimHistory]);
+	}, [messages, isViewingHistory, isFarFromBottom, isJumpingToLatest, onTrimHistory]);
 
 	const reactionsMessage = reactionsMessageId
 		? messages.find((message) => message.id === reactionsMessageId)
@@ -160,6 +175,7 @@ export function MessageList({
 	);
 
 	function handleJumpToLatest() {
+		dismissReadingPosition();
 		// The control disappears at the destination. Keep keyboard navigation in
 		// the thread without focusing the composer and opening a mobile keyboard.
 		containerRef.current?.focus({ preventScroll: true });
@@ -213,7 +229,6 @@ export function MessageList({
 								unreadDividerMessageId={unreadDividerMessageId}
 								unreadCount={initialUnreadCount}
 								editingMessageId={editingMessageId}
-								targetMessageId={targetMessageId}
 								pinnedMessageIds={pinnedMessageIds}
 								onStartEdit={startEdit}
 								onSaveEdit={handleSaveEdit}
@@ -231,17 +246,8 @@ export function MessageList({
 								onJumpToMessage={jumpWithReturn}
 							/>
 
-							{hasMoreNewer && (
-								<div className="mb-12 mt-5 text-center">
-									<Button
-										variant="outline"
-										onClick={onLoadNewer}
-										disabled={isLoadingNewer}
-										className="eyebrow bg-paper-raised px-3.5 py-2 text-ink-soft"
-									>
-										{isLoadingNewer ? "Loading newer messages…" : "Load newer messages"}
-									</Button>
-								</div>
+							{isLoadingNewer && (
+								<p className="eyebrow py-4 text-center text-ink-faint">Loading newer messages…</p>
 							)}
 						</div>
 					)}
@@ -257,16 +263,10 @@ export function MessageList({
 			</div>
 
 			{hasReadingPosition && (
-				<Button
-					variant="outline"
-					className="absolute left-3 top-2 z-10 bg-paper-raised text-xs"
-					disabled={isLoadingThread}
-					onClick={returnToReadingPosition}
-				>
-					Back to reading position
-				</Button>
+				<ReturnToReplyButton isLoading={isLoadingThread} onClick={returnToReadingPosition} />
 			)}
 			<ScrollToLatestButton
+				hasReturnAction={hasReadingPosition}
 				isVisible={isFarFromBottom || canReturnToLatest || isReturningToLatest}
 				isLoading={isReturningToLatest}
 				newMessageCount={newMessageCount}

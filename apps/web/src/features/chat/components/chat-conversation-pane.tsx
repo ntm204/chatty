@@ -91,7 +91,7 @@ export function ChatConversationPane({
 					onClose={onCloseForward}
 				/>
 			)}
-			<div className="flex min-h-0 flex-1 xl:gap-2">
+			<div className="flex min-h-0 flex-1 xl:gap-3">
 				<section
 					aria-label="Conversation"
 					data-conversation-theme={conversation.themeColor ?? "default"}
@@ -159,6 +159,7 @@ export function ChatConversationPane({
 							) : (
 								<MessageList
 									{...messageListProps}
+									navigationError={navigationError}
 									typingMessage={getTypingMessage(
 										typingUserIds.filter((userId) => userId !== currentUserId),
 										conversation.participants,

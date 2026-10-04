@@ -23,6 +23,7 @@ export function PanelResizeHandle({
 }: PanelResizeHandleProps) {
 	const handleRef = useRef<HTMLDivElement>(null);
 	const dragRef = useRef<{ x: number; width: number } | null>(null);
+	const [isDragging, setIsDragging] = useState(false);
 	const [width, setWidth] = useState(() => {
 		try {
 			const saved = Number(localStorage.getItem(`chatty:panel-width:${panelId}`));
@@ -42,6 +43,11 @@ export function PanelResizeHandle({
 		}
 	}, [panelId, width]);
 
+	function endDrag() {
+		dragRef.current = null;
+		setIsDragging(false);
+	}
+
 	function resize(nextWidth: number) {
 		setWidth(Math.min(maxWidth, Math.max(minWidth, Math.round(nextWidth))));
 	}
@@ -59,9 +65,12 @@ export function PanelResizeHandle({
 			aria-valuenow={width}
 			aria-valuetext={`${width} pixels`}
 			title="Drag to resize · Double-click to reset"
+			data-dragging={isDragging || undefined}
 			className={cn(
-				"absolute inset-y-3 z-30 w-2 touch-none cursor-col-resize select-none rounded-full outline-none transition-colors hover:bg-ink/15 focus-visible:bg-ink/20 active:bg-ink/25",
-				edge === "right" ? "-right-2" : "-left-2",
+				// The hit area fills the whole gutter between the panels; the visible
+				// line inside it is drawn by `.panel-resize-handle` and stays hidden at rest.
+				"panel-resize-handle absolute inset-y-0 z-30 w-3 touch-none cursor-col-resize select-none outline-none",
+				edge === "right" ? "-right-3" : "-left-3",
 				className,
 			)}
 			onPointerDown={(event) => {
@@ -70,6 +79,7 @@ export function PanelResizeHandle({
 				event.currentTarget.focus();
 				event.currentTarget.setPointerCapture(event.pointerId);
 				dragRef.current = { x: event.clientX, width };
+				setIsDragging(true);
 			}}
 			onPointerMove={(event) => {
 				const drag = dragRef.current;
@@ -77,17 +87,13 @@ export function PanelResizeHandle({
 				resize(drag.width + (event.clientX - drag.x) * (edge === "right" ? 1 : -1));
 			}}
 			onPointerUp={(event) => {
-				dragRef.current = null;
+				endDrag();
 				if (event.currentTarget.hasPointerCapture(event.pointerId)) {
 					event.currentTarget.releasePointerCapture(event.pointerId);
 				}
 			}}
-			onLostPointerCapture={() => {
-				dragRef.current = null;
-			}}
-			onPointerCancel={() => {
-				dragRef.current = null;
-			}}
+			onLostPointerCapture={endDrag}
+			onPointerCancel={endDrag}
 			onDoubleClick={() => resize(defaultWidth)}
 			onKeyDown={(event) => {
 				if (event.key === "Home") resize(minWidth);

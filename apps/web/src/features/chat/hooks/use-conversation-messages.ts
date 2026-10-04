@@ -185,6 +185,7 @@ export function useConversationMessages(
 	// latest-page fetch that follows keep the reader's existing thread visible
 	// instead of replacing it with an empty loading state for a round trip.
 	const preserveVisibleThreadRef = useRef(false);
+	const previousRequestedMessageIdRef = useRef<string | null>(null);
 	// A cached historical window cannot establish that a return reached latest.
 	// Keep requiring the server across retries until that navigation succeeds.
 	const requiresServerPageRef = useRef(false);
@@ -229,9 +230,18 @@ export function useConversationMessages(
 		const hasVisibleThread = messagesRef.current.length > 0;
 		const preserveVisibleThread =
 			hasVisibleThread && isSameCacheScope && (Boolean(requestedMessageId) || preserveVisibleThreadRef.current);
+		// Leaving a historical window keeps it on screen until the latest page can
+		// replace it in one render, so the list glides to the live edge instead of
+		// blanking and snapping. The cache is held back for a failed request only.
+		const isLeavingHistory =
+			!requestedMessageId &&
+			previousRequestedMessageIdRef.current !== null &&
+			hasVisibleThread &&
+			isSameCacheScope &&
+			!preserveVisibleThread;
+		previousRequestedMessageIdRef.current = requestedMessageId;
 		// This only lasts through the latest-page load immediately after an
-		// unavailable target. A normal return-to-latest retains its existing
-		// loading behaviour and is not mistaken for that recovery path.
+		// unavailable target.
 		if (!requestedMessageId) preserveVisibleThreadRef.current = false;
 		if (!isSameCacheScope) requiresServerPageRef.current = false;
 		activeCacheScopeRef.current = cacheScope;
@@ -250,11 +260,12 @@ export function useConversationMessages(
 			hiddenIds: new Set(),
 		};
 		loadingChangesRef.current = loadingChanges;
-		if (!preserveVisibleThread) {
+		const leaveHistoryWindow = () => {
 			setHasMoreOlder(false);
 			setHasMoreNewer(false);
 			setTargetMessageId(null);
-		}
+		};
+		if (!preserveVisibleThread && !isLeavingHistory) leaveHistoryWindow();
 		setIsLoadingOlder(false);
 		setIsLoadingNewer(false);
 
@@ -303,47 +314,54 @@ export function useConversationMessages(
 
 		setIsLoadingThread(true);
 		setLoadError("");
-		if (!preserveVisibleThread) {
+		if (!preserveVisibleThread && !isLeavingHistory) {
 			setMessages([]);
 			setLoadedCacheScope(null);
 			setRestoredDraftIds([]);
 		}
 
+		type LocalThread = [MessageDTO[], Awaited<ReturnType<typeof readLocalOutbox>>];
+		let heldLocalThread: LocalThread | null = null;
+		const applyLocalThread = ([cached, queued]: LocalThread) => {
+			const restored = queued.map(restoreLocalOutboxMessage);
+			for (const item of restored) {
+				if (item.files.length === 0) continue;
+				pendingUploadsRef.current.set(item.draft.id, {
+					filesPromise: prepareImageFiles(item.files),
+					urls: item.urls,
+				});
+			}
+			hasLocalMessages = cached.length > 0 || restored.length > 0;
+			setMessages((current) => {
+				const drafts = restored.map((item) => item.draft);
+				if (!hasServerPage) {
+					const knownIds = new Set([...cached, ...drafts].map((message) => message.id));
+					const currentDrafts = current.filter(
+						(message) => isDraftId(message.id) && !knownIds.has(message.id),
+					);
+
+					return [...mergeLoadingPage(cached), ...drafts, ...currentDrafts];
+				}
+				const known = new Set(current.map((message) => message.id));
+
+				return [...current, ...drafts.filter((draft) => !known.has(draft.id))];
+			});
+			setRestoredDraftIds(restored.map((item) => item.draft.id));
+			setLoadedCacheScope(cacheScope);
+		};
+
 		const localRequest = (
 			preserveVisibleThread
-				? Promise.resolve<[MessageDTO[], Awaited<ReturnType<typeof readLocalOutbox>>]>([[], []])
+				? Promise.resolve<LocalThread>([[], []])
 				: Promise.all([
 						readMessageSnapshot(currentUserId, conversationId),
 						readLocalOutbox(currentUserId, conversationId),
 					])
 		)
-			.then(([cached, queued]) => {
+			.then((localThread) => {
 				if (!isCurrent || preserveVisibleThread) return;
-				const restored = queued.map(restoreLocalOutboxMessage);
-				for (const item of restored) {
-					if (item.files.length === 0) continue;
-					pendingUploadsRef.current.set(item.draft.id, {
-						filesPromise: prepareImageFiles(item.files),
-						urls: item.urls,
-					});
-				}
-				hasLocalMessages = cached.length > 0 || restored.length > 0;
-				setMessages((current) => {
-					const drafts = restored.map((item) => item.draft);
-					if (!hasServerPage) {
-						const knownIds = new Set([...cached, ...drafts].map((message) => message.id));
-						const currentDrafts = current.filter(
-							(message) => isDraftId(message.id) && !knownIds.has(message.id),
-						);
-
-						return [...mergeLoadingPage(cached), ...drafts, ...currentDrafts];
-					}
-					const known = new Set(current.map((message) => message.id));
-
-					return [...current, ...drafts.filter((draft) => !known.has(draft.id))];
-				});
-				setRestoredDraftIds(restored.map((item) => item.draft.id));
-				setLoadedCacheScope(cacheScope);
+				if (isLeavingHistory) heldLocalThread = localThread;
+				else applyLocalThread(localThread);
 			})
 			.catch(() => {
 				if (isCurrent) setLoadedCacheScope(cacheScope);
@@ -378,7 +396,12 @@ export function useConversationMessages(
 				// one thing a conversation with history is definitely not — and it
 				// offered nothing to try again with.
 				await localRequest;
-				if (!isCurrent || (hasLocalMessages && !requiresServerPage)) return;
+				if (!isCurrent) return;
+				if (isLeavingHistory) {
+					leaveHistoryWindow();
+					if (heldLocalThread) applyLocalThread(heldLocalThread);
+				}
+				if (hasLocalMessages && !requiresServerPage) return;
 				if (requestedMessageId && isUnavailableContextError(error)) {
 					setNavigationError("The original message is no longer available.");
 					setTargetMessageId(null);

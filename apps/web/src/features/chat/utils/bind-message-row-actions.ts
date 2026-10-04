@@ -1,7 +1,6 @@
 import type { ReactionEmoji } from "@chatty/shared-types";
 import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
-import { scrollToMessage } from "./scroll-to-message";
 
 /** Bind below the row's memo boundary so the list passes stable callbacks. */
 export function bindMessageRowActions(message: ThreadMessage, isPinned: boolean, actions: MessageRowActions) {
@@ -21,7 +20,9 @@ export function bindMessageRowActions(message: ThreadMessage, isPinned: boolean,
 		onTogglePin: () => actions.onTogglePinMessage(message.id, isPinned),
 		onJumpToReplyOriginal: () => {
 			const originalId = message.replyTo?.isDeleted ? null : message.replyTo?.id;
-			if (originalId && !scrollToMessage(originalId)) actions.onJumpToMessage(originalId);
+			// Always through the list's jump, even when the original is loaded: it
+			// records the reading row first, so "Back to reply" can return to it.
+			if (originalId) actions.onJumpToMessage(originalId);
 		},
 	};
 }

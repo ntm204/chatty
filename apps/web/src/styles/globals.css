@@ -30,6 +30,7 @@
 	--color-halo-purple: #8e8afe;
 	--color-selection: #e6e6f4;
 	--color-selection-ink: #06038d;
+	--color-message-locator: #5750fe;
 	--color-paper: #f7f7fc;
 	--color-paper-raised: #ffffff;
 	--color-paper-sunken: #eeeef8;
@@ -89,6 +90,7 @@
 	--color-halo-purple: #746de0;
 	--color-selection: #39375c;
 	--color-selection-ink: #e6e4ff;
+	--color-message-locator: #aaa4ff;
 	color-scheme: dark;
 	--color-paper: #16162e;
 	--color-paper-raised: #202039;

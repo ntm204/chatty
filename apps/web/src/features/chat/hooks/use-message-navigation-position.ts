@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { MessageDTO } from "@chatty/shared-types";
-import { scrollToMessage } from "../utils/scroll-to-message";
+import { clearMessageLocation, scrollToMessage } from "../utils/scroll-to-message";
+import { prefersReducedMotion, prepareGlide } from "../utils/glide-scroll";
+import { getMessageViewportTop } from "../utils/message-viewport";
 
 interface ReadingPosition {
 	conversationId: string;
@@ -14,6 +16,7 @@ interface MessageNavigationPositionOptions {
 	messages: MessageDTO[];
 	containerRef: RefObject<HTMLDivElement>;
 	isLoadingThread: boolean;
+	navigationError: string;
 	onJumpToMessage: (messageId: string) => void;
 }
 
@@ -24,20 +27,37 @@ export function useMessageNavigationPosition({
 	messages,
 	containerRef,
 	isLoadingThread,
+	navigationError,
 	onJumpToMessage,
 }: MessageNavigationPositionOptions) {
 	const lastScrollTargetRef = useRef<string | null>(null);
 	const [readingPosition, setReadingPosition] = useState<ReadingPosition | null>(null);
 	const [isReturning, setIsReturning] = useState(false);
-	useEffect(() => {
+	const dismissReadingPosition = useCallback(() => {
 		setReadingPosition(null);
 		setIsReturning(false);
-	}, [conversationId]);
+		if (containerRef.current) clearMessageLocation(containerRef.current);
+	}, [containerRef]);
+	useEffect(() => {
+		dismissReadingPosition();
+		const container = containerRef.current;
+
+		return () => {
+			if (container) clearMessageLocation(container);
+		};
+	}, [conversationId, containerRef, dismissReadingPosition]);
+	useEffect(() => {
+		if (navigationError) dismissReadingPosition();
+	}, [navigationError, dismissReadingPosition]);
 	useEffect(() => {
 		lastScrollTargetRef.current = null;
 	}, [conversationId, targetMessageId]);
 	useEffect(() => {
 		if (!targetMessageId || lastScrollTargetRef.current === targetMessageId) return;
+		// A context page replaces the whole window, so there is nothing loaded to
+		// travel through: land directly. A glide here was also fragile — media in
+		// the fresh window resizes it, and the anchor correction that follows
+		// cancels a native smooth scroll partway, leaving the target off screen.
 		const tryScroll = () => {
 			if (lastScrollTargetRef.current !== targetMessageId && scrollToMessage(targetMessageId, "auto"))
 				lastScrollTargetRef.current = targetMessageId;
@@ -55,10 +75,11 @@ export function useMessageNavigationPosition({
 			const container = containerRef.current;
 			if (container) {
 				const viewport = container.getBoundingClientRect();
+				const visibleTop = getMessageViewportTop(container);
 				const visible = [...container.querySelectorAll<HTMLElement>('[id^="message-"]')].find((element) => {
 					const bounds = element.getBoundingClientRect();
 
-					return bounds.bottom > viewport.top && bounds.top < viewport.bottom;
+					return bounds.bottom > visibleTop && bounds.top < viewport.bottom;
 				});
 				if (visible)
 					setReadingPosition({
@@ -80,16 +101,17 @@ export function useMessageNavigationPosition({
 		const container = containerRef.current;
 		const element = document.getElementById(`message-${readingPosition.messageId}`);
 		if (!container || !element || !container.contains(element)) return;
-		container.scrollTo({
-			top:
-				container.scrollTop +
-				element.getBoundingClientRect().top -
-				container.getBoundingClientRect().top -
-				readingPosition.offset,
-			behavior: "auto",
-		});
+		const top =
+			container.scrollTop +
+			element.getBoundingClientRect().top -
+			container.getBoundingClientRect().top -
+			readingPosition.offset;
+		const behavior = prefersReducedMotion() ? "auto" : "smooth";
+		if (behavior === "smooth") prepareGlide(container, top);
+		container.scrollTo({ top, behavior });
 		container.dispatchEvent(new Event("scroll"));
 		container.focus({ preventScroll: true });
+		clearMessageLocation(container);
 		setIsReturning(false);
 		setReadingPosition(null);
 	}, [containerRef, conversationId, isLoadingThread, isReturning, messages, readingPosition]);
@@ -104,5 +126,6 @@ export function useMessageNavigationPosition({
 		hasReadingPosition: readingPosition?.conversationId === conversationId,
 		jumpWithReturn,
 		returnToReadingPosition,
+		dismissReadingPosition,
 	};
 }

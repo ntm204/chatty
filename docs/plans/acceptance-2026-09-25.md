@@ -105,7 +105,7 @@ lượt đầu `/tmp/chatty-performance.log` dừng ở assertion trim; lượt 
 ### Chỉnh bố cục theo phản hồi giao diện
 
 Panel thông tin dùng độ rộng desktop cố định 320px, bỏ resize; sidebar trái vẫn cho thay đổi
-độ rộng. Bỏ dòng tìm tin nhắn riêng, đưa nút vào cùng hàng tìm người. Saved/Bookmarks là hai
+độ rộng. *(Cập nhật 2026-10-03: panel thông tin có resize trở lại, 280–480px — xem ROADMAP Phase 53.)* Bỏ dòng tìm tin nhắn riêng, đưa nút vào cùng hàng tìm người. Saved/Bookmarks là hai
 shortcut nhỏ cạnh nhau với biểu tượng và mô tả khác nhau; không xoá chức năng hoặc dữ liệu.
 Hộp tìm tin nhắn nhỏ hơn, giữ chiều cao ổn định, focus nằm ở hàng nhập thay vì khung vuông.
 `npm run verify` đạt (15 test liên quan / 2 file, static checks và audit 0 hit).

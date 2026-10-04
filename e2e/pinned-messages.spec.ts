@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { expectMessageLocationCue } from "./message-navigation-assertions.js";
 
-test("pinned photos and text navigate without moving the app shell", async ({ browser }) => {
-	const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+test("pinned photos and text navigate without moving the app shell", async ({ browser }, testInfo) => {
+	test.setTimeout(60_000);
+	const context = await browser.newContext({
+		viewport: { width: 1440, height: 900 },
+		colorScheme: "dark",
+		reducedMotion: "reduce",
+	});
 	const peerContext = await browser.newContext();
 	const page = await context.newPage();
 	const peer = await peerContext.newPage();
@@ -87,25 +93,43 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	expect((await historyViewport.boundingBox())!.y).toBeCloseTo((await header.boundingBox())!.y, 0);
 	expect(await header.evaluate((element) => getComputedStyle(element).backdropFilter)).toContain("blur");
 	await historyViewport.evaluate((element) => element.scrollBy(0, -90));
-	await page.screenshot({ path: "/tmp/chatty-pins-blur.png" });
+	await page.screenshot({ path: testInfo.outputPath("pins-blur.png") });
 	await historyViewport.evaluate((element) => element.scrollTo(0, element.scrollHeight));
 	const before = await input.boundingBox();
+	const headerBefore = (await header.boundingBox())!;
 	await page.getByLabel("Show pinned messages").click();
 	const dialog = page.getByRole("dialog", { name: "Pinned messages" });
 	await expect(dialog.getByRole("button", { name: "Photo", exact: true })).toBeVisible();
 	await expect(dialog.locator("img")).toBeVisible();
 	expect((await input.boundingBox())!.y).toBeCloseTo(before!.y, 0);
-	await page.screenshot({ path: "/tmp/chatty-pins-dialog.png" });
+	await page.screenshot({ path: testInfo.outputPath("pins-dialog.png") });
 	await dialog.getByRole("button", { name: "Photo", exact: true }).click();
 	await expect(dialog).toHaveCount(0);
 	await expect(photo).toBeInViewport();
+	const photoRow = page.locator(`#message-${photoId}`);
+	const textRow = page.locator(`#message-${textId}`);
+	await expectMessageLocationCue(photoRow);
+	await expect(page.getByRole("button", { name: "Back to reply", exact: true })).toHaveCount(0);
+	await page.screenshot({ path: testInfo.outputPath("pin-location-photo-desktop-dark.png") });
 	// The bar itself never remembers that pick: clicking it (without opening the
 	// dropdown again) always jumps to the most recently pinned message instead.
 	await page.getByRole("button", { name: "Last pinned note" }).click();
 	await expect(page.getByLabel("Message history").getByText("Last pinned note", { exact: true })).toBeInViewport();
+	await expectMessageLocationCue(textRow);
+	// The photo may have left the loaded window entirely; what matters is that no
+	// stale cue survives on it.
+	await expect(page.locator(`#message-${photoId}[data-message-located="true"]`)).toHaveCount(0);
+	await page.emulateMedia({ colorScheme: "light" });
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+	await page.screenshot({ path: testInfo.outputPath("pin-location-text-desktop-light.png") });
+	await expect(textRow).not.toHaveAttribute("data-message-located", "true", { timeout: 5_000 });
+	await page.getByRole("button", { name: "Last pinned note" }).click();
+	await expectMessageLocationCue(textRow);
 	expect((await input.boundingBox())!.y).toBeCloseTo(before!.y, 0);
+	expect((await header.boundingBox())!.y).toBeCloseTo(headerBefore.y, 0);
 	expect(await page.evaluate(() => window.scrollY)).toBe(0);
-	await page.setViewportSize({ width: 390, height: 844 });
+	await page.setViewportSize({ width: 375, height: 812 });
+	await page.emulateMedia({ colorScheme: "dark" });
 	await page.getByLabel("Conversation storage and details").click();
 	await page
 		.getByRole("complementary", { name: "Conversation details" })
@@ -117,6 +141,8 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 		.click();
 	await expect(photo).toBeInViewport();
 	await expect(input).toBeInViewport();
+	await expectMessageLocationCue(photoRow);
+	await page.screenshot({ path: testInfo.outputPath("pin-location-photo-mobile-dark.png") });
 	await page.getByLabel("Show pinned messages").click();
 	const pinsDialog = page.getByRole("dialog", { name: "Pinned messages" });
 	await pinsDialog.getByLabel("More options for Photo", { exact: true }).click();

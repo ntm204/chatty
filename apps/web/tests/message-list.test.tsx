@@ -325,10 +325,11 @@ describe("MessageList", () => {
 		expect(onLoadOlder).not.toHaveBeenCalled();
 	});
 
-	it("renders one newer-page control for the list, not one per message", () => {
-		renderList({ hasMoreNewer: true });
+	it("pages newer history automatically instead of offering a button", () => {
+		renderList({ hasMoreNewer: true, isLoadingNewer: true });
 
-		expect(screen.getAllByRole("button", { name: "Load newer messages" })).toHaveLength(1);
+		expect(screen.queryByRole("button", { name: "Load newer messages" })).not.toBeInTheDocument();
+		expect(screen.getAllByText("Loading newer messages…")).toHaveLength(1);
 	});
 
 	it("places one divider before the first unread message", () => {
@@ -641,6 +642,47 @@ describe("returning to the live edge", () => {
 		act(() => resizeCallbacks.forEach((callback) => callback()));
 	}
 
+	it.each(["jumping to latest", "a failed jump", "changing conversations"])(
+		"dismisses the reply return control and cue after %s",
+		(reason) => {
+			const thread = [
+				makeMessage("original", "minh", "question"),
+				makeMessage("reply", "an", "answer", [], {
+					replyTo: {
+						id: "original",
+						authorName: "Minh",
+						content: "question",
+						hasAttachment: false,
+						attachmentUrl: null,
+						isDeleted: false,
+					},
+				}),
+			];
+			const onReturnToLatest = vi.fn();
+			const { rerenderList } = renderList({ messages: thread, hasMoreNewer: true, onReturnToLatest });
+			const viewport = screen.getByRole("region", { name: "Message history" });
+			const original = document.getElementById("message-original")!;
+			vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 800, 700));
+			vi.spyOn(original, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 180, 40));
+			fireEvent.click(screen.getByRole("button", { name: "Jump to original message" }));
+			rerenderList({ targetMessageId: "original" });
+			expect(screen.getByRole("button", { name: "Back to reply" })).toBeVisible();
+			expect(original).toHaveAttribute("data-message-located", "true");
+
+			if (reason === "jumping to latest") {
+				fireEvent.click(screen.getByRole("button", { name: "Jump to latest messages" }));
+				expect(onReturnToLatest).toHaveBeenCalledOnce();
+			} else if (reason === "a failed jump") {
+				rerenderList({ targetMessageId: "original", navigationError: "Message is no longer available" });
+			} else {
+				rerenderList({ conversationId: "conversation-2", messages: [makeMessage("other", "an", "hello")] });
+			}
+
+			expect(screen.queryByRole("button", { name: "Back to reply" })).not.toBeInTheDocument();
+			expect(original).not.toHaveAttribute("data-message-located");
+		},
+	);
+
 	it("offers the activity control after a modest scroll, even when history is less than two viewports", () => {
 		renderList();
 		const viewport = screen.getByRole("region", { name: "Message history" });
@@ -760,7 +802,11 @@ describe("returning to the live edge", () => {
 		await userEvent.click(screen.getByRole("button", { name: "Jump to latest messages" }));
 
 		expect(onReturnToLatest).toHaveBeenCalledOnce();
-		rerenderList({ targetMessageId: null, hasMoreNewer: false });
+		const scrollTo = vi.spyOn(viewport, "scrollTo");
+		rerenderList({ messages: [...messages], targetMessageId: null, hasMoreNewer: false });
+		// The latest window glides in rather than snapping to the bottom.
+		expect(scrollTo).toHaveBeenCalledWith({ top: 1_200, behavior: "smooth" });
+		fireEvent.scroll(viewport, { target: { scrollTop: 500 } });
 		expect(viewport.scrollTop).toBe(500);
 		expect(screen.queryByRole("button", { name: "Jump to latest messages" })).not.toBeInTheDocument();
 	});

@@ -2,9 +2,14 @@ import type { MessageDTO } from "@chatty/shared-types";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
 	LATEST_MESSAGE_THRESHOLD_PX,
+	LOAD_NEWER_THRESHOLD_PX,
 	LOAD_OLDER_THRESHOLD_PX,
+	MESSAGE_PAGE_SIZE,
 	RETURN_TO_LATEST_THRESHOLD_PX,
 } from "../constants/pagination";
+import { MESSAGE_NAVIGATION_EVENT } from "../constants/message-navigation";
+import { recallReadingPosition, rememberReadingPosition, type ReadingPosition } from "../utils/reading-positions";
+import { prefersReducedMotion, prepareGlide } from "../utils/glide-scroll";
 
 interface UseMessageScrollOptions {
 	conversationId: string;
@@ -14,6 +19,9 @@ interface UseMessageScrollOptions {
 	hasMoreOlder: boolean;
 	isLoadingOlder: boolean;
 	onLoadOlder: () => void;
+	hasMoreNewer?: boolean;
+	isLoadingNewer?: boolean;
+	onLoadNewer?: () => void;
 }
 
 interface MessageScrollSnapshot {
@@ -38,6 +46,9 @@ export function useMessageScroll({
 	hasMoreOlder,
 	isLoadingOlder,
 	onLoadOlder,
+	hasMoreNewer = false,
+	isLoadingNewer = false,
+	onLoadNewer,
 }: UseMessageScrollOptions) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewportSizeRef = useRef({ width: 0, height: 0 });
@@ -51,6 +62,13 @@ export function useMessageScroll({
 	const anchorRef = useRef<MessageScrollAnchor | null>(null);
 	const isFarFromBottomRef = useRef(false);
 	const isJumpingToLatestRef = useRef(false);
+	// Newer pages load only after the reader moves. Landing on a jumped-to
+	// message near the end of its window must not shift it before it is read.
+	const hasReaderScrolledRef = useRef(false);
+	const renderedMessagesRef = useRef(messages);
+	const readingScope = `${currentUserId}:${conversationId}`;
+	// Consumed by the first page the thread renders after it is opened.
+	const pendingRestoreRef = useRef<ReadingPosition | null>(recallReadingPosition(readingScope));
 	const jumpDestinationRef = useRef<number | null>(null);
 	const jumpBehaviorRef = useRef<ScrollBehavior>("smooth");
 	const [isJumpingToLatest, setIsJumpingToLatest] = useState(false);
@@ -122,6 +140,23 @@ export function useMessageScroll({
 		return true;
 	}, []);
 
+	const restoreReadingPosition = useCallback(() => {
+		const container = containerRef.current;
+		const position = pendingRestoreRef.current;
+		pendingRestoreRef.current = null;
+		const element =
+			position &&
+			[...(contentRef.current?.querySelectorAll<HTMLElement>('[id^="message-"]') ?? [])].find(
+				(row) => row.id === `message-${position.messageId}`,
+			);
+		if (!container || !position || !element) return false;
+		container.scrollTop +=
+			element.getBoundingClientRect().top - container.getBoundingClientRect().top - position.offset;
+		shouldFollowLatestRef.current = false;
+
+		return true;
+	}, []);
+
 	const retargetJumpToLatest = useCallback(() => {
 		const container = containerRef.current;
 		if (!container || !isJumpingToLatestRef.current) return;
@@ -131,18 +166,44 @@ export function useMessageScroll({
 		container.scrollTo({ top: container.scrollHeight, behavior: jumpBehaviorRef.current });
 	}, []);
 
+	const startJumpToLatest = useCallback(
+		(glideFrom: "current" | "above") => {
+			const container = containerRef.current;
+			if (!container) return;
+			isJumpingToLatestRef.current = true;
+			shouldFollowLatestRef.current = false;
+			anchorRef.current = null;
+			jumpDestinationRef.current = null;
+			setIsJumpingToLatest(true);
+			jumpBehaviorRef.current = prefersReducedMotion() ? "auto" : "smooth";
+			if (jumpBehaviorRef.current === "smooth")
+				prepareGlide(container, Math.max(0, container.scrollHeight - container.clientHeight), glideFrom);
+			retargetJumpToLatest();
+		},
+		[retargetJumpToLatest],
+	);
+
 	// useLayoutEffect, not useEffect: the correction has to happen before the
 	// browser paints, otherwise the reader sees the list jump and snap back.
 	useLayoutEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 		const didChangeConversation = conversationIdRef.current !== conversationId;
-		const didReturnToLatest = wasViewingHistoryRef.current && !isViewingHistory;
+		const didLeaveHistory = wasViewingHistoryRef.current && !isViewingHistory;
+		// Paging newer may close the gap to the live edge while the same rows stay
+		// on screen. That joins the live thread in place; a fetched latest page is
+		// always a new array, even when its last row matches, and resets instead.
+		const didJoinLatest = didLeaveHistory && messages.length > 0 && messages === renderedMessagesRef.current;
+		renderedMessagesRef.current = messages;
+		const didReturnToLatest = didLeaveHistory && !didJoinLatest;
 		const didEnterHistory = !wasViewingHistoryRef.current && isViewingHistory;
 		if (didChangeConversation || didReturnToLatest || didEnterHistory || messages.length === 0) {
 			cancelJumpToLatest();
 			anchorRef.current = null;
 		}
+		if (didChangeConversation) pendingRestoreRef.current = recallReadingPosition(readingScope);
+		// A jumped-to message decides the position instead of the remembered row.
+		if (isViewingHistory) pendingRestoreRef.current = null;
 		if (didChangeConversation || didReturnToLatest) {
 			isFarFromBottomRef.current = false;
 			previousRef.current = { firstId: null, lastId: null, scrollHeight: 0, length: 0 };
@@ -155,6 +216,10 @@ export function useMessageScroll({
 		if (isViewingHistory) shouldFollowLatestRef.current = false;
 		conversationIdRef.current = conversationId;
 		wasViewingHistoryRef.current = isViewingHistory;
+		// The latest page replaces the historical window in one render. There is
+		// nothing loaded between the two to scroll through, so arrive the way a
+		// nearby jump would: from one viewport above the live edge.
+		if (didReturnToLatest && !didChangeConversation && messages.length > 0) startJumpToLatest("above");
 
 		const firstId = messages[0]?.id ?? null;
 		const lastId = messages[messages.length - 1]?.id ?? null;
@@ -184,8 +249,26 @@ export function useMessageScroll({
 		const previousFirstIndex = messages.findIndex((message) => message.id === previous.firstId);
 		const didPrependOlder = didStartChange && previousFirstIndex > 0;
 		const didDropOldest = didStartChange && lastId === previous.lastId && messages.length < previous.length;
+		if (
+			didChangeConversation ||
+			didEnterHistory ||
+			(didStartChange && !didPrependOlder && lastId !== previous.lastId)
+		)
+			hasReaderScrolledRef.current = false;
 
-		if (isJumpingToLatestRef.current) {
+		// Switching renders once with the new id but the previous thread's rows.
+		// The remembered row can only be found among this thread's own rows.
+		const isOwnThread = messages[messages.length - 1]?.conversationId === conversationId;
+		const didRestorePosition =
+			isOwnThread &&
+			!isViewingHistory &&
+			!isJumpingToLatestRef.current &&
+			pendingRestoreRef.current !== null &&
+			restoreReadingPosition();
+
+		if (didRestorePosition) {
+			// The reader is back on the row they left; nothing else may move it.
+		} else if (isJumpingToLatestRef.current) {
 			// New arrivals and late media can move the destination during a native
 			// smooth scroll. Retarget it without an instant scrollTop assignment.
 			retargetJumpToLatest();
@@ -218,8 +301,11 @@ export function useMessageScroll({
 		messages,
 		cancelJumpToLatest,
 		captureAnchor,
+		readingScope,
 		restoreAnchor,
+		restoreReadingPosition,
 		retargetJumpToLatest,
+		startJumpToLatest,
 		syncScrollPosition,
 	]);
 
@@ -250,11 +336,26 @@ export function useMessageScroll({
 		const container = containerRef.current;
 		if (!container) return;
 		function handleWheel(event: WheelEvent) {
-			if (event.deltaY !== 0) cancelJumpToLatest();
+			if (event.deltaY === 0) return;
+			hasReaderScrolledRef.current = true;
+			cancelJumpToLatest();
+		}
+		// A jump to a message replaces any trip to the latest and stops following
+		// it; the jump itself owns the scroll position from here.
+		function handleMessageNavigation() {
+			cancelJumpToLatest();
+			shouldFollowLatestRef.current = false;
+			anchorRef.current = null;
+		}
+		function handleTouchMove() {
+			hasReaderScrolledRef.current = true;
+			cancelJumpToLatest();
 		}
 		function handlePointerDown(event: PointerEvent) {
 			// A mouse press on the viewport itself can start dragging its scrollbar.
-			if (event.pointerType === "mouse" && event.target === container) cancelJumpToLatest();
+			if (event.pointerType !== "mouse" || event.target !== container) return;
+			hasReaderScrolledRef.current = true;
+			cancelJumpToLatest();
 		}
 		function handleKeyDown(event: KeyboardEvent) {
 			if (
@@ -272,22 +373,41 @@ export function useMessageScroll({
 			) {
 				return;
 			}
+			hasReaderScrolledRef.current = true;
 			cancelJumpToLatest();
 		}
 		container.addEventListener("wheel", handleWheel, { passive: true });
-		container.addEventListener("touchmove", cancelJumpToLatest, { passive: true });
+		container.addEventListener("touchmove", handleTouchMove, { passive: true });
 		container.addEventListener("pointerdown", handlePointerDown);
 		container.addEventListener("keydown", handleKeyDown);
 		container.addEventListener("scrollend", syncScrollPosition);
+		container.addEventListener(MESSAGE_NAVIGATION_EVENT, handleMessageNavigation);
 
 		return () => {
 			container.removeEventListener("wheel", handleWheel);
-			container.removeEventListener("touchmove", cancelJumpToLatest);
+			container.removeEventListener("touchmove", handleTouchMove);
 			container.removeEventListener("pointerdown", handlePointerDown);
 			container.removeEventListener("keydown", handleKeyDown);
 			container.removeEventListener("scrollend", syncScrollPosition);
+			container.removeEventListener(MESSAGE_NAVIGATION_EVENT, handleMessageNavigation);
 		};
 	}, [conversationId, cancelJumpToLatest, syncScrollPosition]);
+
+	// Only the live thread is remembered, and only within the newest page: the
+	// thread reopens from that page, so a deeper row could not be found again.
+	function rememberPosition() {
+		const isOwnThread = messages[messages.length - 1]?.conversationId === conversationId;
+		if (isViewingHistory || pendingRestoreRef.current || !isOwnThread) return;
+		const container = containerRef.current;
+		const anchor = anchorRef.current;
+		const index = anchor ? messages.findIndex((message) => `message-${message.id}` === anchor.element.id) : -1;
+		rememberReadingPosition(
+			readingScope,
+			container && anchor && index >= 0 && index >= messages.length - MESSAGE_PAGE_SIZE
+				? { messageId: messages[index]!.id, offset: anchor.top }
+				: null,
+		);
+	}
 
 	function handleScroll() {
 		const container = containerRef.current;
@@ -295,21 +415,27 @@ export function useMessageScroll({
 		const wasJumping = isJumpingToLatestRef.current;
 		syncScrollPosition();
 		captureAnchor();
+		rememberPosition();
 
 		if (!wasJumping && !isLoadingOlder && hasMoreOlder && container.scrollTop <= LOAD_OLDER_THRESHOLD_PX)
 			onLoadOlder();
+		// The mirror of older paging: a historical window extends itself downwards
+		// instead of asking for a click, the way large messengers behave.
+		const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+		if (
+			hasReaderScrolledRef.current &&
+			hasMoreNewer &&
+			!isLoadingNewer &&
+			onLoadNewer &&
+			distanceFromBottom <= LOAD_NEWER_THRESHOLD_PX
+		)
+			onLoadNewer();
 	}
 
 	function scrollToLatest(): void {
 		const container = containerRef.current;
 		if (!container || isViewingHistory || isJumpingToLatestRef.current) return;
-		isJumpingToLatestRef.current = true;
-		shouldFollowLatestRef.current = false;
-		anchorRef.current = null;
-		setIsJumpingToLatest(true);
-		const shouldReduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-		jumpBehaviorRef.current = shouldReduceMotion ? "auto" : "smooth";
-		retargetJumpToLatest();
+		startJumpToLatest("current");
 		syncScrollPosition();
 	}
 

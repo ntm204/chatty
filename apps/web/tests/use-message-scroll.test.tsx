@@ -2,11 +2,14 @@ import type { MessageDTO } from "@chatty/shared-types";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useMessageScroll } from "@/features/chat/hooks/use-message-scroll";
+import { MESSAGE_NAVIGATION_EVENT } from "@/features/chat/constants/message-navigation";
+import { forgetReadingPositions } from "@/features/chat/utils/reading-positions";
 import { makeMessage, makeSystemMessage } from "./factories";
 
 type ScrollOptions = Parameters<typeof useMessageScroll>[0];
 
 afterEach(() => {
+	forgetReadingPositions();
 	cleanup();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
@@ -201,7 +204,12 @@ describe("useMessageScroll new arrivals", () => {
 		view.update([historical, makeMessage("next-history-page", "peer", "Loaded later")]);
 		expect(view.result.current.newMessageCount).toBe(0);
 		view.update([first], { isViewingHistory: false });
-		expect(view.geometry.scrollTop).toBe(800);
+		// The replacement window arrives one viewport above the live edge and glides down.
+		expect(view.geometry.scrollTop).toBe(400);
+		expect(view.container.scrollTo).toHaveBeenLastCalledWith({ top: 1200, behavior: "smooth" });
+		expect(view.result.current.isJumpingToLatest).toBe(true);
+		view.scrollTo(800);
+		expect(view.result.current.isJumpingToLatest).toBe(false);
 		view.scrollTo(250);
 		view.update([first, makeMessage("live-again", "peer", "Live reply")]);
 
@@ -234,7 +242,172 @@ function observeResizes() {
 	return () => act(() => callbacks.forEach((callback) => callback()));
 }
 
+describe("useMessageScroll newer history pages", () => {
+	it("loads newer pages near the bottom only after the reader has scrolled", () => {
+		const onLoadNewer = vi.fn();
+		const view = renderScroller([makeMessage("historical", "peer", "Search result")], {
+			isViewingHistory: true,
+			hasMoreNewer: true,
+			onLoadNewer,
+		});
+		// A jump that lands near the end of its window must not page by itself.
+		view.scrollTo(750);
+		expect(onLoadNewer).not.toHaveBeenCalled();
+
+		act(() => view.container.dispatchEvent(new WheelEvent("wheel", { deltaY: 40 })));
+		view.scrollTo(500);
+		expect(onLoadNewer).not.toHaveBeenCalled();
+		view.scrollTo(700);
+		expect(onLoadNewer).toHaveBeenCalledOnce();
+
+		view.update([makeMessage("historical", "peer", "Search result")], { isLoadingNewer: true });
+		view.scrollTo(800);
+		expect(onLoadNewer).toHaveBeenCalledOnce();
+	});
+
+	it("joins the live thread in place when paging reaches the latest message", () => {
+		const rows = [makeMessage("historical", "peer", "Search result"), makeMessage("newest", "peer", "Latest")];
+		const view = renderScroller(rows, { isViewingHistory: true, hasMoreNewer: false });
+		view.scrollTo(600);
+		view.update(rows, { isViewingHistory: false });
+
+		expect(view.geometry.scrollTop).toBe(600);
+		expect(view.container.scrollTo).not.toHaveBeenCalled();
+		expect(view.result.current.isJumpingToLatest).toBe(false);
+		view.scrollTo(800);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(true);
+	});
+});
+
+describe("useMessageScroll reading position across threads", () => {
+	function placeRows(view: ReturnType<typeof renderScroller>) {
+		vi.spyOn(view.container, "getBoundingClientRect").mockImplementation(
+			() => ({ top: 50, bottom: 450 }) as DOMRect,
+		);
+		for (const [id, offset] of [
+			["above", 100],
+			["reading", 400],
+		] as const) {
+			const row = document.createElement("div");
+			row.id = `message-${id}`;
+			vi.spyOn(row, "getBoundingClientRect").mockImplementation(
+				() =>
+					({
+						top: 50 + offset - view.geometry.scrollTop,
+						bottom: 150 + offset - view.geometry.scrollTop,
+					}) as DOMRect,
+			);
+			view.content.append(row);
+		}
+	}
+	const rows = [makeMessage("above", "peer", "Earlier"), makeMessage("reading", "peer", "Reading here")];
+
+	it("returns to the row the reader left when the thread is opened again", () => {
+		const view = renderScroller(rows);
+		placeRows(view);
+		view.scrollTo(250);
+
+		view.update([], { conversationId: "conversation-2" });
+		view.update([makeMessage("other", "peer", "Elsewhere")]);
+		expect(view.geometry.scrollTop).toBe(800);
+
+		view.update([], { conversationId: "conversation-1" });
+		view.update(rows);
+
+		expect(view.geometry.scrollTop).toBe(250);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(false);
+	});
+
+	it("waits for the thread's own rows when the switch first renders the previous thread", () => {
+		const view = renderScroller(rows);
+		placeRows(view);
+		view.scrollTo(250);
+		const other = { ...makeMessage("other", "peer", "Elsewhere"), conversationId: "conversation-2" };
+
+		view.update(rows, { conversationId: "conversation-2" });
+		view.update([other]);
+		view.update([other], { conversationId: "conversation-1" });
+		view.update(rows);
+
+		expect(view.geometry.scrollTop).toBe(250);
+	});
+
+	it("reopens at the latest message when the reader left from the bottom", () => {
+		const view = renderScroller(rows);
+		placeRows(view);
+		view.scrollTo(250);
+		view.scrollTo(800);
+
+		view.update([], { conversationId: "conversation-2" });
+		view.update([makeMessage("other", "peer", "Elsewhere")]);
+		view.scrollTo(300);
+		view.update([], { conversationId: "conversation-1" });
+		view.update(rows);
+
+		expect(view.geometry.scrollTop).toBe(800);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(true);
+	});
+
+	it("keeps positions per account", () => {
+		const view = renderScroller(rows);
+		placeRows(view);
+		view.scrollTo(250);
+
+		view.update([], { conversationId: "conversation-2", currentUserId: "someone-else" });
+		view.update([], { conversationId: "conversation-1" });
+		view.update(rows);
+
+		expect(view.geometry.scrollTop).toBe(800);
+	});
+});
+
 describe("useMessageScroll jumping to latest", () => {
+	it("lets a message jump replace latest navigation, then lets latest start again", () => {
+		const resize = observeResizes();
+		const first = makeMessage("first", "peer", "Already here");
+		const view = renderScroller([first]);
+		view.scrollTo(250);
+		act(() => view.result.current.scrollToLatest());
+		view.scrollTo(400);
+		expect(view.result.current.isJumpingToLatest).toBe(true);
+
+		act(() => view.container.dispatchEvent(new Event(MESSAGE_NAVIGATION_EVENT)));
+
+		expect(view.result.current.isJumpingToLatest).toBe(false);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(false);
+		expect(view.container.scrollTo).toHaveBeenLastCalledWith({ top: 400, behavior: "auto" });
+		view.scrollTo(350);
+		view.geometry.scrollHeight = 1400;
+		view.update([first, makeMessage("incoming", "peer", "New reply")]);
+		view.geometry.clientHeight = 350;
+		resize();
+
+		expect(view.geometry.scrollTop).toBe(350);
+		expect(view.result.current.newMessageCount).toBe(1);
+		expect(view.container.scrollTo).toHaveBeenCalledTimes(2);
+
+		act(() => view.result.current.scrollToLatest());
+		expect(view.result.current.isJumpingToLatest).toBe(true);
+		expect(view.container.scrollTo).toHaveBeenLastCalledWith({ top: 1400, behavior: "smooth" });
+		view.scrollTo(1050);
+		expect(view.result.current.isJumpingToLatest).toBe(false);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(true);
+	});
+
+	it("releases live-edge follow intent before an explicit message jump starts scrolling", () => {
+		const view = renderScroller([makeMessage("first", "peer", "Already here")]);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(true);
+
+		act(() => view.container.dispatchEvent(new Event(MESSAGE_NAVIGATION_EVENT)));
+
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(false);
+		expect(view.container.scrollTo).not.toHaveBeenCalled();
+		view.scrollTo(250);
+		expect(view.result.current.isFarFromBottom).toBe(true);
+		view.scrollTo(800);
+		expect(view.result.current.isPinnedToLatestRef.current).toBe(true);
+	});
+
 	it("keeps smooth-scroll intent across intermediate scrolls, arrivals and resizing", () => {
 		const resize = observeResizes();
 		const first = makeMessage("first", "peer", "Already here");

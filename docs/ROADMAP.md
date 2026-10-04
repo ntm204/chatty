@@ -3558,6 +3558,71 @@ a shared group: setting a message color recolored both accounts' own outgoing bu
 and setting a nickname for a third participant showed up in the system log and the nicknames list
 immediately.
 
+## Phase 53 — navigation that glides, pages itself and remembers — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 158 | Glide the final viewport of long navigations (jump to latest, in-window reply/pin/search targets, Back to reply) instead of crawling or snapping | `done` |
+| 159 | Keep the historical window on screen while the latest page loads; the cache is only a fallback for a failed request | `done` |
+| 160 | Page newer history automatically near the bottom, replacing the "Load newer messages" button; join the live thread in place when the gap closes | `done` |
+| 161 | Remember the reading row per account and thread for the tab, and reopen there | `done` |
+| 162 | Resizable conversation details panel (280–480px) sharing the sidebar's quiet gutter handle | `done` |
+
+Returning to the latest messages from a far historical window used to blank the list, then snap to
+the bottom; reply, pin and search targets snapped as well. Large messengers animate only the last
+stretch of such trips, because there is nothing loaded in between to scroll through. A long smooth
+scroll is now reduced to one viewport (`GLIDE_DISTANCE_VIEWPORTS`), the latest page replaces the old
+window in a single render and glides in from above, and reduced motion still jumps directly.
+
+A target that needs a context page (a reply, pin or search result outside the loaded window) lands
+directly instead. A browser run showed why: media in the fresh window resizes it, the anchor
+correction writes `scrollTop`, and any write cancels a native smooth scroll — a glide that started a
+viewport away stopped with the target off screen. Glides inside the loaded window also finish on
+their own if something cuts them short, unless the reader took over with wheel, touch, pointer or
+keys. A forced finish cannot tell a script's or find-in-page's scroll from a cancelled animation,
+which is why fresh windows do not glide at all rather than rely on that repair.
+
+Newer history pages were the only paging that asked for a click, beside a second control (the
+latest arrow) that looked like the same action. They now load like older pages, but only after the
+reader has scrolled, so a jump that lands near the end of its window does not move before it is
+read. When paging reaches the live edge with the same rows on screen, the thread becomes live in
+place: read marks resume, trimming is allowed and the arrow hides. Only a fetched latest page — a new
+array, even when its last row matches — resets and glides.
+
+Switching threads used to reopen every conversation at its latest message. The anchor row and its
+offset are remembered in memory, keyed by account and conversation, and only within the newest page,
+because the thread reopens from that page and a deeper row could not be found again. Leaving from the
+bottom, from a historical window, or reloading the tab opens at the latest message. A switch renders
+once with the new id but the previous thread's rows; the position is restored only from the thread's
+own rows — the browser suite caught the earlier version discarding it on that first render.
+
+Opening a reply's original now always goes through the list's jump, even when the original is already
+loaded, so the reading row is recorded first and "Back to reply" returns to it — previously only an
+unloaded original offered the way back. Every jump to a message announces itself on the history
+viewport (`MESSAGE_NAVIGATION_EVENT`), which cancels a trip to the latest and stops following the live
+edge, so an arrival during the jump cannot pull the reader back down.
+
+The browser run also exposed an unrelated regression from splitting settings into a lazy chunk: the
+listener that lets a reader on System follow the operating system's light/dark switch lived in the
+theme hook, imported only by the appearance panel, so it was not registered until settings had been
+opened. The entry point now imports it for that side effect.
+
+The details panel was previously fixed at 320px. Its resize handle had to be the panel's last child:
+`#conversation-details > div:first-of-type` styles the header, and a first-child handle inherited its
+background as a dark, notched column.
+
+Verified 2026-10-03 on Windows, Chromium, against the e2e API and `chatty_e2e` database:
+`e2e/scroll-history.spec.ts` (2/2: interrupted jump to latest, search window with live arrivals,
+automatic newer paging that joins the live thread, delayed and failed latest page),
+the new `e2e/reading-position.spec.ts` (switch away and back restores the row within 2px, a growing
+composer does not move it, leaving from the bottom reopens at latest), `e2e/pinned-messages.spec.ts`,
+`e2e/reply-reading-position.spec.ts` (return to the anchor within one device pixel, light/dark
+switch), `e2e/appearance.spec.ts` and `e2e/profile-recovery.spec.ts` all pass. `npm run verify`
+passes: typecheck, lint, format, the related web tests and the conventions audit with 0 hits; the
+full web unit suite passes 632/632, though under full-suite load a few heavy tests can exceed the
+default timeout on this machine and pass when run alone.
+Not covered: WebKit, real phones, and native touch scrolling.
+
 ## Verification bar
 
 Typing follow-up, 2026-09-06: a live-thread bubble now sits below the last message, aligned with incoming

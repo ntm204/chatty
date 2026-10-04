@@ -7,6 +7,7 @@ import { TypingDots } from "./typing-dots";
 interface ScrollToLatestButtonProps {
 	isVisible: boolean;
 	isLoading?: boolean;
+	hasReturnAction?: boolean;
 	newMessageCount: number;
 	onClick: () => void;
 	typingMessage?: string | null;
@@ -16,6 +17,7 @@ interface ScrollToLatestButtonProps {
 export function ScrollToLatestButton({
 	isVisible,
 	isLoading = false,
+	hasReturnAction = false,
 	newMessageCount,
 	onClick,
 	typingMessage,
@@ -61,7 +63,10 @@ export function ScrollToLatestButton({
 				onClick={onClick}
 				data-visible={isVisible}
 				style={{ width: 44 + detailsWidth }}
-				className="scroll-latest group absolute bottom-1.5 left-1/2 z-20 h-11 min-w-11 max-w-[calc(100%_-_1.5rem)] -translate-x-1/2 gap-0 rounded-full bg-transparent p-1.5 font-medium text-ink-soft hover:bg-transparent hover:text-ink disabled:cursor-default disabled:opacity-100"
+				className={cn(
+					"scroll-latest group absolute bottom-1.5 left-1/2 z-20 h-11 min-w-11 -translate-x-1/2 gap-0 rounded-full bg-transparent p-1.5 font-medium text-ink-soft hover:bg-transparent hover:text-ink disabled:cursor-default disabled:opacity-100",
+					hasReturnAction ? "max-w-[calc(100%_-_8rem)]" : "max-w-[calc(100%_-_1.5rem)]",
+				)}
 			>
 				<span
 					data-scroll-latest-surface

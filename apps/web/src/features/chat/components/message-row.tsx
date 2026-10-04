@@ -31,8 +31,6 @@ interface MessageRowProps extends MessageRowActions {
 	 * tables in `constants/message-cluster`.
 	 */
 	clusterPosition: ClusterPosition;
-	/** The message a search result jumped to, highlighted until the reader moves on. */
-	isTargeted: boolean;
 	isEditing: boolean;
 	/** Set only on the row the "Seen" marker belongs on; null everywhere else. */
 	receipt: ReadReceipt | null;
@@ -59,7 +57,6 @@ export const MessageRow = memo(function MessageRow({
 	isFirstOfRun,
 	isLastMessage,
 	clusterPosition,
-	isTargeted,
 	isEditing,
 	receipt,
 	currentUserId,
@@ -134,12 +131,12 @@ export const MessageRow = memo(function MessageRow({
 	return (
 		<div
 			id={`message-${message.id}`}
+			data-message-side={isMine ? "outgoing" : "incoming"}
 			className={cn(
 				"flex flex-col rounded-message transition-colors",
 				// A larger gap between speakers separates turns without a timestamp
 				// between every message in the same person's burst.
 				isFirstOfRun ? "mt-3 first:mt-0" : "mt-0.5",
-				isTargeted && "bg-signal-soft ring-4 ring-signal-soft",
 				isMine ? "items-end" : "items-start",
 				// Held back from full ink until the server has it. The words are the
 				// point, so they stay legible — this says "not settled yet", not
@@ -194,11 +191,13 @@ export const MessageRow = memo(function MessageRow({
 				    returning to the left edge. On the bubble rather than on the row,
 				    so the gutter beside it is not paid for out of the text's width. */}
 				<div
+					data-message-surface
 					className={cn(
 						"relative min-w-0 max-w-[76vw]",
 						hasImages || isEditing ? "sm:max-w-[min(62vw,34rem)]" : "sm:max-w-[min(62vw,28rem)]",
 					)}
 				>
+					<span aria-hidden="true" className="message-location-marker" />
 					{isDeleted ? (
 						<div
 							className={cn(
