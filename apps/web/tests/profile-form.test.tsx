@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileForm } from "@/features/profile/components/profile-form";
@@ -74,7 +74,70 @@ describe("ProfileForm", () => {
 		await typist.click(screen.getByRole("button", { name: "Save changes" }));
 
 		expect(screen.getByText(/start with a letter/i)).toBeInTheDocument();
+		expect(handleField).toHaveFocus();
 		expect(updateProfile).not.toHaveBeenCalled();
+	});
+
+	it("focuses the first invalid field and clears only the error being corrected", async () => {
+		const typist = userEvent.setup();
+		render(<ProfileForm user={user} />);
+
+		const nameField = screen.getByLabelText("Display name");
+		const handleField = screen.getByLabelText("Handle");
+		await typist.clear(nameField);
+		await typist.clear(handleField);
+		await typist.click(screen.getByRole("button", { name: "Save changes" }));
+
+		expect(nameField).toHaveFocus();
+		expect(nameField).toHaveAccessibleDescription("Display name is required");
+		expect(handleField).toHaveAttribute("aria-invalid", "true");
+
+		await typist.type(nameField, "Mai");
+		expect(nameField).toHaveAttribute("aria-invalid", "false");
+		expect(screen.queryByText("Display name is required")).not.toBeInTheDocument();
+		expect(handleField).toHaveAttribute("aria-invalid", "true");
+		expect(updateProfile).not.toHaveBeenCalled();
+	});
+
+	it("locks the submitted values while saving and preserves them for retry after a failure", async () => {
+		let rejectSave: (reason: Error) => void = () => {};
+		updateProfile.mockReturnValueOnce(
+			new Promise((_, reject) => {
+				rejectSave = reject;
+			}),
+		);
+		const typist = userEvent.setup();
+		render(<ProfileForm user={user} />);
+
+		const nameField = screen.getByLabelText("Display name");
+		await typist.type(nameField, " Nguyen");
+		const saveButton = screen.getByRole("button", { name: "Save changes" });
+		const form = saveButton.closest("form")!;
+		await typist.click(saveButton);
+
+		expect(form).toHaveAttribute("aria-busy", "true");
+		expect(nameField).toBeDisabled();
+		expect(screen.getByLabelText("Handle")).toBeDisabled();
+		expect(screen.getByLabelText(/Send read receipts/)).toBeDisabled();
+		expect(screen.getByLabelText("Who can see your last seen")).toBeDisabled();
+		expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+		await typist.type(nameField, " unsaved");
+		fireEvent.submit(form);
+		expect(nameField).toHaveValue("Minh Nguyen");
+		expect(updateProfile).toHaveBeenCalledTimes(1);
+
+		await act(async () => rejectSave(new Error("The network is unavailable")));
+
+		expect(await screen.findByRole("alert")).toHaveTextContent("The network is unavailable");
+		expect(form).toHaveAttribute("aria-busy", "false");
+		expect(nameField).toBeEnabled();
+		expect(nameField).toHaveValue("Minh Nguyen");
+		expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+		await typist.click(screen.getByRole("button", { name: "Save changes" }));
+		expect(await screen.findByRole("status")).toHaveTextContent("Profile saved");
+		expect(updateProfile).toHaveBeenCalledTimes(2);
+		expect(updateProfile).toHaveBeenLastCalledWith({ displayName: "Minh Nguyen" });
 	});
 
 	it("shows the server's message when the handle is taken", async () => {
@@ -88,6 +151,9 @@ describe("ProfileForm", () => {
 		await typist.click(screen.getByRole("button", { name: "Save changes" }));
 
 		expect(await screen.findByRole("alert")).toHaveTextContent("Handle already taken");
+		expect(handleField).toHaveValue("an_test");
+		await typist.type(handleField, "2");
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 	});
 
 	it("writes the refreshed profile back into the auth store", async () => {

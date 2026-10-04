@@ -40,7 +40,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		fields.readReceiptsEnabled !== user.readReceiptsEnabled ||
 		fields.presenceVisibility !== user.presenceVisibility;
 
-	function validate() {
+	function validate(form: HTMLFormElement) {
 		const nextErrors = { displayName: "", handle: "", form: "" };
 
 		if (!displayName) nextErrors.displayName = "Display name is required";
@@ -52,13 +52,18 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		}
 
 		setErrors(nextErrors);
+		const firstInvalidField = nextErrors.displayName ? "displayName" : nextErrors.handle ? "handle" : null;
+		if (firstInvalidField) {
+			const field = form.elements.namedItem(firstInvalidField);
+			if (field instanceof HTMLElement) field.focus();
+		}
 
 		return !nextErrors.displayName && !nextErrors.handle;
 	}
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!validate()) return;
+		if (isSaving || !hasChanges || !validate(event.currentTarget)) return;
 
 		// Only what actually changed goes up. The server would accept the whole
 		// object, but a request carrying a field nobody touched is a request that
@@ -89,24 +94,30 @@ export function ProfileForm({ user }: ProfileFormProps) {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-5">
+		<form onSubmit={handleSubmit} aria-busy={isSaving} className="flex flex-col gap-5">
 			<TextField
 				label="Display name"
+				name="displayName"
 				autoComplete="name"
 				value={fields.displayName}
 				error={errors.displayName}
+				disabled={isSaving}
 				onChange={(event) => {
 					setIsSaved(false);
+					setErrors((current) => ({ ...current, displayName: "", form: "" }));
 					setFields((current) => ({ ...current, displayName: event.target.value }));
 				}}
 			/>
 			<TextField
 				label="Handle"
+				name="handle"
 				autoComplete="username"
 				value={fields.handle}
 				error={errors.handle}
+				disabled={isSaving}
 				onChange={(event) => {
 					setIsSaved(false);
+					setErrors((current) => ({ ...current, handle: "", form: "" }));
 					setFields((current) => ({ ...current, handle: event.target.value }));
 				}}
 			/>
@@ -117,8 +128,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
 				<input
 					type="checkbox"
 					checked={fields.readReceiptsEnabled}
+					disabled={isSaving}
 					onChange={(event) => {
 						setIsSaved(false);
+						setErrors((current) => ({ ...current, form: "" }));
 						setFields((current) => ({ ...current, readReceiptsEnabled: event.target.checked }));
 					}}
 					// `accent-color` is the whole styling: a hand-built box would need
@@ -142,14 +155,16 @@ export function ProfileForm({ user }: ProfileFormProps) {
 				<select
 					aria-label="Who can see your last seen"
 					value={fields.presenceVisibility}
+					disabled={isSaving}
 					onChange={(event) => {
 						setIsSaved(false);
+						setErrors((current) => ({ ...current, form: "" }));
 						setFields((current) => ({
 							...current,
 							presenceVisibility: event.target.value as CurrentUserDTO["presenceVisibility"],
 						}));
 					}}
-					className="cursor-pointer rounded-control border border-rule bg-paper-raised px-3 py-2.5 text-sm text-ink outline-none transition focus:border-ink focus:ring-3 focus:ring-ink/[0.07]"
+					className="cursor-pointer rounded-control border border-rule bg-paper-raised px-3 py-2.5 text-sm text-ink outline-none transition focus:border-ink focus:ring-3 focus:ring-ink/[0.07] disabled:cursor-default disabled:bg-rule-soft disabled:text-ink-faint"
 				>
 					<option value="everyone">Everyone</option>
 					<option value="contacts">People you chat with</option>
@@ -169,7 +184,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			    Guarding this on `hasChanges` as well would tie the message to the
 			    parent passing a refreshed `user` back down — true in the app, and
 			    an invisible dependency for anything else that renders this. */}
-			{isSaved && <p className="text-[13px] text-live">Profile saved</p>}
+			{isSaved && (
+				<p role="status" className="text-[13px] text-live">
+					Profile saved
+				</p>
+			)}
 
 			<Button type="submit" disabled={isSaving || !hasChanges} className="self-start px-5">
 				{isSaving ? "Saving…" : "Save changes"}
