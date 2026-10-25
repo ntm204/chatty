@@ -51,7 +51,7 @@ export function App() {
 				    mailbox, which is regularly a phone that has never signed in. */}
 					<Route path="/confirm-email" element={<ConfirmEmailPage />} />
 					<Route
-						path="/chat"
+						path="/chat/:conversationId?"
 						element={
 							currentUser ? (
 								<>

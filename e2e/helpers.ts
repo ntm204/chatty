@@ -67,8 +67,19 @@ export async function register(page: Page, user: TestUser): Promise<void> {
  */
 export async function openConversationWith(page: Page, peer: TestUser): Promise<void> {
 	const row = page.getByRole("button", { name: new RegExp(peer.displayName) });
-	await expect(row).toBeVisible({ timeout: 15_000 });
-	await row.click();
+	// Route changes render a frame behind the URL; wait until what is painted is
+	// what the address says, then decide. A visible row is always clicked (opening
+	// the open thread is a no-op); a phone that hides the list while a thread is open
+	// only skips the click when that thread is this peer's.
+	await page.waitForFunction(() => {
+		const routed = /\/chat\/([^/]+)$/u.exec(location.pathname)?.[1] ?? null;
+		const painted = document.querySelector("main")?.getAttribute("data-conversation-id") ?? null;
+
+		return routed === painted;
+	});
+	const openThread = page.getByRole("main").getByRole("heading", { name: peer.displayName, exact: true });
+	await expect(row.or(openThread).first()).toBeVisible({ timeout: 15_000 });
+	if (await row.isVisible()) await row.click();
 	await expect(page.getByLabel("Message", { exact: true })).toBeVisible();
 }
 

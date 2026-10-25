@@ -56,9 +56,9 @@ describe("getConversationTitle", () => {
 		expect(getConversationTitle(conversation, "minh")).toBe("Unknown");
 	});
 
-	it("titles a conversation with only yourself as 'Saved messages'", () => {
+	it("titles a conversation with only yourself as 'Notes'", () => {
 		const conversation = makeConversation({ participants: [makeParticipant("minh", "Minh")] });
 
-		expect(getConversationTitle(conversation, "minh")).toBe("Saved messages");
+		expect(getConversationTitle(conversation, "minh")).toBe("Notes");
 	});
 });

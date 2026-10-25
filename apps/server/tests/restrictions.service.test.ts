@@ -131,6 +131,18 @@ describe("restricting", () => {
 			expect(found?.unreadCount).toBe(0);
 		});
 
+		it("keeps counting the restricted person's messages in a shared group", async () => {
+			const binh = await makeUser("binh");
+			const group = await createConversation(mai.id, { participantIds: [linh.id, binh.id] });
+			await restrictUser(mai.id, linh.id);
+
+			await sendMessage(linh.id, group.id, { content: "hello group" });
+
+			const conversations = (await listConversationsForUser(mai.id)).items;
+			const found = conversations.find((candidate) => candidate.id === group.id);
+			expect(found?.unreadCount).toBe(1);
+		});
+
 		it("does not affect the restricted person's own badge", async () => {
 			const conversation = await createConversation(mai.id, { participantIds: [linh.id] });
 			// linh restricts mai — a one-directional row that changes what *linh*

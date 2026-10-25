@@ -3,6 +3,8 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
+import { focusField } from "@/utils/focus-field";
+import { getServerErrorField } from "@/utils/server-error-field";
 
 interface ChangeEmailFormProps {
 	user: CurrentUserDTO;
@@ -29,7 +31,7 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 
 	const newEmail = fields.newEmail.trim();
 
-	function validate() {
+	function validate(form: HTMLFormElement) {
 		const nextErrors = { newEmail: "", currentPassword: "", form: "" };
 
 		// Shape only. Whether the address is free, and whether it is even the same
@@ -38,13 +40,15 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 		if (!fields.currentPassword) nextErrors.currentPassword = "Current password is required";
 
 		setErrors(nextErrors);
+		focusField(form, nextErrors.newEmail ? "newEmail" : nextErrors.currentPassword ? "currentPassword" : null);
 
 		return !nextErrors.newEmail && !nextErrors.currentPassword;
 	}
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!validate()) return;
+		const form = event.currentTarget;
+		if (isSending || !validate(form)) return;
 
 		setIsSending(true);
 		setPendingEmail("");
@@ -57,24 +61,33 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 			setFields({ newEmail: "", currentPassword: "" });
 		} catch (error) {
 			// "Email already registered" and "that is already the address on this
-			// account" both arrive here — only the server can know either.
-			setErrors((current) => ({ ...current, form: (error as Error).message }));
+			// account" are the server's to know; both belong beside the new address.
+			const message = (error as Error).message;
+			const field = getServerErrorField(message, { email: "newEmail", currentPassword: "currentPassword" });
+			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
+			focusField(form, field);
 		} finally {
 			setIsSending(false);
 		}
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-			<TextField label="Current email" type="email" value={user.email} readOnly disabled autoComplete="email" />
+		<form onSubmit={handleSubmit} aria-busy={isSending} className="flex flex-col gap-4">
+			{/* The saved login's username (the visible field is disabled, which password
+			    managers skip), so the password below is matched to the right login. */}
+			<input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+			<TextField label="Current email" type="email" value={user.email} readOnly disabled autoComplete="off" />
 			<TextField
 				label="New email"
+				name="newEmail"
 				type="email"
 				autoComplete="email"
 				value={fields.newEmail}
 				error={errors.newEmail}
+				disabled={isSending}
 				onChange={(event) => {
 					setPendingEmail("");
+					setErrors((current) => ({ ...current, newEmail: "", form: "" }));
 					setFields((current) => ({ ...current, newEmail: event.target.value }));
 				}}
 			/>
@@ -84,12 +97,15 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 			    anyone else reading down the page. */}
 			<TextField
 				label="Your password"
+				name="currentPassword"
 				type="password"
 				autoComplete="current-password"
 				value={fields.currentPassword}
 				error={errors.currentPassword}
+				disabled={isSending}
 				onChange={(event) => {
 					setPendingEmail("");
+					setErrors((current) => ({ ...current, currentPassword: "", form: "" }));
 					setFields((current) => ({ ...current, currentPassword: event.target.value }));
 				}}
 			/>
@@ -100,7 +116,7 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 				</p>
 			)}
 			{pendingEmail && (
-				<p className="text-[13px] text-live">
+				<p role="status" className="text-[13px] text-live">
 					Check {pendingEmail} for a confirmation link. Your address stays {user.email} until you open it.
 				</p>
 			)}

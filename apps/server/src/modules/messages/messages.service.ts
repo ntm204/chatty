@@ -497,7 +497,7 @@ export async function listMessages(
 			select: messageSelect,
 		});
 
-		return newer.map(toMessageDTO);
+		return withViewerBookmarks(currentUserId, newer.map(toMessageDTO));
 	}
 
 	const messages = await prisma.message.findMany({
@@ -512,7 +512,22 @@ export async function listMessages(
 		select: messageSelect,
 	});
 
-	return messages.map(toMessageDTO);
+	return withViewerBookmarks(currentUserId, messages.map(toMessageDTO));
+}
+
+/**
+ * Marks which of a page's messages the viewer has bookmarked, so the thread's
+ * menu can offer "Remove bookmark" without a second round trip per message.
+ */
+async function withViewerBookmarks(userId: string, messages: MessageDTO[]): Promise<MessageDTO[]> {
+	if (messages.length === 0) return messages;
+	const stars = await prisma.messageStar.findMany({
+		where: { userId, messageId: { in: messages.map((message) => message.id) } },
+		select: { messageId: true },
+	});
+	const bookmarked = new Set(stars.map((star) => star.messageId));
+
+	return messages.map((message) => ({ ...message, isBookmarked: bookmarked.has(message.id) }));
 }
 
 export async function saveMessageForUser(userId: string, conversationId: string, messageId: string): Promise<void> {
@@ -528,13 +543,13 @@ export async function saveMessageForUser(userId: string, conversationId: string,
 		create: { messageId, userId },
 		update: {},
 	});
-	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId });
+	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId, isBookmarked: true });
 }
 
 export async function removeSavedMessage(userId: string, conversationId: string, messageId: string): Promise<void> {
 	await assertParticipant(userId, conversationId);
 	await prisma.messageStar.deleteMany({ where: { messageId, userId, message: { conversationId } } });
-	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId });
+	getIO().to(userRoom(userId)).emit("bookmark:changed", { conversationId, messageId, isBookmarked: false });
 }
 
 function toPinnedMessageDTO(
@@ -666,7 +681,10 @@ export async function getMessageContext(
 	]);
 
 	return {
-		messages: [...older.slice(0, olderLimit).reverse(), current, ...newer.slice(0, newerLimit)].map(toMessageDTO),
+		messages: await withViewerBookmarks(
+			currentUserId,
+			[...older.slice(0, olderLimit).reverse(), current, ...newer.slice(0, newerLimit)].map(toMessageDTO),
+		),
 		hasMoreOlder: older.length > olderLimit,
 		hasMoreNewer: newer.length > newerLimit,
 	};

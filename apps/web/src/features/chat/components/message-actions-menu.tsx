@@ -1,4 +1,16 @@
-import { Bookmark, CornerUpLeft, Forward, Pencil, Pin, PinOff, SmilePlus, Trash2, UserRoundX, X } from "lucide-react";
+import {
+	Bookmark,
+	BookmarkX,
+	CornerUpLeft,
+	Forward,
+	Pencil,
+	Pin,
+	PinOff,
+	SmilePlus,
+	Trash2,
+	UserRoundX,
+	X,
+} from "lucide-react";
 import { Button } from "@/components/button";
 
 interface MessageActionsMenuProps {
@@ -6,6 +18,7 @@ interface MessageActionsMenuProps {
 	setIsChoosingDeleteScope: (isChoosing: boolean) => void;
 	onClose: () => void;
 	onBookmark?: (() => void) | undefined;
+	isBookmarked: boolean;
 	onEdit?: (() => void) | undefined;
 	onDeleteForEveryone?: (() => void) | undefined;
 	onDeleteForMe: () => void;
@@ -24,6 +37,7 @@ export function MessageActionsMenu({
 	setIsChoosingDeleteScope,
 	onClose,
 	onBookmark,
+	isBookmarked,
 	onEdit,
 	onDeleteForEveryone,
 	onDeleteForMe,
@@ -124,8 +138,8 @@ export function MessageActionsMenu({
 					onClick={() => runAndClose(onBookmark)}
 					className="w-full justify-start px-2.5 py-2 text-ink"
 				>
-					<Bookmark className="size-4" />
-					Bookmark message
+					{isBookmarked ? <BookmarkX className="size-4" /> : <Bookmark className="size-4" />}
+					{isBookmarked ? "Remove bookmark" : "Bookmark message"}
 				</Button>
 			)}
 			{onTogglePin && (

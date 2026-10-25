@@ -152,7 +152,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 							<li key={`${group.emoji}-${user.id}`} className="flex items-center gap-3 px-3 py-2">
 								<Avatar user={user} size="sm" />
 								<div className="min-w-0 flex-1">
-									<p title={user.displayName} className="truncate text-[13.5px] font-medium">
+									<p title={user.displayName} className="truncate text-[14px] font-medium">
 										{user.id === currentUserId ? "You" : user.displayName}
 									</p>
 									<p className="meta truncate text-ink-faint">@{user.handle}</p>

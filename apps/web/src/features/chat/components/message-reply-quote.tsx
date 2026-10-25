@@ -35,7 +35,7 @@ export function MessageReplyQuote({ replyTo, isMine, onJumpToOriginal }: Message
 	);
 	const quote = (
 		<>
-			<span className={cn("eyebrow", isMine ? "text-block-ink/60" : "text-ink-faint")}>
+			<span className={cn("note font-content font-medium", isMine ? "text-block-ink/60" : "text-ink-faint")}>
 				{replyTo.authorName ?? DELETED_AUTHOR_NAME}
 			</span>
 			<span className="flex w-full min-w-0 items-center gap-2.5">
@@ -51,7 +51,7 @@ export function MessageReplyQuote({ replyTo, isMine, onJumpToOriginal }: Message
 				)}
 				<span
 					className={cn(
-						"min-w-0 flex-1 truncate text-[12.5px]/[1.45]",
+						"font-content min-w-0 flex-1 truncate text-[13px]/[1.45]",
 						isMine ? "text-block-ink/70" : "text-ink-faint",
 						isUnavailable && "italic",
 					)}

@@ -283,7 +283,7 @@ export function MessageInput({
 							disabled={isDisabled || isVoiceActive}
 							placeholder="Write a message"
 							aria-label="Message"
-							className="max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint"
+							className="font-content max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint"
 						/>
 					}
 					voiceRecorder={

@@ -10,7 +10,9 @@ screens within the viewport.
 The reference was inspected in a browser on desktop and phone, including its actual font and color
 styles. Core colors are navy `#06038d`, yellow `#fbc80b`, violet `#5750fe` and lavender `#e6e6f4`.
 Clash Display 700 supplies the bold fixed headings; General Sans supplies interface text, with
-self-hosted Geist as a fallback and Geist Mono for handles/timestamps. The mark is a CSS chat bubble
+self-hosted Geist as a fallback and Geist Mono for handles/timestamps. What people write — messages,
+names, previews, drafts — is set in Geist (`font-content`): General Sans has no Vietnamese ranges, so
+letters such as ễ, ờ and ứ were drawn in Geist inside a General Sans word. The mark is a CSS chat bubble
 with two eyes and a lowercase wordmark. The eyes follow the pointer within a few pixels, blink
 occasionally and wink on hover. Pointer inactivity recenters them; hidden pages pause blinking
 and reduced motion disables the effect. It replaces the former serif/asterisk identity.
@@ -30,8 +32,9 @@ calls to action are not part of this messaging application.
   it; recovery routes and authenticated chat go directly through.
 - The masthead's Get started action switches to the actual registration form. Account help opens
   password recovery. Existing sign-in, registration and recovery behavior remains in place.
-- The chat welcome screen uses an expandable activity status and a quiet sans-serif heading. Expanding
-  the status reveals Find your people (or Open unread chat). Its content stays centered within the conversation pane
+- The chat welcome screen uses an expandable activity status and a quiet sans-serif heading. The next
+  step is always a visible button below the copy: Find someone to chat with for a new account, Open
+  unread chat when something is waiting, otherwise Start a new chat. Its content stays centered within the conversation pane
   without scrolling or clipping the heading on short laptops.
 - The inbox, conversation header, composer, secondary panels and account settings use white/lavender
   surfaces, rounded edges and soft shadows. Outgoing messages are navy and actions are yellow.

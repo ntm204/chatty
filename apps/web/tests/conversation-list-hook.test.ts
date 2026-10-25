@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { useConversationList } from "@/features/chat/hooks/use-conversation-list";
+import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { makeConversation, makeMessage, makeParticipant } from "./factories";
 
 type SocketHandler = (payload: unknown) => void;
@@ -12,7 +13,9 @@ const localStore = vi.hoisted(() => ({
 	readConversationPage: vi.fn(),
 }));
 
-vi.mock("@/api/client", () => ({ api: { listConversations: vi.fn(), getConversation: vi.fn() } }));
+vi.mock("@/api/client", () => ({
+	api: { listConversations: vi.fn(), getConversation: vi.fn(), getRestrictionStatus: vi.fn() },
+}));
 vi.mock("@/lib/local-chat-store", () => localStore);
 vi.mock("@/features/chat/hooks/use-socket-event", () => ({
 	useSocketEvent: (eventName: string, handler: SocketHandler) => socketHandlers.set(eventName, handler),
@@ -54,6 +57,9 @@ async function renderConversationList(rows: ConversationDTO[] = [second, first])
 beforeEach(() => {
 	socketHandlers.clear();
 	vi.mocked(api.listConversations).mockReset();
+	vi.mocked(api.getConversation).mockReset();
+	vi.mocked(api.getRestrictionStatus).mockReset().mockResolvedValue({ isRestricted: false });
+	useRestrictedUsers.getState().reset();
 	localStore.cacheConversationPage.mockReset().mockResolvedValue(undefined);
 	localStore.readConversationPage.mockReset().mockResolvedValue(null);
 });
@@ -183,5 +189,54 @@ describe("useConversationList event reducer", () => {
 		emit("conversation:left", { conversationId: "first" });
 		expect(view.result.current.conversations).toEqual([]);
 		expect(view.onLeft).toHaveBeenCalledWith("first");
+	});
+
+	it("does not raise a direct conversation's badge for a restricted peer, but does in a group", async () => {
+		const group = makeConversation({
+			id: "group",
+			isGroup: true,
+			participants: [
+				makeParticipant("minh", "Minh"),
+				makeParticipant("an", "An"),
+				makeParticipant("binh", "Binh"),
+			],
+			updatedAt: "2026-07-01T10:00:00.000Z",
+		});
+		const view = await renderConversationList([first, group]);
+		vi.mocked(api.getConversation).mockResolvedValue({ ...first, unreadCount: 0 });
+		act(() => useRestrictedUsers.getState().apply("an", true));
+		await waitFor(() =>
+			expect(view.result.current.conversations.find((row) => row.id === "first")?.unreadCount).toBe(0),
+		);
+
+		emit("message:new", { ...makeMessage("dm", "an", "quiet"), conversationId: "first" });
+		emit("message:new", { ...makeMessage("in-group", "an", "loud"), conversationId: "group" });
+
+		const rows = view.result.current.conversations;
+		expect(rows.find((row) => row.id === "first")?.unreadCount).toBe(0);
+		expect(rows.find((row) => row.id === "group")?.unreadCount).toBe(1);
+		expect(api.getConversation).toHaveBeenCalledTimes(1);
+	});
+
+	it("re-reads the server badge when an unknown peer turns out to be restricted", async () => {
+		vi.mocked(api.getRestrictionStatus).mockResolvedValue({ isRestricted: true });
+		vi.mocked(api.getConversation).mockResolvedValue({ ...first, unreadCount: 1 });
+		const view = await renderConversationList([first]);
+
+		emit("message:new", { ...makeMessage("dm", "an", "quiet"), conversationId: "first" });
+
+		expect(api.getRestrictionStatus).toHaveBeenCalledWith("an");
+		await waitFor(() => expect(view.result.current.conversations[0]?.unreadCount).toBe(1));
+		expect(api.getConversation).toHaveBeenCalledWith("first");
+	});
+
+	it("restores a hidden badge when another device unrestricts a peer this tab never resolved", async () => {
+		const view = await renderConversationList([{ ...first, unreadCount: 0 }]);
+		vi.mocked(api.getConversation).mockResolvedValue({ ...first, unreadCount: 3 });
+
+		emit("restriction:changed", { userId: "an", isRestricted: false });
+
+		await waitFor(() => expect(view.result.current.conversations[0]?.unreadCount).toBe(3));
+		expect(api.getConversation).toHaveBeenCalledWith("first");
 	});
 });

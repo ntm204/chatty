@@ -26,7 +26,7 @@ export function NotificationSettings() {
 					>
 						{isSoundEnabled ? "Turn sound off" : "Turn sound on"}
 					</Button>
-					<span className="eyebrow text-ink-faint">{isSoundEnabled ? "On" : "Off"}</span>
+					<span className="note text-ink-faint">{isSoundEnabled ? "On" : "Off"}</span>
 					{isSoundEnabled && (
 						<Button variant="ghost" onClick={playMessageChime}>
 							Preview
@@ -58,7 +58,7 @@ export function NotificationSettings() {
 									>
 										{isEnabled ? "Turn notifications off" : "Turn notifications on"}
 									</Button>
-									<span className="eyebrow text-ink-faint">
+									<span className="note text-ink-faint">
 										{isEnabled ? "On for this browser" : "Off"}
 									</span>
 								</div>
@@ -69,7 +69,7 @@ export function NotificationSettings() {
 									>
 										{isMessagePreviewEnabled ? "Hide message preview" : "Show message preview"}
 									</Button>
-									<span className="eyebrow text-ink-faint">
+									<span className="note text-ink-faint">
 										{isMessagePreviewEnabled ? "Sender and text shown" : "Details hidden"}
 									</span>
 								</div>

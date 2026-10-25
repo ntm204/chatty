@@ -3,6 +3,8 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { MIN_PASSWORD_LENGTH } from "@/constants/validation";
 import { useAuth } from "@/hooks/use-auth";
+import { focusField } from "@/utils/focus-field";
+import { getServerErrorField } from "@/utils/server-error-field";
 
 /**
  * Changes the signed-in user's password.
@@ -18,12 +20,13 @@ import { useAuth } from "@/hooks/use-auth";
  */
 export function ChangePasswordForm() {
 	const changePassword = useAuth((state) => state.changePassword);
+	const email = useAuth((state) => state.currentUser?.email ?? "");
 	const [fields, setFields] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 	const [errors, setErrors] = useState({ currentPassword: "", newPassword: "", confirmPassword: "", form: "" });
 	const [isSaving, setIsSaving] = useState(false);
 	const [isChanged, setIsChanged] = useState(false);
 
-	function validate() {
+	function validate(form: HTMLFormElement) {
 		const nextErrors = { currentPassword: "", newPassword: "", confirmPassword: "", form: "" };
 
 		if (!fields.currentPassword) nextErrors.currentPassword = "Current password is required";
@@ -41,13 +44,24 @@ export function ChangePasswordForm() {
 		}
 
 		setErrors(nextErrors);
+		focusField(
+			form,
+			nextErrors.currentPassword
+				? "currentPassword"
+				: nextErrors.newPassword
+					? "newPassword"
+					: nextErrors.confirmPassword
+						? "confirmPassword"
+						: null,
+		);
 
 		return !nextErrors.currentPassword && !nextErrors.newPassword && !nextErrors.confirmPassword;
 	}
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!validate()) return;
+		const form = event.currentTarget;
+		if (isSaving || !validate(form)) return;
 
 		setIsSaving(true);
 		setIsChanged(false);
@@ -58,44 +72,61 @@ export function ChangePasswordForm() {
 			setFields({ currentPassword: "", newPassword: "", confirmPassword: "" });
 			setIsChanged(true);
 		} catch (error) {
-			setErrors((current) => ({ ...current, form: (error as Error).message }));
+			const message = (error as Error).message;
+			const field = getServerErrorField(message, {
+				currentPassword: "currentPassword",
+				newPassword: "newPassword",
+			});
+			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
+			focusField(form, field);
 		} finally {
 			setIsSaving(false);
 		}
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
+		<form onSubmit={handleSubmit} aria-busy={isSaving} className="flex flex-col gap-4">
+			{/* Tells a password manager which saved login this new password replaces. */}
+			<input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
 			<TextField
 				label="Current password"
+				name="currentPassword"
 				type="password"
 				autoComplete="current-password"
 				value={fields.currentPassword}
 				error={errors.currentPassword}
+				disabled={isSaving}
 				onChange={(event) => {
 					setIsChanged(false);
+					setErrors((current) => ({ ...current, currentPassword: "", form: "" }));
 					setFields((current) => ({ ...current, currentPassword: event.target.value }));
 				}}
 			/>
 			<TextField
 				label="New password"
+				name="newPassword"
 				type="password"
 				autoComplete="new-password"
 				value={fields.newPassword}
 				error={errors.newPassword}
+				disabled={isSaving}
 				onChange={(event) => {
 					setIsChanged(false);
+					setErrors((current) => ({ ...current, newPassword: "", form: "" }));
 					setFields((current) => ({ ...current, newPassword: event.target.value }));
 				}}
 			/>
 			<TextField
 				label="Confirm new password"
+				name="confirmPassword"
 				type="password"
 				autoComplete="new-password"
 				value={fields.confirmPassword}
 				error={errors.confirmPassword}
+				disabled={isSaving}
 				onChange={(event) => {
 					setIsChanged(false);
+					setErrors((current) => ({ ...current, confirmPassword: "", form: "" }));
 					setFields((current) => ({ ...current, confirmPassword: event.target.value }));
 				}}
 			/>
@@ -106,7 +137,7 @@ export function ChangePasswordForm() {
 				</p>
 			)}
 			{isChanged && (
-				<p className="text-[13px] text-live">
+				<p role="status" className="text-[13px] text-live">
 					Password changed. Everywhere else you were signed in has been signed out.
 				</p>
 			)}

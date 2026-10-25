@@ -56,11 +56,27 @@ test.describe("conversation paging", () => {
 		await page.reload();
 
 		const rows = page.getByRole("listitem");
-		// The first page is bounded — the whole point of the item.
-		await expect.poll(() => rows.count(), { timeout: 15_000 }).toBeLessThan(35);
-		const firstPageCount = await rows.count();
+		// The first page is bounded — the whole point of the item. Reload first paints
+		// nothing, then the cached sidebar (all 35), then the server's first page, so
+		// wait for a non-empty count that holds still before reading it.
+		await expect
+			.poll(
+				async () => {
+					const before = await rows.count();
+					await page.waitForTimeout(700);
 
-		await rows.last().scrollIntoViewIfNeeded();
+					return before === (await rows.count()) ? before : -1;
+				},
+				{ timeout: 15_000 },
+			)
+			.toBeGreaterThan(0);
+		const firstPageCount = await rows.count();
+		expect(firstPageCount).toBeLessThan(35);
+
+		// A real wheel over the list, as a reader would. Anchoring on the last row
+		// raced the next page replacing it once loading starts before the end.
+		await page.getByRole("list").first().hover();
+		await page.mouse.wheel(0, 4000);
 
 		await expect.poll(() => rows.count(), { timeout: 15_000 }).toBeGreaterThan(firstPageCount);
 	});

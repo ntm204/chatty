@@ -1,5 +1,6 @@
 import { ArrowDown, LoaderCircle } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { TypingDots } from "./typing-dots";
@@ -11,6 +12,8 @@ interface ScrollToLatestButtonProps {
 	newMessageCount: number;
 	onClick: () => void;
 	typingMessage?: string | null;
+	/** Read out while the button is hidden, i.e. while the reader is at the live edge. */
+	arrivalAnnouncement?: string;
 }
 
 /** A small visible surface inside a forgiving touch target; only real typing loops. */
@@ -21,6 +24,7 @@ export function ScrollToLatestButton({
 	newMessageCount,
 	onClick,
 	typingMessage,
+	arrivalAnnouncement = "",
 }: ScrollToLatestButtonProps) {
 	const detailsRef = useRef<HTMLSpanElement>(null);
 	const [detailsWidth, setDetailsWidth] = useState(0);
@@ -117,10 +121,14 @@ export function ScrollToLatestButton({
 					</span>
 				</span>
 			</Button>
-			{/* Announce arrivals once, without reading the thread or every typing tick. */}
-			<span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-				{isVisible && (isLoading ? "Loading latest messages" : newMessageDescription)}
-			</span>
+			{/* Announce arrivals once, without reading the thread or every typing tick.
+			    Portalled out of the thread so a message's words exist once inside it. */}
+			{createPortal(
+				<span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+					{isVisible ? (isLoading ? "Loading latest messages" : newMessageDescription) : arrivalAnnouncement}
+				</span>,
+				document.body,
+			)}
 		</>
 	);
 }

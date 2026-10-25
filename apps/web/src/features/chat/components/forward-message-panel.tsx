@@ -1,6 +1,6 @@
 import type { MessageDTO } from "@chatty/shared-types";
 import { Forward, X } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { useDialog } from "@/hooks/use-dialog";
 import { useForwardDestinations } from "../hooks/use-forward-destinations";
@@ -27,6 +27,12 @@ export function ForwardMessagePanel({ message, currentUserId, onClose }: Forward
 		if (!isSendingRef.current) onCloseRef.current();
 	}, []);
 	const dialogRef = useDialog<HTMLDivElement>(close);
+	const searchRef = useRef<HTMLInputElement>(null);
+	// Declared after `useDialog`, whose effect focuses the panel itself: the only
+	// thing to do here is pick a destination, so start where that is typed.
+	useEffect(() => {
+		searchRef.current?.focus();
+	}, []);
 
 	async function forwardTo(conversationId: string): Promise<void> {
 		if (isSendingRef.current) return;
@@ -86,6 +92,7 @@ export function ForwardMessagePanel({ message, currentUserId, onClose }: Forward
 							{message.content || `${message.attachments.length} attachment(s)`}
 						</p>
 						<input
+							ref={searchRef}
 							type="search"
 							aria-label="Find a conversation to forward to"
 							placeholder="Search conversations"
@@ -115,7 +122,9 @@ export function ForwardMessagePanel({ message, currentUserId, onClose }: Forward
 								</p>
 							)}
 							{!destinations.isLoading && !destinations.error && !destinations.items.length && (
-								<p className="p-3 text-sm text-ink-soft">No conversations found.</p>
+								<p className="p-3 text-sm text-ink-soft">
+									No conversations found. Try another name or @handle.
+								</p>
 							)}
 							{sendingToId && (
 								<p role="status" className="p-3 text-sm text-ink-soft">

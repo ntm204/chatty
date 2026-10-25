@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/button";
 import { BookmarkedMessagesDialog } from "./bookmarked-messages-dialog";
+import { useBackDismiss } from "@/hooks/use-back-dismiss";
 
 interface BookmarksShortcutProps {
 	currentUserId: string;
@@ -13,6 +14,7 @@ interface BookmarksShortcutProps {
 export function BookmarksShortcut({ currentUserId, onSelectMessage }: BookmarksShortcutProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const close = useCallback(() => setIsOpen(false), []);
+	useBackDismiss(isOpen, close);
 
 	return (
 		<div className="min-w-0">

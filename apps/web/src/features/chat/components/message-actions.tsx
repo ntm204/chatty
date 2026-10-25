@@ -13,6 +13,7 @@ import { ReactionBar } from "./reaction-bar";
 interface MessageActionsProps {
 	isPending?: boolean;
 	onBookmark?: (() => void) | undefined;
+	isBookmarked?: boolean;
 	onEdit?: () => void;
 	onDeleteForEveryone?: () => void;
 	onDeleteForMe: () => void;
@@ -48,6 +49,7 @@ interface MessageActionsProps {
 export function MessageActions({
 	isPending = false,
 	onBookmark,
+	isBookmarked = false,
 	onEdit,
 	onDeleteForEveryone,
 	onDeleteForMe,
@@ -255,6 +257,7 @@ export function MessageActions({
 				>
 					<MessageActionsMenu
 						onBookmark={onBookmark}
+						isBookmarked={isBookmarked}
 						isChoosingDeleteScope={isChoosingDeleteScope}
 						setIsChoosingDeleteScope={setIsChoosingDeleteScope}
 						onClose={() => setOpenPanel(null)}

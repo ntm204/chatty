@@ -11,7 +11,7 @@ import { isSavedConversation } from "./is-saved-conversation";
  * nickname if one is set for them in this conversation, else their real name.
  */
 export function getConversationTitle(conversation: ConversationDTO, currentUserId: string): string {
-	if (isSavedConversation(conversation, currentUserId)) return "Saved messages";
+	if (isSavedConversation(conversation, currentUserId)) return "Notes";
 	if (conversation.isGroup) return conversation.name ?? "Group";
 
 	const peer = getDirectPeer(conversation, currentUserId);

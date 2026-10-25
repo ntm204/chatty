@@ -19,7 +19,7 @@ export function ConnectionBanner() {
 			className="flex shrink-0 items-center justify-center gap-2 border-b border-rule bg-paper-raised px-4 py-1.5"
 		>
 			<CloudOff aria-hidden="true" className="size-3.5 text-ink-faint" />
-			<span className="eyebrow text-ink-soft">Reconnecting — new messages will appear when the link is back</span>
+			<span className="note text-ink-soft">Reconnecting — new messages will appear when the link is back</span>
 		</div>
 	);
 }

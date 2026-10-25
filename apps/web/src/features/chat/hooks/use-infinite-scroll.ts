@@ -37,7 +37,10 @@ export function useInfiniteScroll<Element extends HTMLElement>(
 			(entries) => {
 				if (entries.some((entry) => entry.isIntersecting)) onReachRef.current();
 			},
-			{ rootMargin },
+			// The nearest scrolling ancestor is the root, not the viewport: a margin on
+			// the viewport never reaches past the sidebar's or vault's own clipping, so
+			// the next page only started once the reader hit the very bottom.
+			{ root: findScrollParent(target), rootMargin },
 		);
 		observer.observe(target);
 
@@ -45,4 +48,13 @@ export function useInfiniteScroll<Element extends HTMLElement>(
 	}, [hasMore, isLoading, rootMargin]);
 
 	return sentinelRef;
+}
+
+function findScrollParent(element: HTMLElement): HTMLElement | null {
+	for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+		const { overflowY } = getComputedStyle(parent);
+		if (overflowY === "auto" || overflowY === "scroll") return parent;
+	}
+
+	return null;
 }

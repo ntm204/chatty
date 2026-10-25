@@ -1,5 +1,5 @@
 import { applyMessageUpdate } from "@/utils/apply-message-update";
-import type { MessageDTO, ReactionEmoji } from "@chatty/shared-types";
+import type { BookmarkChangedEvent, MessageDTO, ReactionEmoji } from "@chatty/shared-types";
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { api } from "@/api/client";
 import { useSocketEvent } from "./use-socket-event";
@@ -26,6 +26,23 @@ export function useMessageActions(
 					// state whenever that page is fetched again.
 					setMessages((current) => current.map((existing) => applyMessageUpdate(existing, message)));
 				}
+			},
+			[conversationId, setMessages],
+		),
+	);
+
+	useSocketEvent(
+		"bookmark:changed",
+		useCallback(
+			(event: BookmarkChangedEvent) => {
+				if (event.conversationId !== conversationId) return;
+				// Every tab of the account hears this, including the one that clicked,
+				// so the menu's label follows the server rather than a guess.
+				setMessages((current) =>
+					current.map((message) =>
+						message.id === event.messageId ? { ...message, isBookmarked: event.isBookmarked } : message,
+					),
+				);
 			},
 			[conversationId, setMessages],
 		),

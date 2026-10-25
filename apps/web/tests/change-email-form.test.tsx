@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangeEmailForm } from "@/features/profile/components/change-email-form";
@@ -55,6 +55,9 @@ describe("ChangeEmailForm", () => {
 
 		await fillAndSubmit();
 
-		expect(await screen.findByRole("alert")).toHaveTextContent("Email already registered");
+		const newEmail = screen.getByLabelText("New email");
+		await waitFor(() => expect(newEmail).toHaveFocus());
+		expect(newEmail).toHaveAccessibleDescription("Email already registered");
+		expect(newEmail).toHaveValue("minh.new@chatty.test");
 	});
 });

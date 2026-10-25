@@ -68,9 +68,9 @@ export function GroupInvitePolicyControl({ conversationId, policy, isAdmin }: Gr
 					/>
 				</Button>
 			</div>
-			{!isAdmin && <p className="eyebrow mt-2 text-ink-faint">Only group admins can change this policy.</p>}
+			{!isAdmin && <p className="note mt-2 text-ink-faint">Only group admins can change this policy.</p>}
 			{error && (
-				<p role="alert" className="eyebrow mt-2 text-signal">
+				<p role="alert" className="note mt-2 text-signal">
 					{error}
 				</p>
 			)}

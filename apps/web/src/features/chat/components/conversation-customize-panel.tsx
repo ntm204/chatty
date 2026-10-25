@@ -48,7 +48,7 @@ export function ConversationCustomizePanel({
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 						<Pencil className="size-4 text-ink-soft" aria-hidden="true" />
 					</span>
-					<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{conversation.name}</span>
+					<span className="min-w-0 flex-1 truncate text-[14px] text-ink">{conversation.name}</span>
 					<span className="meta text-ink-faint">Rename</span>
 					<ChevronRight className="size-4 text-ink-faint" />
 				</Button>
@@ -64,7 +64,7 @@ export function ConversationCustomizePanel({
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 						<Camera className="size-4 text-ink-soft" aria-hidden="true" />
 					</span>
-					<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">Group photo</span>
+					<span className="min-w-0 flex-1 truncate text-[14px] text-ink">Group photo</span>
 					<ChevronRight className="size-4 text-ink-faint" />
 				</Button>
 			)}
@@ -85,7 +85,7 @@ export function ConversationCustomizePanel({
 				<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 					<Type className="size-4 text-ink-soft" aria-hidden="true" />
 				</span>
-				<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">Nicknames</span>
+				<span className="min-w-0 flex-1 truncate text-[14px] text-ink">Nicknames</span>
 				<ChevronRight className="size-4 text-ink-faint" />
 			</Button>
 

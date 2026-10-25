@@ -22,6 +22,7 @@ export function MessageEditHistory({ conversationId, messageId, onClose }: Messa
 	const [edits, setEdits] = useState<MessageEditDTO[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState("");
+	const [attempt, setAttempt] = useState(0);
 	const titleId = useId();
 	const dialogRef = useDialog<HTMLElement>(onClose);
 
@@ -44,7 +45,7 @@ export function MessageEditHistory({ conversationId, messageId, onClose }: Messa
 		return () => {
 			isCurrent = false;
 		};
-	}, [conversationId, messageId]);
+	}, [conversationId, messageId, attempt]);
 
 	return (
 		<div
@@ -79,14 +80,19 @@ export function MessageEditHistory({ conversationId, messageId, onClose }: Messa
 				</header>
 
 				<div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-					{isLoading && <p className="eyebrow py-8 text-center text-ink-faint">Loading edit history…</p>}
+					{isLoading && <p className="note py-8 text-center text-ink-faint">Loading edit history…</p>}
 					{error && (
-						<p role="alert" className="eyebrow text-signal">
-							{error}
-						</p>
+						<div className="flex flex-col items-start gap-2">
+							<p role="alert" className="note text-signal">
+								{error}
+							</p>
+							<Button variant="outline" onClick={() => setAttempt((value) => value + 1)} className="px-4">
+								Try again
+							</Button>
+						</div>
 					)}
 					{!isLoading && !error && edits.length === 0 && (
-						<p className="eyebrow py-8 text-center text-ink-faint">No previous versions.</p>
+						<p className="note py-8 text-center text-ink-faint">No previous versions.</p>
 					)}
 					{!isLoading && !error && edits.length > 0 && (
 						<ul className="flex flex-col gap-4 border-l border-rule pl-4">

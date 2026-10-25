@@ -15,7 +15,7 @@ export function TextField({ label, error, className, ...rest }: TextFieldProps) 
 
 	return (
 		<div className="flex flex-col gap-2">
-			<label htmlFor={inputId} className="eyebrow text-ink-soft">
+			<label htmlFor={inputId} className="note font-medium text-ink-soft">
 				{label}
 			</label>
 			<input

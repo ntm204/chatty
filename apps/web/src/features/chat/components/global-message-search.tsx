@@ -124,7 +124,15 @@ export function GlobalMessageSearch({
 							Try again
 						</Button>
 					)}
-					{hasNoResults && <p className="p-3 text-sm text-ink-faint">No messages found.</p>}
+					{hasNoResults && (
+						<div className="p-3">
+							<p className="text-sm text-ink-soft">No messages found.</p>
+							<p className="mt-1 text-xs text-ink-faint">
+								Try fewer or different words. Every conversation you are in is searched, archived ones
+								too.
+							</p>
+						</div>
+					)}
 					<ul className="space-y-1">
 						{results.map((result) => (
 							<li key={result.message.id}>

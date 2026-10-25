@@ -4,7 +4,7 @@ import { Loader2, Upload } from "lucide-react";
 import { api } from "@/api/client";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
-import { AVATAR_UPLOAD_HINT } from "@/constants/avatar-upload";
+import { AVATAR_MAX_BYTES, AVATAR_UPLOAD_HINT } from "@/constants/avatar-upload";
 import { useAuth } from "@/hooks/use-auth";
 import type { AvatarSize } from "@/types/avatar";
 
@@ -37,6 +37,18 @@ export function CurrentUserAvatar({ user, size = "lg" }: CurrentUserAvatarProps)
 		// after a failure would do nothing.
 		event.target.value = "";
 		if (!file) return;
+		// Checked here as well as on the server: a 20 MB photo should fail now, not
+		// after it has been uploaded. The current picture stays as it is either way.
+		if (!file.type.startsWith("image/")) {
+			setError("Choose an image file — PNG or JPG.");
+
+			return;
+		}
+		if (file.size > AVATAR_MAX_BYTES) {
+			setError("That picture is over 5 MB. Choose a smaller one.");
+
+			return;
+		}
 
 		setIsSaving(true);
 		setError("");
@@ -111,7 +123,7 @@ export function CurrentUserAvatar({ user, size = "lg" }: CurrentUserAvatarProps)
 				</div>
 
 				{error ? (
-					<p role="alert" className="eyebrow text-signal">
+					<p role="alert" className="note text-signal">
 						{error}
 					</p>
 				) : (

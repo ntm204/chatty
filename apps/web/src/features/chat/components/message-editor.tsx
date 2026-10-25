@@ -72,7 +72,7 @@ export function MessageEditor({ initialContent, hasAttachment, onSave, onCancel 
 				aria-label="Edit message"
 				autoFocus
 				rows={2}
-				className="max-h-40 min-h-16 w-full resize-none overflow-y-auto rounded-control border border-rule bg-paper-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-ink focus:ring-3 focus:ring-ink/[0.07]"
+				className="font-content max-h-40 min-h-16 w-full resize-none overflow-y-auto rounded-control border border-rule bg-paper-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-ink focus:ring-3 focus:ring-ink/[0.07]"
 			/>
 
 			{error && (
@@ -81,7 +81,7 @@ export function MessageEditor({ initialContent, hasAttachment, onSave, onCancel 
 				</p>
 			)}
 			<div className="flex items-center justify-between gap-3">
-				<span className="eyebrow text-ink-faint">Enter to save · Esc to cancel</span>
+				<span className="note text-ink-faint">Enter to save · Esc to cancel</span>
 				<div className="flex items-center gap-1">
 					<Button variant="ghost" onClick={onCancel} disabled={isSaving} className="px-2.5 py-1.5 text-xs">
 						Cancel

@@ -4,6 +4,7 @@ import { wasSessionExpired } from "@/api/client";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { useAuth } from "@/hooks/use-auth";
+import { focusField } from "@/utils/focus-field";
 
 export function LoginForm() {
 	const login = useAuth((state) => state.login);
@@ -16,20 +17,21 @@ export function LoginForm() {
 	// deserves a stated reason, or it reads as the app forgetting who you are.
 	const hasExpiredSession = wasSessionExpired();
 
-	function validate() {
+	function validate(form: HTMLFormElement) {
 		const nextErrors = { email: "", password: "", form: "" };
 
 		if (!fields.email.trim()) nextErrors.email = "Email is required";
 		if (!fields.password) nextErrors.password = "Password is required";
 
 		setErrors(nextErrors);
+		focusField(form, nextErrors.email ? "email" : nextErrors.password ? "password" : null);
 
 		return !nextErrors.email && !nextErrors.password;
 	}
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!validate()) return;
+		if (isSubmitting || !validate(event.currentTarget)) return;
 
 		setIsSubmitting(true);
 		try {
@@ -44,7 +46,7 @@ export function LoginForm() {
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
+		<form onSubmit={handleSubmit} aria-busy={isSubmitting} className="flex flex-col gap-4">
 			{hasExpiredSession && !errors.form && (
 				<p
 					role="status"
@@ -56,19 +58,29 @@ export function LoginForm() {
 
 			<TextField
 				label="Email"
+				name="email"
 				type="email"
-				autoComplete="email"
+				autoComplete="username"
 				value={fields.email}
 				error={errors.email}
-				onChange={(event) => setFields((current) => ({ ...current, email: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => {
+					setFields((current) => ({ ...current, email: event.target.value }));
+					setErrors((current) => ({ ...current, email: "", form: "" }));
+				}}
 			/>
 			<TextField
 				label="Password"
+				name="password"
 				type="password"
 				autoComplete="current-password"
 				value={fields.password}
 				error={errors.password}
-				onChange={(event) => setFields((current) => ({ ...current, password: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => {
+					setFields((current) => ({ ...current, password: event.target.value }));
+					setErrors((current) => ({ ...current, password: "", form: "" }));
+				}}
 			/>
 
 			{errors.form && (

@@ -104,3 +104,63 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	await context.close();
 	await peerContext.close();
 });
+
+test("the thread menu, other tabs and the bookmarks list agree about one bookmark", async ({ browser }) => {
+	test.setTimeout(60_000);
+	const context = await browser.newContext();
+	const peerContext = await browser.newContext();
+	const page = await context.newPage();
+	const peer = makeUser("AgreePeer");
+	await register(await peerContext.newPage(), peer);
+	await register(page, makeUser("AgreeAuthor"));
+	await startDirectChat(page, peer);
+	await sendMessage(page, "One bookmark, every surface");
+	const otherTab = await context.newPage();
+	await otherTab.goto("/");
+	await otherTab.getByRole("button", { name: new RegExp(peer.displayName) }).click();
+	await expect(otherTab.getByLabel("Message history").getByText("One bookmark, every surface")).toBeVisible();
+
+	async function openMenu(target: typeof page) {
+		await target.getByLabel("Message history").getByText("One bookmark, every surface").hover();
+		await target.getByLabel("Message actions").click();
+	}
+
+	await openMenu(page);
+	await page.getByRole("menuitem", { name: "Bookmark message", exact: true }).click();
+	await expect(page.getByLabel("Message history").getByRole("status")).toContainText("Message bookmarked.");
+	await openMenu(otherTab);
+	await expect(otherTab.getByRole("menuitem", { name: "Remove bookmark", exact: true })).toBeVisible();
+	await otherTab.keyboard.press("Escape");
+
+	// A failed removal keeps the bookmark and says so, rather than flipping the label.
+	await page.route("**/messages/*/star", (route) =>
+		route.request().method() === "DELETE"
+			? route.fulfill({ status: 503, contentType: "application/json", body: '{"message":"Remove failed"}' })
+			: route.continue(),
+	);
+	await openMenu(page);
+	await page.getByRole("menuitem", { name: "Remove bookmark", exact: true }).click();
+	await expect(
+		page.getByLabel("Message history").getByText(/Could not confirm removing the bookmark/u),
+	).toBeVisible();
+	await openMenu(page);
+	await expect(page.getByRole("menuitem", { name: "Remove bookmark", exact: true })).toBeVisible();
+	await page.keyboard.press("Escape");
+	await page.unroute("**/messages/*/star");
+
+	// Removing from the bookmarks list resets the thread menu in both tabs, and survives a reload.
+	await otherTab.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	const dialog = otherTab.getByRole("dialog", { name: "Bookmarked messages", exact: true });
+	await dialog.getByRole("button", { name: "Remove bookmark", exact: true }).click();
+	await expect(dialog.getByText("No bookmarks yet.", { exact: true })).toBeVisible();
+	await openMenu(page);
+	await expect(page.getByRole("menuitem", { name: "Bookmark message", exact: true })).toBeVisible();
+	await page.keyboard.press("Escape");
+	await page.reload();
+	await page.getByRole("button", { name: new RegExp(peer.displayName) }).click();
+	await openMenu(page);
+	await expect(page.getByRole("menuitem", { name: "Bookmark message", exact: true })).toBeVisible();
+
+	await context.close();
+	await peerContext.close();
+});

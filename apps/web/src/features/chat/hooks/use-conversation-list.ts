@@ -10,9 +10,11 @@ import type {
 } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
+import { useRestrictedUsers } from "@/hooks/use-restricted-users";
 import { cacheConversationPage, readConversationPage } from "@/lib/local-chat-store";
 import type { ConversationPaging } from "../types/conversation-paging";
 import { usePresenceLastSeenSync } from "./use-presence-last-seen-sync";
+import { useRestrictedUnreadSync } from "./use-restricted-unread-sync";
 import { useSocketEvent } from "./use-socket-event";
 
 interface ConversationList {
@@ -72,6 +74,7 @@ export function useConversationList(
 	const pendingRowsRef = useRef(new Map<string, object>());
 
 	usePresenceLastSeenSync(setConversations);
+	useRestrictedUnreadSync(currentUserId, conversations, setConversations);
 
 	const refresh = useCallback(() => {
 		if (!currentUserId) return;
@@ -225,7 +228,17 @@ export function useConversationList(
 
 					const next = current.map((conversation) => {
 						if (conversation.id !== message.conversationId) return conversation;
-						const shouldRaiseUnread = message.kind === "user" && message.author?.id !== currentUserId;
+						const authorId = message.author?.id;
+						const restriction = useRestrictedUsers.getState();
+						// Same rule as the server's count: a restriction quiets only the DM.
+						const isRestrictedDirect =
+							!conversation.isGroup && authorId !== undefined && restriction.restrictedIds.has(authorId);
+						// Unknown status counts for now; resolving it to "restricted" makes
+						// `useRestrictedUnreadSync` re-read the server's figure.
+						if (!conversation.isGroup && authorId && !restriction.checkedIds.has(authorId))
+							void restriction.load(authorId);
+						const shouldRaiseUnread =
+							message.kind === "user" && authorId !== currentUserId && !isRestrictedDirect;
 
 						return {
 							...conversation,

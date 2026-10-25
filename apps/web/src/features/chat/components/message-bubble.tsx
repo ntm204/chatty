@@ -137,7 +137,7 @@ export function MessageBubble({
 						content={message.content}
 						mentionedUserIds={message.mentionedUserIds}
 						participants={participants}
-						className="max-w-80 whitespace-pre-wrap text-sm/[1.55] wrap-break-word"
+						className="font-content max-w-80 whitespace-pre-wrap text-sm/[1.55] wrap-break-word"
 					/>
 				)}
 			</div>
@@ -169,7 +169,7 @@ export function MessageBubble({
 					mentionedUserIds={message.mentionedUserIds}
 					participants={participants}
 					className={cn(
-						"whitespace-pre-wrap wrap-anywhere text-pretty",
+						"font-content whitespace-pre-wrap wrap-anywhere text-pretty",
 						// Smaller as the count grows, so three still fit the column a
 						// bubble would have occupied.
 						jumboCount === 1 && "text-[44px] leading-[1.15]",

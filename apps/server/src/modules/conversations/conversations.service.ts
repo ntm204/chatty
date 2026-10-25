@@ -276,6 +276,11 @@ interface UnreadCountRow {
  * two — for the people who were there at the start `joinedAt` is the moment the
  * conversation was created, so nothing predates it and nothing changes.
  *
+ * A restriction only quiets the direct conversation. In a shared group the
+ * restricted person's messages still count: the menu promises "Shared groups are
+ * not affected", and popups/sounds already followed that rule — counting the
+ * badge differently made it disagree with the alert for the same message.
+ *
  * `>=`, not `>`, and it is not an off-by-one. Both columns are millisecond
  * timestamps written by the application, so a message sent in the same
  * millisecond as somebody joining is a genuine tie — and it is a tie in tests
@@ -292,6 +297,7 @@ async function countUnreadByConversation(userId: string, conversationIds: string
 		FROM "Message" m
 		JOIN "ConversationParticipant" p
 			ON p."conversationId" = m."conversationId" AND p."userId" = ${userId}
+		JOIN "Conversation" conversation ON conversation.id = m."conversationId"
 		LEFT JOIN "Message" marker ON marker.id = p."lastReadMessageId"
 		WHERE m."conversationId" IN (${Prisma.join(conversationIds)})
 			AND m."kind" = 'USER'
@@ -301,9 +307,12 @@ async function countUnreadByConversation(userId: string, conversationIds: string
 				SELECT 1 FROM "MessageHiddenFor" h
 				WHERE h."messageId" = m.id AND h."userId" = ${userId}
 			)
-			AND NOT EXISTS (
-				SELECT 1 FROM "UserRestriction" r
-				WHERE r."restrictorId" = ${userId} AND r."restrictedId" = m."authorId"
+			AND (
+				conversation."isGroup"
+				OR NOT EXISTS (
+					SELECT 1 FROM "UserRestriction" r
+					WHERE r."restrictorId" = ${userId} AND r."restrictedId" = m."authorId"
+				)
 			)
 			AND m."createdAt" >= p."joinedAt"
 			AND (marker.id IS NULL OR (m."createdAt", m.id) > (marker."createdAt", marker.id))

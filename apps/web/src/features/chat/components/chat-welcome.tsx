@@ -6,10 +6,25 @@ import { Button } from "@/components/button";
 interface ChatWelcomeProps {
 	unreadCount: number;
 	isConnectionLost: boolean;
+	/** True once the list has loaded and holds nothing, so the next step is finding a person. */
+	hasNoConversations: boolean;
+	/** A link or reload named a conversation this account can no longer open. */
+	isUnavailable?: boolean;
 	onOpenUnread?: (() => void) | undefined;
 }
 
-export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: ChatWelcomeProps) {
+/**
+ * The pane before a chat is picked. The one next step is always on screen as a
+ * button; it used to sit behind the status island, so a new account was told to
+ * "choose a chat on the left" above a list that said it had none.
+ */
+export function ChatWelcome({
+	unreadCount,
+	isConnectionLost,
+	hasNoConversations,
+	isUnavailable = false,
+	onOpenUnread,
+}: ChatWelcomeProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const status = isConnectionLost
 		? "Reconnecting…"
@@ -49,17 +64,6 @@ export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: Cha
 										? "A conversation is waiting for you. Pick up where you left off."
 										: "A little space for your next conversation."}
 							</p>
-							<Button
-								className="welcome-island-action"
-								tabIndex={isExpanded ? 0 : -1}
-								onClick={() => {
-									if (onOpenUnread) onOpenUnread();
-									else document.getElementById("global-conversation-search")?.focus();
-								}}
-							>
-								{onOpenUnread ? "Open unread chat" : "Find your people"}
-								<ArrowRight size={16} aria-hidden="true" />
-							</Button>
 						</div>
 					</div>
 				</div>
@@ -68,7 +72,30 @@ export function ChatWelcome({ unreadCount, isConnectionLost, onOpenUnread }: Cha
 					<br />
 					one tap away.
 				</h1>
-				<p>Choose a chat on the left to pick up the conversation.</p>
+				{isUnavailable && (
+					<p role="alert" className="text-signal">
+						That conversation isn’t available. It may have been deleted, or you are no longer in it.
+					</p>
+				)}
+				<p>
+					{hasNoConversations
+						? "Search by name or @handle to start your first conversation."
+						: "Choose a chat on the left, or start a new one."}
+				</p>
+				<Button
+					className="welcome-cta"
+					onClick={() => {
+						if (onOpenUnread) onOpenUnread();
+						else document.getElementById("global-conversation-search")?.focus();
+					}}
+				>
+					{onOpenUnread
+						? "Open unread chat"
+						: hasNoConversations
+							? "Find someone to chat with"
+							: "Start a new chat"}
+					<ArrowRight size={16} aria-hidden="true" />
+				</Button>
 			</div>
 		</section>
 	);

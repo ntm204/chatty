@@ -80,7 +80,12 @@ export function BookmarkedMessagesDialog({ currentUserId, onClose, onSelectMessa
 						</Button>
 					)}
 					{!bookmarks.isLoading && !bookmarks.error && !bookmarks.results.length && (
-						<p className="p-3 text-sm text-ink-soft">No bookmarks yet.</p>
+						<div className="p-3">
+							<p className="text-sm text-ink-soft">No bookmarks yet.</p>
+							<p className="mt-1 text-xs text-ink-faint">
+								Open a message’s ⋯ menu and choose Bookmark message to keep it here.
+							</p>
+						</div>
 					)}
 					<ul className="space-y-2">
 						{bookmarks.results.map((result) => (

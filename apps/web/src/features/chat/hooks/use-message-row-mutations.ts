@@ -45,10 +45,15 @@ export function useMessageRowMutations(message: ThreadMessage, isPinned: boolean
 		error,
 		notice,
 		onBookmark: () =>
-			run(async () => {
-				await api.saveMessage(message.conversationId, message.id);
-				if (isMountedRef.current) setNotice("Message bookmarked.");
-			}, "bookmarking"),
+			message.isBookmarked
+				? run(async () => {
+						await api.removeBookmark(message.conversationId, message.id);
+						if (isMountedRef.current) setNotice("Bookmark removed.");
+					}, "removing the bookmark")
+				: run(async () => {
+						await api.saveMessage(message.conversationId, message.id);
+						if (isMountedRef.current) setNotice("Message bookmarked.");
+					}, "bookmarking"),
 		onDeleteForEveryone: () => run(bound.onDeleteForEveryone, "deletion for everyone"),
 		onDeleteForMe: () => run(bound.onDeleteForMe, "deletion for you"),
 		onTogglePin: () => run(bound.onTogglePin, isPinned ? "unpinning" : "pinning"),

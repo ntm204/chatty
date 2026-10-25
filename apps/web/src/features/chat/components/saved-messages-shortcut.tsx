@@ -21,7 +21,7 @@ export function SavedMessagesShortcut({ userId, onOpen }: SavedMessagesShortcutP
 			const conversation = await api.createConversation([userId]);
 			onOpen(conversation.id, conversation);
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not open saved messages");
+			setError(caught instanceof Error ? caught.message : "Could not open your notes");
 		} finally {
 			setIsOpening(false);
 		}
@@ -33,12 +33,12 @@ export function SavedMessagesShortcut({ userId, onOpen }: SavedMessagesShortcutP
 				variant="ghost"
 				disabled={isOpening}
 				onClick={() => void open()}
-				aria-label="Saved messages"
-				title="Your personal notes and files"
+				aria-label="Notes"
+				title="Messages and files only you can see"
 				className="h-10 w-full justify-center gap-2 rounded-control bg-paper-sunken px-2 text-xs text-ink-soft hover:bg-ink/5"
 			>
 				<NotebookPen className="size-4" />
-				Saved
+				Notes
 			</Button>
 			{error && (
 				<p role="alert" className="px-3 text-xs text-signal">

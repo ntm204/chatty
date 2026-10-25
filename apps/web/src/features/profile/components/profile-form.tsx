@@ -5,6 +5,10 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { HANDLE_PATTERN, MAX_HANDLE_LENGTH, MIN_HANDLE_LENGTH } from "@/constants/validation";
 import { useAuth } from "@/hooks/use-auth";
+import { cn } from "@/utils/cn";
+import { focusField } from "@/utils/focus-field";
+import { getServerErrorField } from "@/utils/server-error-field";
+import { PRESENCE_VISIBILITY_OPTIONS } from "../constants/presence-visibility";
 
 interface ProfileFormProps {
 	user: CurrentUserDTO;
@@ -63,7 +67,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (isSaving || !hasChanges || !validate(event.currentTarget)) return;
+		const form = event.currentTarget;
+		if (isSaving || !hasChanges || !validate(form)) return;
 
 		// Only what actually changed goes up. The server would accept the whole
 		// object, but a request carrying a field nobody touched is a request that
@@ -85,9 +90,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			setCurrentUser(await api.updateProfile(input));
 			setIsSaved(true);
 		} catch (error) {
-			// "Handle already taken" arrives here — the server is the only thing
-			// that can know it, so the message is shown as sent.
-			setErrors((current) => ({ ...current, form: (error as Error).message }));
+			// "Handle already taken" is the server's to know; it is shown beside the
+			// handle it is about, with the typed value left in place to edit.
+			const message = (error as Error).message;
+			const field = getServerErrorField(message, { handle: "handle" });
+			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
+			focusField(form, field);
 		} finally {
 			setIsSaving(false);
 		}
@@ -111,7 +119,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
 			<TextField
 				label="Handle"
 				name="handle"
-				autoComplete="username"
+				// Not "username": sign-in uses the email, and a password manager that
+				// saved the handle as the username would fill it into the email field.
+				autoComplete="nickname"
 				value={fields.handle}
 				error={errors.handle}
 				disabled={isSaving}
@@ -150,30 +160,47 @@ export function ProfileForm({ user }: ProfileFormProps) {
 				</span>
 			</label>
 
-			<label className="flex flex-col gap-2 text-sm text-ink">
-				<span className="eyebrow text-ink-soft">Who can see your last seen</span>
-				<select
-					aria-label="Who can see your last seen"
-					value={fields.presenceVisibility}
-					disabled={isSaving}
-					onChange={(event) => {
-						setIsSaved(false);
-						setErrors((current) => ({ ...current, form: "" }));
-						setFields((current) => ({
-							...current,
-							presenceVisibility: event.target.value as CurrentUserDTO["presenceVisibility"],
-						}));
-					}}
-					className="cursor-pointer rounded-control border border-rule bg-paper-raised px-3 py-2.5 text-sm text-ink outline-none transition focus:border-ink focus:ring-3 focus:ring-ink/[0.07] disabled:cursor-default disabled:bg-rule-soft disabled:text-ink-faint"
+			<div className="flex flex-col gap-2 text-sm text-ink">
+				<span id="presence-visibility-label" className="note font-medium text-ink-soft">
+					Who can see your last seen
+				</span>
+				<div
+					role="radiogroup"
+					aria-labelledby="presence-visibility-label"
+					aria-disabled={isSaving || undefined}
+					className="flex flex-wrap gap-2"
 				>
-					<option value="everyone">Everyone</option>
-					<option value="contacts">People you chat with</option>
-					<option value="nobody">Nobody</option>
-				</select>
+					{PRESENCE_VISIBILITY_OPTIONS.map((option) => {
+						const isSelected = fields.presenceVisibility === option.value;
+
+						return (
+							<Button
+								key={option.value}
+								variant="ghost"
+								role="radio"
+								aria-checked={isSelected}
+								disabled={isSaving}
+								onClick={() => {
+									setIsSaved(false);
+									setErrors((current) => ({ ...current, form: "" }));
+									setFields((current) => ({ ...current, presenceVisibility: option.value }));
+								}}
+								className={cn(
+									"rounded-control border px-3 py-2 text-[13px]",
+									isSelected
+										? "border-ink bg-paper-raised font-semibold text-ink hover:bg-paper-raised"
+										: "border-rule text-ink-soft hover:bg-paper-raised hover:text-ink",
+								)}
+							>
+								{option.label}
+							</Button>
+						);
+					})}
+				</div>
 				<span className="text-[13px] text-ink-faint">
 					Online status is still shown while you are connected.
 				</span>
-			</label>
+			</div>
 
 			{errors.form && (
 				<p role="alert" className="text-[13px] text-signal">

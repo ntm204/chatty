@@ -30,7 +30,7 @@ export function ComposerUploadPreview({
 	return (
 		<>
 			{error && (
-				<p role="alert" className="eyebrow border-b border-rule-soft px-4 py-2.5 text-signal">
+				<p role="alert" className="note border-b border-rule-soft px-4 py-2.5 text-signal">
 					{error}
 				</p>
 			)}
@@ -46,7 +46,7 @@ export function ComposerUploadPreview({
 					}
 				>
 					<div className="mb-1.5 flex justify-between">
-						<span className="eyebrow text-ink-faint">
+						<span className="note text-ink-faint">
 							{uploadProgress >= 100
 								? "Waiting for server confirmation"
 								: selectedFile

@@ -1,3 +1,4 @@
+export { useArrivalAnnouncement } from "./use-arrival-announcement";
 export { useBlockedUsersSync } from "./use-blocked-users-sync";
 export { useRestrictedUsersSync } from "./use-restricted-users-sync";
 export { useConversationList } from "./use-conversation-list";

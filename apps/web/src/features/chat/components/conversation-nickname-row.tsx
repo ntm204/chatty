@@ -106,7 +106,7 @@ export function ConversationNicknameRow({ conversationId, participant, isSelf }:
 				)}
 			</div>
 			{error && (
-				<p role="alert" className="eyebrow ml-10 text-signal">
+				<p role="alert" className="note ml-10 text-signal">
 					{error}
 				</p>
 			)}

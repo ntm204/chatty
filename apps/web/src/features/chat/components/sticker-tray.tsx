@@ -121,7 +121,7 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 			)}
 
 			{(sendError || error) && (
-				<p role="alert" className="eyebrow border-b border-rule-soft px-3.5 py-2.5 text-signal">
+				<p role="alert" className="note border-b border-rule-soft px-3.5 py-2.5 text-signal">
 					{sendError || error}
 				</p>
 			)}

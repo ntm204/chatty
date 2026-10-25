@@ -22,7 +22,13 @@ export function SettingsPage() {
 	const location = useLocation();
 	const currentUser = useAuth((state) => state.currentUser);
 	const navigate = useNavigate();
-	const handleClose = useCallback(() => navigate("/chat"), [navigate]);
+	const conversationId = (location.state as { conversationId?: string | null } | null)?.conversationId ?? null;
+	// Opened from the app, Back is the way out and lands on the same thread; a
+	// reload or a pasted /profile has no entry to go back to, so it goes to chat.
+	const handleClose = useCallback(() => {
+		if (location.key !== "default") navigate(-1);
+		else navigate(conversationId ? `/chat/${encodeURIComponent(conversationId)}` : "/chat", { replace: true });
+	}, [conversationId, location.key, navigate]);
 
 	if (!currentUser || location.pathname !== "/profile") return null;
 

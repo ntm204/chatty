@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileForm } from "@/features/profile/components/profile-form";
@@ -119,7 +119,7 @@ describe("ProfileForm", () => {
 		expect(nameField).toBeDisabled();
 		expect(screen.getByLabelText("Handle")).toBeDisabled();
 		expect(screen.getByLabelText(/Send read receipts/)).toBeDisabled();
-		expect(screen.getByLabelText("Who can see your last seen")).toBeDisabled();
+		for (const radio of screen.getAllByRole("radio")) expect(radio).toBeDisabled();
 		expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
 		await typist.type(nameField, " unsaved");
 		fireEvent.submit(form);
@@ -150,10 +150,13 @@ describe("ProfileForm", () => {
 		await typist.type(handleField, "an_test");
 		await typist.click(screen.getByRole("button", { name: "Save changes" }));
 
-		expect(await screen.findByRole("alert")).toHaveTextContent("Handle already taken");
+		// Beside the handle it is about, focused so a screen reader reads it, value kept.
+		await waitFor(() => expect(handleField).toHaveFocus());
+		expect(handleField).toHaveAccessibleDescription("Handle already taken");
 		expect(handleField).toHaveValue("an_test");
-		await typist.type(handleField, "2");
 		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+		await typist.type(handleField, "2");
+		expect(handleField).not.toHaveAccessibleDescription("Handle already taken");
 	});
 
 	it("writes the refreshed profile back into the auth store", async () => {
@@ -190,7 +193,7 @@ describe("ProfileForm", () => {
 		const typist = userEvent.setup();
 		render(<ProfileForm user={user} />);
 
-		await typist.selectOptions(screen.getByLabelText("Who can see your last seen"), "nobody");
+		await typist.click(screen.getByRole("radio", { name: "Nobody" }));
 		await typist.click(screen.getByRole("button", { name: "Save changes" }));
 
 		expect(updateProfile).toHaveBeenCalledWith({ presenceVisibility: "nobody" });

@@ -29,7 +29,7 @@ The interface follows the owner's [chatty.net](https://chatty.net/) reference: d
 bright yellow, faint violet gradients, restrained typography and rounded surfaces.
 Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
 The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
-The chat welcome has an expandable activity status. “Let’s talk” in the sidebar opens people search; validation
+The chat welcome has an expandable activity status. “New chat” in the sidebar opens people search; validation
 and compact conversation/settings layouts follow the [design review](docs/design/review-2026-09-09.md).
 Every login reload plays a 3.8-second welcome: a descending curtain, the symbol and six letters
 falling separately, then a curious left/right glance, eye contact and wink before dissolving into the ready form.
@@ -227,6 +227,10 @@ you half remember, and block somebody so neither of you can reach the other in a
 conversation. Last-seen timestamps follow the privacy choice in account settings, which open as a dialog over the
 chat rather than replacing it.
 
+Each open conversation has its own address (`/chat/<id>`): reload or a pasted link opens the same
+thread, an unavailable one returns to the list with a reason, and Back closes the top panel, viewer or
+dialog before it leaves the thread. Closing settings returns to the thread it was opened over.
+
 Restrict/Unrestrict lives in each direct conversation's sidebar menu, alongside its other actions;
 the account settings list remains available. Choosing, pasting or dropping an ordinary file sends
 that file immediately as a standalone message and keeps the text/reply draft for the next send.
@@ -291,7 +295,7 @@ under transaction locks after media preparation; rejected sends discard their pr
 only inside the composer, and are ignored while a modal covers it. Pasting remains scoped to the textarea.
 Bookmarked messages is a separate sidebar list of marked originals across conversations. Bookmark message
 adds an original; Remove bookmark leaves it intact. Results show their source and open the original thread.
-The Saved messages shortcut continues to open personal notes. Bookmarks refresh on observed retraction,
+The Notes shortcut (formerly "Saved") continues to open personal notes. Bookmarks refresh on observed retraction,
 hiding or loss of membership and do not provide offline media downloads. A confirmed removal supersedes
 concurrent refreshes so a stale response cannot restore the removed bookmark.
 

@@ -15,10 +15,10 @@ export function ComposerReplyPreview({ replyTo, onCancel }: ComposerReplyPreview
 		<div className="flex items-start gap-2.5 rounded-panel bg-paper-sunken px-3 py-2">
 			<CornerUpLeft aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-ink-faint" />
 			<div className="flex min-w-0 flex-col gap-0.5">
-				<span className="eyebrow text-ink-faint">
+				<span className="note text-ink-faint">
 					Replying to {replyTo.author?.displayName ?? DELETED_AUTHOR_NAME}
 				</span>
-				<span className="truncate text-[12.5px]/[1.45] text-ink-soft">
+				<span className="font-content truncate text-[13px]/[1.45] text-ink-soft">
 					{replyTo.deletedAt
 						? DELETED_MESSAGE_TEXT
 						: replyTo.content ||

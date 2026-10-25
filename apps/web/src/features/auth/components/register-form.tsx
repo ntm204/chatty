@@ -3,6 +3,8 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { useAuth } from "@/hooks/use-auth";
 import { HANDLE_PATTERN, MAX_HANDLE_LENGTH, MIN_HANDLE_LENGTH, MIN_PASSWORD_LENGTH } from "@/constants/validation";
+import { focusField } from "@/utils/focus-field";
+import { getServerErrorField } from "@/utils/server-error-field";
 
 export function RegisterForm() {
 	const register = useAuth((state) => state.register);
@@ -10,7 +12,13 @@ export function RegisterForm() {
 	const [errors, setErrors] = useState({ email: "", password: "", handle: "", displayName: "", form: "" });
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	function validate() {
+	// Editing a field clears its own error and any server message about the whole form.
+	function update(field: keyof typeof fields, value: string) {
+		setFields((current) => ({ ...current, [field]: value }));
+		setErrors((current) => ({ ...current, [field]: "", form: "" }));
+	}
+
+	function validate(form: HTMLFormElement) {
 		const nextErrors = { email: "", password: "", handle: "", displayName: "", form: "" };
 		// Lowercased here as well as on the server, so what is validated is what
 		// gets stored — the server normalises too, and the two must agree.
@@ -30,13 +38,19 @@ export function RegisterForm() {
 		}
 
 		setErrors(nextErrors);
+		// In the order the fields appear, so focus lands on the first thing to fix.
+		focusField(
+			form,
+			(["displayName", "handle", "email", "password"] as const).find((field) => nextErrors[field]) ?? null,
+		);
 
 		return !nextErrors.email && !nextErrors.password && !nextErrors.handle && !nextErrors.displayName;
 	}
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		if (!validate()) return;
+		const form = event.currentTarget;
+		if (isSubmitting || !validate(form)) return;
 
 		setIsSubmitting(true);
 		try {
@@ -47,44 +61,57 @@ export function RegisterForm() {
 				displayName: fields.displayName.trim(),
 			});
 		} catch (error) {
-			setErrors((current) => ({ ...current, form: (error as Error).message }));
+			const message = (error as Error).message;
+			const field = getServerErrorField(message, { email: "email", handle: "handle" });
+			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
+			focusField(form, field);
 		} finally {
 			setIsSubmitting(false);
 		}
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
+		<form onSubmit={handleSubmit} aria-busy={isSubmitting} className="flex flex-col gap-4">
 			<TextField
 				label="Display name"
+				name="displayName"
 				autoComplete="name"
 				value={fields.displayName}
 				error={errors.displayName}
-				onChange={(event) => setFields((current) => ({ ...current, displayName: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => update("displayName", event.target.value)}
 			/>
+			{/* "nickname", not "username": sign-in is by email, which is the login a
+			    password manager should save. */}
 			<TextField
 				label="Handle"
-				autoComplete="username"
+				name="handle"
+				autoComplete="nickname"
 				placeholder="minh"
 				value={fields.handle}
 				error={errors.handle}
-				onChange={(event) => setFields((current) => ({ ...current, handle: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => update("handle", event.target.value)}
 			/>
 			<TextField
 				label="Email"
+				name="email"
 				type="email"
-				autoComplete="email"
+				autoComplete="username"
 				value={fields.email}
 				error={errors.email}
-				onChange={(event) => setFields((current) => ({ ...current, email: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => update("email", event.target.value)}
 			/>
 			<TextField
 				label="Password"
+				name="password"
 				type="password"
 				autoComplete="new-password"
 				value={fields.password}
 				error={errors.password}
-				onChange={(event) => setFields((current) => ({ ...current, password: event.target.value }))}
+				disabled={isSubmitting}
+				onChange={(event) => update("password", event.target.value)}
 			/>
 
 			{errors.form && (

@@ -15,8 +15,9 @@ type RestrictionReader = Pick<Prisma.TransactionClient, "userRestriction">;
  *
  * A block refuses the write. A restriction refuses **nothing** — the message is
  * written, delivered and readable, in the same conversation it always was — and
- * instead changes what it reveals: it stops counting towards the restrictor's
- * unread badge (see `countUnreadByConversation` in `conversations.service.ts`),
+ * instead changes what it reveals: in the direct conversation it stops counting
+ * towards the restrictor's unread badge (see `countUnreadByConversation` in
+ * `conversations.service.ts`; shared groups still count),
  * and this person stops seeing the restrictor's read receipts
  * (`markConversationRead`) and presence (`sockets/presence.ts`).
  *

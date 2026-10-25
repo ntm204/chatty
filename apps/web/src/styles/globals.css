@@ -70,6 +70,9 @@
 	--color-swatch-dark-ink: #d7d5ff;
 	--font-sans: "General Sans", "Geist", ui-sans-serif, system-ui, sans-serif;
 	--font-mono: "Geist Mono", ui-monospace, monospace;
+	/* What people write — messages, names, drafts. General Sans has no Vietnamese
+	   ranges (ễ, ờ, ứ…), so those glyphs fell back to Geist mid-word; Geist covers them. */
+	--font-content: "Geist", ui-sans-serif, system-ui, sans-serif;
 	--font-display: "Clash Display", "General Sans", "Geist", sans-serif;
 	--radius-badge: 5px;
 	--radius-control: 12px;
@@ -167,6 +170,16 @@
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
 	line-height: 1.4;
+}
+
+/* Sentences, statuses, errors and names: read, not scanned. `eyebrow` stays for short section labels. */
+@utility note {
+	font-family: var(--font-sans);
+	font-size: 12px;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+	line-height: 1.45;
 }
 
 @utility meta {

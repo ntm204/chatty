@@ -1,5 +1,4 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Check } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { MAX_UNREAD_BADGE_COUNT } from "../constants/conversation-list";
@@ -49,6 +48,9 @@ export function ConversationList({
 				<p role={paging.error ? "alert" : "status"}>
 					{paging.error || (paging.isLoading ? "Loading conversations…" : "No conversations yet.")}
 				</p>
+				{!paging.error && !paging.isLoading && (
+					<p className="mt-1 text-xs">Search for someone above to start one.</p>
+				)}
 				{paging.error && (
 					<Button variant="ghost" onClick={paging.retry}>
 						Retry conversations
@@ -101,6 +103,14 @@ export function ConversationList({
 										: "hover:bg-transparent",
 							)}
 						>
+							{/* Not colour alone, and not a check that reads as "seen": the same
+							    edge bar settings uses for its current section. */}
+							{isSelected && (
+								<span
+									aria-hidden="true"
+									className="conversation-row-marker absolute inset-y-3 left-0 w-0.5"
+								/>
+							)}
 							<ConversationAvatar
 								conversation={conversation}
 								currentUserId={currentUserId}
@@ -112,20 +122,17 @@ export function ConversationList({
 									<span
 										title={getConversationTitle(conversation, currentUserId)}
 										className={cn(
-											"min-w-0 truncate text-[14px] leading-5 text-ink",
+											"font-content min-w-0 truncate text-[14px] leading-5 text-ink",
 											hasUnread ? "font-semibold" : "font-medium",
 										)}
 									>
 										{getConversationTitle(conversation, currentUserId)}
 									</span>
-									{isSelected && (
-										<Check aria-hidden="true" className="size-3.5 shrink-0 text-ink-soft" />
-									)}
 								</span>
 								<span
 									className={cn("flex min-w-0 items-center gap-2", isMuted && !hasUnread && "pr-8")}
 								>
-									<span className="flex min-w-0 flex-1 items-center gap-1 text-[13px] leading-5">
+									<span className="font-content flex min-w-0 flex-1 items-center gap-1 text-[13px] leading-5">
 										{hasDraft && <span className="shrink-0 font-medium text-signal">Draft:</span>}
 										{isLastMessageMine && !isSomeoneTyping && !hasDraft && (
 											<span className="shrink-0 text-ink-soft">You:</span>

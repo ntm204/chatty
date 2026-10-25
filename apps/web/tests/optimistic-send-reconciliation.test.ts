@@ -156,6 +156,46 @@ describe("optimistic send reconciliation", () => {
 		await waitFor(() => expect(view.result.current.hasUnsavedMessages).toBe(false));
 	});
 
+	it("sends a quick burst in the order it was typed, each confirmation in its draft's place", async () => {
+		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
+		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));
+		const resolvers: Array<() => void> = [];
+		vi.mocked(api.sendMessage).mockImplementation(
+			(conversationId, content, _files, _replyTo, _mentions, clientId) =>
+				new Promise((resolve) => {
+					resolvers.push(() =>
+						resolve({
+							...makeMessage(`server-${content}`, "minh", content),
+							conversationId,
+							...(clientId ? { clientId } : {}),
+						}),
+					);
+				}),
+		);
+		let sends!: Promise<unknown>;
+		act(() => {
+			sends = Promise.all(["Hi", "link", "🙏"].map((text) => view.result.current.sendMessage(text, [], null)));
+		});
+		await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(1));
+		expect(vi.mocked(api.sendMessage).mock.calls[0]?.[1]).toBe("Hi");
+		await act(async () => resolvers[0]!());
+		await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(2));
+		expect(view.result.current.messages.map((message) => message.content)).toEqual(["Hi", "link", "🙏"]);
+		expect(view.result.current.messages[0]?.id).toBe("server-Hi");
+		await act(async () => resolvers[1]!());
+		await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(3));
+		await act(async () => {
+			resolvers[2]!();
+			await sends;
+		});
+		expect(vi.mocked(api.sendMessage).mock.calls.map((call) => call[1])).toEqual(["Hi", "link", "🙏"]);
+		expect(view.result.current.messages.map((message) => message.id)).toEqual([
+			"server-Hi",
+			"server-link",
+			"server-🙏",
+		]);
+	});
+
 	it("blocks duplicate retries and discard while a retry is in flight", async () => {
 		vi.mocked(api.sendMessage).mockRejectedValueOnce(new Error("Offline"));
 		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
@@ -176,7 +216,8 @@ describe("optimistic send reconciliation", () => {
 			view.result.current.retrySend(draftId);
 			view.result.current.discardDraft(draftId);
 		});
-		expect(api.sendMessage).toHaveBeenCalledTimes(2);
+		// Sends wait their turn in the conversation's queue, so the retry starts a tick later.
+		await waitFor(() => expect(api.sendMessage).toHaveBeenCalledTimes(2));
 		expect(view.result.current.messages[0]?.id).toBe(draftId);
 		await act(async () => {
 			rejectRetry(new Error("Still offline"));

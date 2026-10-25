@@ -34,7 +34,7 @@ test.describe("blocking", () => {
 		// The exception is the part people are surprised by, so it is said before
 		// the decision rather than found out later in a group.
 		const dialog = maiPage.getByRole("dialog");
-		await expect(dialog).toContainText("groups you are both in are not affected");
+		await expect(dialog).toContainText("shared groups stay");
 		await dialog.getByRole("button", { name: "Block" }).click();
 
 		// The panel is a second surface over the same store: blocking here has to

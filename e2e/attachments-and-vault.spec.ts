@@ -108,14 +108,22 @@ test("files, voice, links, thumbnails and the conversation vault work across two
 	await senderPage.keyboard.press("ArrowRight");
 	await expect(sidebarResize).toHaveAttribute("aria-valuenow", "336");
 	const detailsResize = senderPage.getByRole("separator", { name: "Resize conversation details" });
-	await expect(detailsResize).toHaveCount(0);
+	// Resizable again since phase 53 (item 162): same gutter handle as the sidebar,
+	// 280–480px, and its left edge means ArrowLeft widens it.
+	await expect(detailsResize).toBeVisible();
+	await expect(detailsResize).toHaveAttribute("aria-valuenow", "320");
 	await vault.evaluate(async (element) => {
 		await Promise.all(element.getAnimations().map((animation) => animation.finished));
 	});
 	expect((await vault.boundingBox())!.width).toBeCloseTo(320, 0);
+	await detailsResize.focus();
+	await senderPage.keyboard.press("ArrowLeft");
+	await expect(detailsResize).toHaveAttribute("aria-valuenow", "336");
+	await senderPage.keyboard.press("Enter");
+	await expect(detailsResize).toHaveAttribute("aria-valuenow", "320");
 	await vault.getByRole("button", { name: "Close conversation storage" }).click();
 	await senderPage.getByRole("button", { name: "Conversation storage and details" }).click();
-	await expect(detailsResize).toHaveCount(0);
+	await expect(detailsResize).toHaveAttribute("aria-valuenow", "320");
 	await sidebarResize.press("Enter");
 	await senderPage.screenshot({ path: "/tmp/chatty-three-panels-desktop.png", animations: "disabled" });
 	await senderPage.setViewportSize({ width: 390, height: 844 });

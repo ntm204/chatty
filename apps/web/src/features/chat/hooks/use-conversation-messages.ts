@@ -17,6 +17,7 @@ import { buildDraftMessage, getNewestStoredMessage, isDraftId } from "../utils/b
 import { toDraftAttachments } from "../utils/draft-attachment";
 import { restoreLocalOutboxMessage, toLocalOutboxMessage } from "../utils/local-outbox";
 import { mergeReloadedMessages } from "../utils/merge-messages";
+import { replaceDraft } from "../utils/replace-draft";
 import { optimizeImagesForUpload } from "../utils/optimize-image-upload";
 import { claimOutboxDelivery, releaseOutboxDelivery } from "../utils/outbox-delivery";
 import { toReplyQuote } from "../utils/reply-quote";
@@ -175,6 +176,7 @@ export function useConversationMessages(
 	messagesRef.current = messages;
 	const pendingUploadsRef = useRef(new Map<string, PendingUpload>());
 	const sendingDraftIdsRef = useRef(new Set<string>());
+	const deliveryQueuesRef = useRef(new Map<string, Promise<void>>());
 	const currentUserId = useAuth((state) => state.currentUser?.id);
 	const { sendSticker, sendFile, sendVoice } = useSessionMessageSends(conversationId, currentUserId);
 	const cacheScope = currentUserId && conversationId ? `${currentUserId}:${conversationId}` : null;
@@ -574,10 +576,13 @@ export function useConversationMessages(
 	 * them by draft id is also what makes retry work on an image — the id
 	 * survives the failure, so the second attempt finds the same bytes.
 	 */
-	const deliver = useCallback(async (draft: ThreadMessage) => {
+	const deliverNow = useCallback(async (draft: ThreadMessage) => {
 		const authorId = draft.author?.id;
-		if (!authorId || sendingDraftIdsRef.current.has(draft.id) || !claimOutboxDelivery(authorId, draft.id)) return;
-		sendingDraftIdsRef.current.add(draft.id);
+		if (!authorId || !claimOutboxDelivery(authorId, draft.id)) {
+			sendingDraftIdsRef.current.delete(draft.id);
+
+			return;
+		}
 		const generation = authorId ? getMessageDraftGeneration(authorId) : -1;
 		const updateProgress = (deliveryPhase: ThreadMessage["deliveryPhase"], uploadProgress?: number) => {
 			if (activeCacheScopeRef.current !== `${authorId}:${draft.conversationId}`) return;
@@ -619,11 +624,7 @@ export function useConversationMessages(
 			void removeLocalMessage(draft.id).catch(() => undefined);
 			if (activeCacheScopeRef.current !== `${draft.author?.id}:${draft.conversationId}`) return;
 			loadingChangesRef.current?.arrivals.set(sent.id, sent);
-			setMessages((current) => {
-				const withoutDraft = current.filter((message) => message.id !== draft.id);
-
-				return withoutDraft.some((message) => message.id === sent.id) ? withoutDraft : [...withoutDraft, sent];
-			});
+			setMessages((current) => replaceDraft(current, draft.id, sent));
 		} catch (error) {
 			// Kept on screen rather than removed, and this is the whole point of the
 			// state: a message that vanishes on a dropped connection takes the text
@@ -637,6 +638,40 @@ export function useConversationMessages(
 			releaseOutboxDelivery(authorId, draft.id);
 		}
 	}, []);
+
+	/**
+	 * One send at a time per conversation, in the order they were asked for.
+	 *
+	 * Parallel requests let the server stamp a later message first, so a quick
+	 * "Hi" / "link" / "🙏" read back as "link" / "Hi" / "🙏" — on screen and after
+	 * every reload. Waiting for the previous send costs a fast typist nothing
+	 * visible: each bubble is already up as a draft. `ready` lets a send reserve
+	 * its place before its local outbox write settles.
+	 */
+	const deliver = useCallback(
+		(draft: ThreadMessage, ready?: Promise<boolean>): Promise<void> => {
+			if (sendingDraftIdsRef.current.has(draft.id)) return Promise.resolve();
+			sendingDraftIdsRef.current.add(draft.id);
+			const queues = deliveryQueuesRef.current;
+			const run = (queues.get(draft.conversationId) ?? Promise.resolve()).then(async () => {
+				if (ready && !(await ready)) {
+					sendingDraftIdsRef.current.delete(draft.id);
+					releaseUpload(pendingUploadsRef.current, draft.id);
+
+					return;
+				}
+				await deliverNow(draft);
+			});
+			const settled = run.catch(() => undefined);
+			queues.set(draft.conversationId, settled);
+			void settled.then(() => {
+				if (queues.get(draft.conversationId) === settled) queues.delete(draft.conversationId);
+			});
+
+			return run;
+		},
+		[deliverNow],
+	);
 
 	useEffect(() => {
 		deliverRef.current = deliver;
@@ -701,7 +736,7 @@ export function useConversationMessages(
 				setMessages((current) => [...current, draft]);
 			// The local commit deliberately precedes the network call. Once a bubble is
 			// visible, closing the tab or losing power must not be able to erase it.
-			await toLocalOutboxMessage(draft, author.id, attachments)
+			const stored = toLocalOutboxMessage(draft, author.id, attachments)
 				.then((queued) => {
 					if (!isCurrentSession()) throw new Error("The account session changed");
 
@@ -713,14 +748,10 @@ export function useConversationMessages(
 							message.id === draft.id ? { ...message, hasLocalStorageError: true } : message,
 						),
 					);
-				});
+				})
+				.then(isCurrentSession);
 
-			if (!isCurrentSession()) {
-				releaseUpload(pendingUploadsRef.current, draft.id);
-
-				return;
-			}
-			await deliver(draft);
+			await deliver(draft, stored);
 		},
 		[conversationId, deliver],
 	);
@@ -811,11 +842,10 @@ export function useConversationMessages(
 						// server has never heard of and would otherwise sit beside the
 						// real message until the HTTP response arrived to clear it.
 						if (current.some((existing) => existing.id === message.id)) return current;
-						const withoutDraft = message.clientId
-							? current.filter((existing) => existing.id !== message.clientId)
-							: current;
 
-						return [...withoutDraft, message];
+						return message.clientId
+							? replaceDraft(current, message.clientId, message)
+							: [...current, message];
 					});
 				}
 			},

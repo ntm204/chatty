@@ -98,7 +98,7 @@ export function GroupMembersPanel({
 			)}
 
 			{actionError && !memberPendingRemoval && !isConfirmingLeave && (
-				<p role="alert" className="eyebrow mt-3 text-signal">
+				<p role="alert" className="note mt-3 text-signal">
 					{actionError}
 				</p>
 			)}
@@ -155,7 +155,7 @@ export function GroupMembersPanel({
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 						<UserPlus className="size-4 text-ink-soft" aria-hidden="true" />
 					</span>
-					<span className="min-w-0 flex-1 truncate text-left text-[13.5px] text-ink">Add people</span>
+					<span className="min-w-0 flex-1 truncate text-left text-[14px] text-ink">Add people</span>
 				</Button>
 				{!canInvite && <p className="mt-1 text-sm text-ink-soft">This group lets only admins add people.</p>}
 			</div>
@@ -179,7 +179,7 @@ export function GroupMembersPanel({
 						setIsConfirmingLeave(true);
 					}}
 					disabled={isLeaving}
-					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[13.5px] font-normal text-signal"
+					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[14px] font-normal text-signal"
 				>
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 						<LogOut className="size-4" aria-hidden="true" />

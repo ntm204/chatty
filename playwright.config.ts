@@ -72,7 +72,18 @@ export default defineConfig({
 		baseURL: WEB_URL,
 		trace: "retain-on-failure",
 	},
-	projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+	projects: [
+		{
+			name: "chromium",
+			use: {
+				...devices["Desktop Chrome"],
+				// Playwright launches Chromium with smooth scrolling off, so every
+				// `behavior: "smooth"` landed in one frame and the glide to the latest
+				// message (phase 53) could not be observed or interrupted.
+				launchOptions: { args: ["--enable-smooth-scrolling"] },
+			},
+		},
+	],
 	webServer: [
 		{
 			command: "npm run dev --workspace apps/server",

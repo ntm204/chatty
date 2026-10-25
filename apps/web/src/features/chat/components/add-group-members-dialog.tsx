@@ -129,7 +129,7 @@ export function AddGroupMembersDialog({
 								onChange={(event) => setQuery(event.target.value)}
 								placeholder="Name, @handle or email"
 								aria-label="Search for someone to add"
-								className="min-w-0 flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-ink-faint"
+								className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-faint"
 							/>
 						</div>
 					</form>
@@ -141,7 +141,7 @@ export function AddGroupMembersDialog({
 							setSelectedUsers((current) => current.filter((user) => user.id !== userId))
 						}
 					/>
-					{selectedUsers.length === 0 && <p className="eyebrow mt-3 text-ink-faint">No one selected yet</p>}
+					{selectedUsers.length === 0 && <p className="note mt-3 text-ink-faint">No one selected yet</p>}
 				</div>
 
 				<div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
@@ -151,14 +151,14 @@ export function AddGroupMembersDialog({
 							access.
 						</p>
 					)}
-					{isSearching && <p className="eyebrow py-2 text-ink-faint">Searching…</p>}
+					{isSearching && <p className="note py-2 text-ink-faint">Searching…</p>}
 					{hasNoResults && (
 						<p role="status" className="py-2 text-sm text-ink-soft">
 							No people found. Try another name or handle.
 						</p>
 					)}
 					{(searchError || addError) && (
-						<p role="alert" className="eyebrow py-2 text-signal">
+						<p role="alert" className="note py-2 text-signal">
 							{searchError || addError}
 						</p>
 					)}

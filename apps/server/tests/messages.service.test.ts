@@ -254,25 +254,31 @@ describe("vault, forwarding, mentions, and pins", () => {
 		const minhId = await createUser("minh");
 		const anId = await createUser("an");
 		const conversation = await createConversation(minhId, { participantIds: [anId] });
-		const messages = [];
+		const messages: Awaited<ReturnType<typeof sendMessage>>[] = [];
 		for (const content of ["one", "two", "three", "four"]) {
 			messages.push(await sendMessage(minhId, conversation.id, { content }));
 		}
 
 		await saveMessageForUser(anId, conversation.id, messages[0]!.id);
 		expect((await listSavedMessages(anId, { limit: 20 })).results[0]?.message.id).toBe(messages[0]!.id);
+		// Per viewer: An's history marks it, Minh's does not.
+		const anHistory = await listMessages(anId, conversation.id, { limit: 10 });
+		expect(anHistory.find((message) => message.id === messages[0]!.id)?.isBookmarked).toBe(true);
+		expect(anHistory.find((message) => message.id === messages[1]!.id)?.isBookmarked).toBe(false);
+		const minhHistory = await listMessages(minhId, conversation.id, { limit: 10 });
+		expect(minhHistory.find((message) => message.id === messages[0]!.id)?.isBookmarked).toBe(false);
 		await removeSavedMessage(anId, conversation.id, messages[0]!.id);
 		expect((await listSavedMessages(anId, { limit: 20 })).results).toEqual([]);
 		expect(fakeIO.emits.filter((event) => event.event === "bookmark:changed")).toEqual([
 			{
 				room: `user:${anId}`,
 				event: "bookmark:changed",
-				payload: { conversationId: conversation.id, messageId: messages[0]!.id },
+				payload: { conversationId: conversation.id, messageId: messages[0]!.id, isBookmarked: true },
 			},
 			{
 				room: `user:${anId}`,
 				event: "bookmark:changed",
-				payload: { conversationId: conversation.id, messageId: messages[0]!.id },
+				payload: { conversationId: conversation.id, messageId: messages[0]!.id, isBookmarked: false },
 			},
 		]);
 

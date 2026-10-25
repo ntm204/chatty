@@ -21,7 +21,7 @@ export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps)
 			<div className="flex items-center gap-3 px-5 pb-4">
 				<Avatar user={user} size="sm" />
 				<div className="min-w-0">
-					<p className="truncate text-[13.5px] font-semibold leading-tight">{user.displayName}</p>
+					<p className="truncate text-[14px] font-semibold leading-tight">{user.displayName}</p>
 					<p className="meta truncate text-ink-faint">@{user.handle}</p>
 				</div>
 			</div>
@@ -42,7 +42,7 @@ export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps)
 								onClick={() => onSelect(item.id)}
 								aria-current={isActive ? "page" : undefined}
 								className={cn(
-									"relative w-full justify-start gap-3 px-3 py-2.5 text-[13.5px]",
+									"relative w-full justify-start gap-3 px-3 py-2.5 text-[14px]",
 									isActive && "bg-paper font-semibold text-ink",
 									!isActive && item.isDestructive && "text-signal hover:bg-signal-soft",
 									!isActive && !item.isDestructive && "text-ink-soft hover:text-ink",

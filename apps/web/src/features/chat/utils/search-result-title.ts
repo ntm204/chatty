@@ -22,8 +22,6 @@ export function getSearchResultTitle(
 
 	return (
 		peer?.displayName ??
-		(conversation.participants.some((participant) => participant.id === currentUserId)
-			? "Saved messages"
-			: "Unknown")
+		(conversation.participants.some((participant) => participant.id === currentUserId) ? "Notes" : "Unknown")
 	);
 }

@@ -49,10 +49,10 @@ export function VaultTabContent({
 
 	return (
 		<>
-			{isLoading && isEmpty && <p className="eyebrow text-ink-faint">Loading…</p>}
+			{isLoading && isEmpty && <p className="note text-ink-faint">Loading…</p>}
 			{error && (
 				<div className="flex items-center justify-between gap-3">
-					<p role="alert" className="eyebrow text-signal">
+					<p role="alert" className="note text-signal">
 						{error}
 					</p>
 					<Button variant="ghost" onClick={() => void onLoadPage(nextCursor, isEmpty)} className="px-2">
@@ -161,7 +161,7 @@ export function VaultTabContent({
 				</Button>
 			)}
 			<div ref={loadMoreRef} aria-hidden="true" className="h-px" />
-			{isLoading && !isEmpty && <p className="eyebrow py-3 text-center text-ink-faint">Loading more…</p>}
+			{isLoading && !isEmpty && <p className="note py-3 text-center text-ink-faint">Loading more…</p>}
 
 			{activeTab === "media" && lightboxIndex >= 0 && (
 				<AttachmentLightbox

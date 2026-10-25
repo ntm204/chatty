@@ -37,3 +37,9 @@ export const IMAGE_ONLY_QUOTE_TEXT = "Photo";
 
 /** How long the newest message's "Sent"/"Seen" caption stays up before it needs a hover like any other. */
 export const SENT_CAPTION_WINDOW_MS = 60 * 60 * 1000;
+
+/** Older arrivals are paging or reconnect replay, not news worth reading aloud. */
+export const ARRIVAL_ANNOUNCEMENT_WINDOW_MS = 30 * 1000;
+
+/** A screen reader hears the gist; the full text is one arrow key away in the thread. */
+export const ARRIVAL_ANNOUNCEMENT_MAX_LENGTH = 140;

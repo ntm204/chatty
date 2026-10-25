@@ -855,6 +855,24 @@ describe("returning to the live edge", () => {
 		expect(screen.getByRole("button", { name: "Jump to latest messages" })).not.toHaveTextContent("Loading");
 	});
 
+	it("reads someone else's arrival aloud at the live edge, but not your own or a paged-in old one", () => {
+		const { rerenderList } = renderList();
+		const status = () => screen.getByRole("status", { name: "" });
+		const now = new Date().toISOString();
+
+		rerenderList({ messages: [...messages, makeMessage("own", "minh", "mine", [], { createdAt: now })] });
+		expect(status()).toHaveTextContent("");
+
+		const old = makeMessage("old", "an", "from last week", [], { createdAt: "2026-01-01T00:00:00.000Z" });
+		rerenderList({ messages: [...messages, old] });
+		expect(status()).toHaveTextContent("");
+
+		const fresh = makeMessage("fresh", "an", "Xin chào", [], { createdAt: now });
+		rerenderList({ messages: [...messages, old, fresh] });
+		expect(status()).toHaveTextContent("New message from an: Xin chào");
+		expect(screen.getByLabelText("Message history")).not.toContainElement(document.activeElement as HTMLElement);
+	});
+
 	it("announces actual new arrivals with an exact count while capping the visual label", () => {
 		const { rerenderList } = renderList({ unreadCount: 25 });
 		const viewport = screen.getByRole("region", { name: "Message history" });

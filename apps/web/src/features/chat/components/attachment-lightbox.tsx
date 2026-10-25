@@ -1,6 +1,7 @@
 import type { AttachmentDTO } from "@chatty/shared-types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useBackDismiss } from "@/hooks/use-back-dismiss";
 import { useDialog } from "@/hooks/use-dialog";
 import { Button } from "@/components/button";
 import { isOfflineMediaUrl } from "@/utils/is-offline-media-url";
@@ -70,6 +71,7 @@ export function AttachmentLightbox({
 }: AttachmentLightboxProps) {
 	const close = useCallback(() => onClose(), [onClose]);
 	const dialogRef = useDialog<HTMLDivElement>(close);
+	useBackDismiss(true, close);
 	const [index, setIndex] = useState(initialIndex);
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveError, setSaveError] = useState("");

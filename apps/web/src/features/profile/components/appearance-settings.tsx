@@ -68,11 +68,11 @@ export function AppearanceSettings() {
 							</span>
 
 							<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-								<span className="flex items-center gap-2 text-[13.5px] font-semibold">
+								<span className="flex items-center gap-2 text-[14px] font-semibold">
 									<option.icon aria-hidden="true" className="size-3.5 shrink-0" />
 									{option.label}
 								</span>
-								<span className="text-[12.5px] font-normal leading-snug text-ink-faint">
+								<span className="text-[13px] font-normal leading-snug text-ink-faint">
 									{option.description}
 								</span>
 							</span>
@@ -86,7 +86,7 @@ export function AppearanceSettings() {
 			{/* Stated only for System, where the row's own label cannot say it: the
 			    other two rows already name exactly what is on screen. */}
 			{preference === "system" && (
-				<p role="status" className="eyebrow text-ink-faint">
+				<p role="status" className="note text-ink-faint">
 					Currently {resolved}
 				</p>
 			)}

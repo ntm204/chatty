@@ -53,7 +53,7 @@ export function ConversationBlockControl({ peer }: ConversationBlockControlProps
 					else setIsAsking(true);
 				}}
 				className={cn(
-					"min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[13.5px] font-normal",
+					"min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left text-[14px] font-normal",
 					!isBlocked && "text-signal",
 				)}
 			>

@@ -22,7 +22,7 @@ export function SystemMessage({ content, createdAt, messageId }: SystemMessagePr
 		<div id={messageId ? `message-${messageId}` : undefined} className="flex justify-center py-2">
 			<span
 				title={formatMessageTime(createdAt)}
-				className="eyebrow max-w-[85%] truncate rounded-full bg-paper-sunken px-3 py-1 tracking-[0.08em] text-ink-faint"
+				className="note max-w-[85%] truncate rounded-full bg-paper-sunken px-3 py-1 text-ink-faint"
 			>
 				{content}
 			</span>

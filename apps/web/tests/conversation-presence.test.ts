@@ -18,13 +18,12 @@ describe("getConversationPresence", () => {
 		expect(presence.peerStatus).toBe("Online");
 	});
 
-	it("falls back to a sentence when the peer has last-seen turned off", () => {
-		// `formatLastSeen` returns null for a null timestamp, and an empty status
-		// line would read as "we are still loading" rather than "they opted out".
+	it("has no status line when the peer has last-seen turned off", () => {
+		// The header drops the line rather than printing a non-answer.
 		const presence = getConversationPresence(direct, "minh", new Set());
 
 		expect(presence.isPeerOnline).toBe(false);
-		expect(presence.peerStatus).toBe("Last seen hidden");
+		expect(presence.peerStatus).toBeNull();
 	});
 
 	it("reports the last seen time when there is one", () => {
@@ -32,8 +31,7 @@ describe("getConversationPresence", () => {
 		const conversation = makeConversation({ participants: [minh, seenPeer] });
 		const presence = getConversationPresence(conversation, "minh", new Set());
 
-		expect(presence.peerStatus).not.toBe("Last seen hidden");
-		expect(presence.peerStatus.toLowerCase()).toContain("last seen");
+		expect(presence.peerStatus?.toLowerCase()).toContain("last seen");
 	});
 
 	it("has no peer in a group, and counts who is online instead", () => {

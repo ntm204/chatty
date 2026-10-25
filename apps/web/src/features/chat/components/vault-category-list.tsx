@@ -37,7 +37,7 @@ export function VaultCategoryList({ summary, memberCount, onSelect }: VaultCateg
 							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
 								<Icon className="size-4 text-ink-soft" />
 							</span>
-							<span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{tab.label}</span>
+							<span className="min-w-0 flex-1 truncate text-[14px] text-ink">{tab.label}</span>
 							{count !== null && <span className="meta shrink-0 text-ink-faint">{count}</span>}
 							<ChevronRight className="size-4 shrink-0 text-ink-faint" />
 						</Button>

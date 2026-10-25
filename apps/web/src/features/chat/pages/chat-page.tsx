@@ -1,7 +1,9 @@
 import { GlobalMessageSearch } from "../components/global-message-search";
-import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
-import { useCallback, useEffect, useState } from "react";
+import type { ConversationDTO } from "@chatty/shared-types";
+import { useCallback, useRef, useState } from "react";
 import { useGlobalSearchSession } from "../hooks/use-global-search-session";
+import { useConversationRoute } from "../hooks/use-conversation-route";
+import { useChatLayers } from "../hooks/use-chat-layers";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
@@ -29,29 +31,18 @@ export function ChatPage() {
 	const currentUser = useAuth((state) => state.currentUser);
 	const logout = useAuth((state) => state.logout);
 
-	const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 	const [openedSavedConversation, setOpenedSavedConversation] = useState<ConversationDTO | null>(null);
-	const [isManagingGroup, setIsManagingGroup] = useState(false);
 	const [requestedMessageId, setRequestedMessageId] = useState<string | null>(null);
-	const [isConversationSearchOpen, setIsConversationSearchOpen] = useState(false);
-	const [forwardingMessage, setForwardingMessage] = useState<MessageDTO | null>(null);
 	const [isEditingMessage, setIsEditingMessage] = useState(false);
 	const [editLastRequest, setEditLastRequest] = useState(0);
 	const [cancelEditRequest, setCancelEditRequest] = useState(0);
-	const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false);
 	const globalSearch = useGlobalSearchSession();
+	const selectConversationRef = useRef<(conversationId: string | null) => void>(() => undefined);
 	const handleUnavailableMessageNavigation = useCallback(() => setRequestedMessageId(null), []);
 
 	const refreshBlockedUsers = useBlockedUsersSync();
 	const refreshRestrictedUsers = useRestrictedUsersSync();
 	const onlineUserIds = usePresence();
-	const { activeUserIds: typingUserIds, typingByConversation } = useTypingParticipants(selectedConversationId);
-	const hasOpenPanel =
-		globalSearch.isOpen ||
-		isShortcutHelpOpen ||
-		Boolean(forwardingMessage) ||
-		isManagingGroup ||
-		isConversationSearchOpen;
 
 	const {
 		conversations,
@@ -62,9 +53,24 @@ export function ChatPage() {
 	} = useConversationList(
 		currentUser?.id,
 		useCallback((conversationId: string) => {
-			setSelectedConversationId((current) => (current === conversationId ? null : current));
+			if (window.location.pathname === `/chat/${encodeURIComponent(conversationId)}`)
+				selectConversationRef.current(null);
 		}, []),
 	);
+	const { selectedConversationId, selectConversation, leaveConversation, isUnavailable } = useConversationRoute({
+		conversations,
+		isListLoading: conversationPaging.isLoading,
+		openedConversation: openedSavedConversation,
+		setOpenedConversation: setOpenedSavedConversation,
+	});
+	const layers = useChatLayers({
+		selectedConversationId,
+		isGlobalSearchOpen: globalSearch.isOpen,
+		closeGlobalSearch: globalSearch.close,
+		clearRequestedMessage: handleUnavailableMessageNavigation,
+	});
+	selectConversationRef.current = selectConversation;
+	const { activeUserIds: typingUserIds, typingByConversation } = useTypingParticipants(selectedConversationId);
 
 	useDocumentTitle(conversations);
 	useMessageSound(currentUser?.id ?? "", conversations, selectedConversationId);
@@ -82,12 +88,12 @@ export function ChatPage() {
 	);
 
 	useKeyboardShortcuts({
-		hasOpenPanel,
+		hasOpenPanel: layers.hasOpenPanel,
 		onClosePanel: () => {
 			if (globalSearch.isOpen) globalSearch.close();
-			else if (isShortcutHelpOpen) setIsShortcutHelpOpen(false);
-			else if (forwardingMessage) setForwardingMessage(null);
-			else if (isManagingGroup) setIsManagingGroup(false);
+			else if (layers.isShortcutHelpOpen) layers.setIsShortcutHelpOpen(false);
+			else if (layers.forwardingMessage) layers.setForwardingMessage(null);
+			else if (layers.isManagingGroup) layers.setIsManagingGroup(false);
 			else closeMessageSearch();
 		},
 		hasReply: Boolean(replyTo || pendingReplyId),
@@ -96,9 +102,9 @@ export function ChatPage() {
 		onCancelEdit: () => setCancelEditRequest((current) => current + 1),
 		onEditLast: () => setEditLastRequest((current) => current + 1),
 		onOpenConversationSearch: () => {
-			if (selectedConversationId) setIsConversationSearchOpen(true);
+			if (selectedConversationId) layers.setIsConversationSearchOpen(true);
 		},
-		onShowHelp: () => setIsShortcutHelpOpen(true),
+		onShowHelp: () => layers.setIsShortcutHelpOpen(true),
 	});
 
 	const isConnectionLost = useSocketConnection(
@@ -109,12 +115,6 @@ export function ChatPage() {
 			void refreshRestrictedUsers();
 		}, [messageState.resync, refreshBlockedUsers, refreshConversations, refreshRestrictedUsers]),
 	);
-
-	useEffect(() => {
-		setIsManagingGroup(false);
-		setIsConversationSearchOpen(false);
-		setForwardingMessage(null);
-	}, [selectedConversationId]);
 
 	const selectedConversation =
 		conversations.find((conversation) => conversation.id === selectedConversationId) ??
@@ -136,10 +136,10 @@ export function ChatPage() {
 	} = useConversationNavigation({
 		conversations,
 		refreshConversations,
-		setSelectedConversationId,
+		setSelectedConversationId: selectConversation,
 		setOpenedSavedConversation,
 		setRequestedMessageId,
-		setIsConversationSearchOpen,
+		setIsConversationSearchOpen: layers.setIsConversationSearchOpen,
 	});
 	useMessageNotifications(currentUser?.id ?? "", conversations, openNotificationConversation);
 
@@ -161,7 +161,9 @@ export function ChatPage() {
 					}}
 				/>
 			)}
-			{isShortcutHelpOpen && <KeyboardShortcutsPanel onClose={() => setIsShortcutHelpOpen(false)} />}
+			{layers.isShortcutHelpOpen && (
+				<KeyboardShortcutsPanel onClose={() => layers.setIsShortcutHelpOpen(false)} />
+			)}
 			{isConnectionLost && <ConnectionBanner />}
 
 			<div className="chat-workspace flex min-h-0 flex-1 lg:gap-3 lg:p-3">
@@ -186,6 +188,7 @@ export function ChatPage() {
 				/>
 
 				<main
+					data-conversation-id={selectedConversation?.id}
 					className={cn("relative min-w-0 flex-1 flex-col", selectedConversation ? "flex" : "hidden lg:flex")}
 				>
 					{selectedConversation ? (
@@ -194,25 +197,25 @@ export function ChatPage() {
 							currentUserId={currentUser.id}
 							onlineUserIds={onlineUserIds}
 							typingUserIds={typingUserIds}
-							isManagingDetails={isManagingGroup}
-							onToggleDetails={() => setIsManagingGroup((current) => !current)}
+							isManagingDetails={layers.isManagingGroup}
+							onToggleDetails={() => layers.setIsManagingGroup((current) => !current)}
 							onBack={() => {
 								setReplyTo(null);
-								setSelectedConversationId(null);
+								leaveConversation();
 							}}
-							isSearchOpen={isConversationSearchOpen}
+							isSearchOpen={layers.isConversationSearchOpen}
 							onOpenSearch={() => {
 								setRequestedMessageId(null);
-								setIsConversationSearchOpen(true);
+								layers.setIsConversationSearchOpen(true);
 							}}
 							onCloseSearch={closeMessageSearch}
 							onSelectSearchResult={selectSearchResult}
 							onClearSearchResult={() => setRequestedMessageId(null)}
-							forwardingMessage={forwardingMessage}
-							onCloseForward={() => setForwardingMessage(null)}
+							forwardingMessage={layers.forwardingMessage}
+							onCloseForward={() => layers.setForwardingMessage(null)}
 							onOpenMessage={(messageId) => {
 								jumpToMessage(messageId);
-								setIsManagingGroup(false);
+								layers.setIsManagingGroup(false);
 							}}
 							onReturnToGlobalSearch={
 								globalSearch.conversationId === selectedConversation.id && requestedMessageId
@@ -247,7 +250,7 @@ export function ChatPage() {
 								onDiscardDraft: messageState.discardDraft,
 								onToggleReaction: messageState.toggleReaction,
 								onReplyToMessage: setReplyTo,
-								onForwardMessage: setForwardingMessage,
+								onForwardMessage: layers.setForwardingMessage,
 								onTogglePinMessage,
 								pinnedMessageIds,
 								onJumpToMessage: jumpToMessage,
@@ -278,6 +281,13 @@ export function ChatPage() {
 						<ChatWelcome
 							unreadCount={getTotalUnreadCount(conversations)}
 							isConnectionLost={isConnectionLost}
+							isUnavailable={isUnavailable}
+							hasNoConversations={
+								!isShowingArchived &&
+								!conversationPaging.isLoading &&
+								!conversationPaging.error &&
+								conversations.length === 0
+							}
 							onOpenUnread={
 								findFirstUnreadConversation(conversations) ? openFirstUnreadConversation : undefined
 							}

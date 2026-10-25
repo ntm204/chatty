@@ -3623,6 +3623,207 @@ full web unit suite passes 632/632, though under full-suite load a few heavy tes
 default timeout on this machine and pass when run alone.
 Not covered: WebKit, real phones, and native touch scrolling.
 
+## Phase 54 — one unread rule for restriction — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 163 | A restriction hides a peer's messages from the unread badge only in the direct conversation; shared groups still count them | `done` |
+| 164 | Live badges follow the same rule, and a restrict/unrestrict on another tab or device re-reads the direct badge from the server | `done` |
+
+The sidebar menu promises that restricting someone leaves shared groups unaffected, and popups and
+sounds already followed that. The badge did not: `countUnreadByConversation` dropped the restricted
+person's messages everywhere, so a group could stay unlit while its alert played. The filter now
+applies only to direct conversations (XP-18).
+
+The live path disagreed the other way round. `message:new` raised a restricted DM's badge, which a
+reload then cleared. It now skips peers known to be restricted. A peer whose status is still unknown
+is looked up; if the answer is "restricted", the row's count is read again from the server.
+`restriction:changed` re-reads it as well. That event reaches every session of the actor, including
+a tab that never looked the peer up, whose store would otherwise see no change on an unrestrict. The
+browser run caught that case. Mute expiry while the app is open was already handled by
+`use-mute-expiry`, and a block refuses the write, so neither changed.
+
+Verified 2026-10-24 on macOS, Chromium, against the e2e API and database: the new scenario in
+`e2e/restrictions.spec.ts` (two tabs of one account; restrict on one, no badge on either and none after
+reload; a group message from the same person counts; unrestrict on one tab brings the direct badge back
+on the other) and the existing restriction, notification-policy, sidebar-organisation,
+conversation-actions and group specs pass. `npm run verify` passes, including server restriction tests
+for the group case and web hook tests for the live rule. `e2e/blocking.spec.ts` has one failure that
+also occurs without this change: it expects older Block dialog copy.
+Not covered: WebKit and real devices.
+
+## Phase 55 — arrivals a screen reader hears, and one bookmark state — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 165 | Announce someone else's arrival at the live edge of the open thread ("New message from …") | `done` |
+| 166 | Bookmark state per viewer on history/context pages; the thread menu toggles Bookmark ↔ Remove bookmark and follows `bookmark:changed` | `done` |
+| 167 | Forward dialog opens in its search field; emoji search matches each word ("trái tim") | `done` |
+
+A pass over the level-1 checklist (Vietnamese input, screen reader, selection) ran in Chromium with
+input-method composition through the DevTools protocol and the accessibility tree standing in for a
+screen reader. It found one real gap: the live region only spoke while the "latest" button was up, so a
+reader already at the bottom heard nothing when a message arrived. The same region now carries one
+sentence for an arrival from someone else (XP-52). It is portalled out of the thread so the words exist
+once inside it, and skips your own messages and anything older than 30 seconds, so paging and reconnect
+replay stay silent.
+
+Bookmarking was a one-way action in the thread: the menu always said "Bookmark message" and could not
+undo it. History and context pages now mark `isBookmarked` for the person who asked; room broadcasts
+leave it out, and the client keeps what it knew. `bookmark:changed` carries the new state, so every tab
+of the account patches the row and the menu offers "Remove bookmark" where it applies (XP-29). A failed
+removal keeps the label and reports at the message. The image viewer's Save downloads the image and has
+no bookmark control, so it has no state to disagree with.
+
+Verified 2026-10-24 on macOS, Chromium: the checklist probe 20/20 (composition Enter, Shift+Enter,
+Cmd+F and Cmd+K, accented emoji search, named controls, polite arrival without focus moving, menu focus
+return, keyboard-only forward, partial selection and selection across a link), and
+`e2e/bookmarked-messages.spec.ts` 2/2 including the new two-tab scenario. `npm run verify` passes. A full
+Chromium e2e run had five failures that also fail on the unchanged code: `blocking` (older dialog copy),
+`attachments-and-vault`, `compact-receipts`, `conversation-paging` and `scroll-history`.
+Not covered: VoiceOver or NVDA by ear, a physical keyboard IME, WebKit, real phones.
+
+## Phase 56 — a UX pass over the main screens — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 168 | Messages sent in a burst keep the order they were typed, on screen and after reload | `done` |
+| 169 | The welcome pane always shows its next step as a button; a new account is pointed at people search | `done` |
+| 170 | The selected sidebar row is marked by an edge bar instead of a check that read as "seen" | `done` |
+| 171 | "Saved" is renamed "Notes" so it no longer competes with Bookmarks | `done` |
+| 172 | Empty states say what to do next (bookmarks, pins, message search, sidebar, forward) | `done` |
+| 173 | A hidden last-seen shows no status line instead of "Last seen hidden" | `done` |
+| 174 | Sentences, errors, statuses and names use a readable `note` style; `eyebrow` stays for short labels | `done` |
+| 175 | "Let's talk." becomes "New chat"; message search gets its own icon | `done` |
+| 176 | Last-seen visibility is three visible choices instead of a native select | `done` |
+
+Screenshots of the main screens (desktop and 375px, light and dark) were reviewed against common
+usability heuristics before any change.
+
+The ordering problem was real and had two causes. Every send was its own request, so a quick "Hi" /
+link / "🙏" could reach the server out of order and be stamped that way for good. A confirmed message
+also replaced its draft by appending, which moved it below drafts typed after it. Sends now queue per
+conversation, and each waits for the previous one; a draft is already on screen, so the wait is not
+visible. The confirmation takes the draft's place. Stickers, files and voice use their own send path
+and are not in this queue.
+
+The welcome hid its only action behind the status island and told a new account to "choose a chat on
+the left" above an empty list. The action is now a visible button, and both the button and the copy
+follow the situation: find someone, open the unread chat, or start a new one. The sidebar's check mark
+was there so that selection is not shown by colour alone; the settings navigation's edge bar does the
+same job without looking like a read receipt.
+
+`eyebrow` (10px mono, upper case) was used for sentences, errors and names as well as labels.
+Vietnamese names and sentences lose most of their legibility in that style. A `note` utility (12px
+sans, sentence case) now covers those; short labels such as "Forwarded", "Seen by", "Today" and
+section titles keep `eyebrow`. The entry form keeps its previous label line height so it still fits
+short screens.
+
+Verified 2026-10-24 on macOS, Chromium: 43 related e2e tests pass (welcome, layout, search, profile,
+bookmarks, restriction, chat, sending and recovery, drafts and outbox, groups, conversation actions,
+reading position, notifications, reactions, sidebar). A new unit test sends three messages and checks
+the request order and their final positions. `npm run verify` passes. The new screens were reviewed
+in screenshots at desktop size and at 375px.
+Not covered: WebKit and real phones.
+
+## Phase 57 — routes, account forms, Vietnamese type and honest states — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 177 | The open conversation is a URL (`/chat/:id`); reload, links and Back/Forward follow it (XP-47) | `done` |
+| 178 | Back closes the top panel, viewer or dialog before it leaves a thread; closing from the UI leaves no dead history step | `done` |
+| 179 | Settings close back onto the thread they were opened over | `done` |
+| 180 | Account forms put server errors beside their field, focus what to fix, and label identity correctly for password managers (XP-44) | `done` |
+| 181 | What people write is set in Geist, which has the Vietnamese ranges General Sans lacks (XP-53) | `done` |
+| 182 | A failed first load no longer claims a list is empty; every load error offers a retry (XP-55) | `done` |
+
+The selected conversation used to be component state. Back, or a phone's back gesture, left the app
+from inside a thread, and a reload dropped the reader on the welcome screen. Each thread is now a
+history entry. A link this account cannot open returns to the list with a reason. `useBackDismiss`
+gives every overlay its own entry: Back closes the top layer, and closing it from the UI removes that
+entry again. A route change from an open layer replaces the entry instead of stacking on it. The
+thread's back arrow returns to the list entry it came from, without pushing a new one. Opening a
+thread reads the live address, so a callback held by a memoised row cannot decide that a different
+thread is already open.
+
+Server errors arrive as sentences, not codes. One table (`constants/server-field-errors.ts`) maps
+the few that concern one field, and each form maps them onto its own fields. "Invalid email or
+password" stays at form level on purpose. Every form now focuses the first invalid field, clears a
+field's error as it is edited, disables its fields while pending and reports success as a status.
+Focus after a server error waits for the fields to re-enable and gives way if the reader has already
+moved; the browser suite caught the version that pulled focus back. Sign-in and registration mark the
+email as `username` and the handle as `nickname`, and the password and email forms carry a hidden
+username, so a password manager saves and updates the right login. Avatars are checked for type and
+the 5 MB limit before upload.
+
+Measuring with `CSS.getPlatformFontsForNode` showed General Sans has no Vietnamese ranges: "Nguyễn"
+was drawn with a Geist "ễ" inside General Sans letters. Messages, names, previews, quotes, drafts and
+the composer now use `font-content` (Geist), and each now measures as a single font. Interface chrome
+and headings keep General Sans and Clash Display. Half-pixel sizes were folded into 13/14px. The
+reaction bar's hover zoom, which phase 47 had recorded as removed, is now gone.
+
+Blocked and Restricted people showed "You have not … anyone." alongside a load error; a failed first
+load now shows only the error and a retry. Edit history gained a retry. Retry buttons that can be
+on screen together keep labels that name what they retry ("Retry search", "Retry conversations");
+"Try again" is used only inside single-purpose dialogs (see phase 58).
+
+Verified 2026-10-24 on macOS, Chromium. The new `e2e/back-navigation.spec.ts` covers desktop
+(reload, details, search, settings by button and Back, Back/Forward between list and thread, dead
+link) and a 390px phone (list → thread → details, one layer per Back, the back arrow without a
+stacked entry). New unit tests cover back-dismiss layering, field-level server errors, autofill
+tokens and the avatar pre-check. The full Chromium e2e run is 93/98. The 5 failures also fail on the
+code before this work: blocking (older dialog copy), attachments-and-vault, compact-receipts,
+conversation-paging and scroll-history. `npm run verify` passes (server 399, web 399).
+`openConversationWith` in `e2e/helpers.ts` now waits until the painted thread
+(`main[data-conversation-id]`) matches the URL, because route updates render a frame later.
+Not covered: WebKit, a real phone's back gesture, a real password manager, VoiceOver by ear.
+
+## Phase 58 — the five browser specs that had been failing — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 183 | Sidebar and vault paging start before the end of the list again | `done` |
+| 184 | The located-message marker no longer widens every message row by 3px | `done` |
+| 185 | Playwright runs Chromium with smooth scrolling on, so glides can be tested | `done` |
+| 186 | Two specs updated to current behaviour: block dialog copy, resizable details panel | `done` |
+
+Each spec was traced to its cause before anything changed:
+
+- **conversation-paging (app bug).** `useInfiniteScroll` observed against the viewport. A
+  `rootMargin` there never reaches past the sidebar's or vault's own scroll clipping, so the next page
+  started only at the very bottom instead of 240px early. The observer root is now the nearest
+  scrolling ancestor. The spec also read its "first page" count while a reload passes through an empty
+  list and the cached sidebar; it now waits for a steady count.
+- **compact-receipts (app bug).** The invisible locator ring was an `inset: -3px` box, which made
+  every message row 3px wider than its container, enough for a sideways scroll beside a long outgoing
+  message. It is now drawn with `outline` and `box-shadow`, which do not count as overflow, and looks
+  the same.
+- **scroll-history (environment).** Playwright launches Chromium with smooth scrolling disabled, so
+  every `behavior: "smooth"` landed in one frame and phase 53's glide could not be observed. The
+  config passes `--enable-smooth-scrolling`. It passed on 2026-10-03 under the previous browser build.
+- **blocking (stale spec).** It expected copy the block dialog no longer uses.
+- **attachments-and-vault (stale spec).** It expected no details resize handle, but phase 53 (item 162)
+  restored it deliberately. The spec now checks the handle: 320px by default, ArrowLeft widens it,
+  Enter resets it.
+
+The full run also showed that phase 57 had been wrong to rename every retry button to "Try again".
+Offline, the conversation search and the sidebar each showed one, two identical buttons with
+different targets, which a screen reader lists without telling them apart. The specific labels are
+back.
+
+This run also found a race in phase 57's `useBackDismiss`. Closing a layer queues an asynchronous
+`history.back()`, and a layer reopened in the same moment had its new entry removed by that pending
+traversal, closing it again. New layers now wait for a pending traversal before they push. A unit test
+covers reopening right after closing.
+
+Verified 2026-10-24/25 on macOS, Chromium, with each spec run on its own after its fix:
+conversation-paging 8/8 over four repeats, blocking 2/2, attachments-and-vault and back-navigation
+6/6 over two repeats, compact-receipts with pinned, reply-reading-position and global-search 4/4,
+scroll-history 4/4 over two repeats. `npm run verify` passes (server 399, web 403). The full Chromium
+suite then passed 98/98 (8.8 minutes) on 2026-10-25. An earlier full run was discarded: the machine
+slept during it (4.2 hours), and Docker and OrbStack stopped answering, so the e2e database could not
+be reached.
+
 ## Verification bar
 
 Typing follow-up, 2026-09-06: a live-thread bubble now sits below the last message, aligned with incoming

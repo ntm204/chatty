@@ -351,6 +351,12 @@ export interface MessageDTO {
 	conversationId: string;
 	kind: MessageKind;
 	/**
+	 * Whether the person who asked has bookmarked it. Per viewer, so only present
+	 * on responses to that person (history and context pages); a room broadcast
+	 * leaves it out and the client keeps what it already knew.
+	 */
+	isBookmarked?: boolean;
+	/**
 	 * Who wrote it, embedded rather than referenced by id.
 	 *
 	 * The id alone was not enough: the client resolved it against the
@@ -887,10 +893,17 @@ export interface ConversationSelfUpdatedEvent {
 	mutedUntil: string | null;
 }
 
+/** Private to the bookmarking account's sessions; carries the new state so every surface can agree. */
+export interface BookmarkChangedEvent {
+	conversationId: string;
+	messageId: string;
+	isBookmarked: boolean;
+}
+
 /** Events the server pushes down. The client only listens to these. */
 export interface ServerToClientEvents {
 	/** Private invalidation, sent only to the bookmarking account's sessions. */
-	"bookmark:changed": (event: { conversationId: string; messageId: string }) => void;
+	"bookmark:changed": (event: BookmarkChangedEvent) => void;
 	"message:new": (message: MessageDTO) => void;
 	"message:hidden": (event: { conversationId: string; messageId: string }) => void;
 	/**

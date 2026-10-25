@@ -76,10 +76,9 @@ export function ConversationSidebar({
 				<Button
 					variant="ghost"
 					className="sidebar-brand-label"
-					aria-label="Start a conversation"
 					onClick={() => document.getElementById("global-conversation-search")?.focus()}
 				>
-					Let’s talk.
+					New chat
 				</Button>
 			</div>
 			<div className="sidebar-heading flex h-[70px] shrink-0 items-center justify-between px-4">
@@ -129,12 +128,16 @@ export function ConversationSidebar({
 				<Avatar user={currentUser} size="md" />
 
 				<div className="min-w-0 flex-1">
-					<p className="truncate text-[13px] font-semibold leading-tight">{currentUser.displayName}</p>
+					<p className="font-content truncate text-[13px] font-semibold leading-tight">
+						{currentUser.displayName}
+					</p>
 					<p className="meta truncate text-ink-faint">@{currentUser.handle}</p>
 				</div>
 
 				<Link
 					to="/profile"
+					// Keeps the open thread behind the dialog and lets closing return to it.
+					state={{ conversationId: selectedConversationId }}
 					aria-label="Account settings"
 					className="flex size-8 shrink-0 items-center justify-center rounded-control text-ink-soft transition hover:bg-ink/5 hover:text-ink"
 				>

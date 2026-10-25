@@ -99,7 +99,7 @@ export function ConversationPhotoDialog({
 					/>
 					<p className="meta text-ink-faint">{AVATAR_UPLOAD_HINT}</p>
 					{error && (
-						<p role="alert" className="eyebrow text-signal">
+						<p role="alert" className="note text-signal">
 							{error}
 						</p>
 					)}

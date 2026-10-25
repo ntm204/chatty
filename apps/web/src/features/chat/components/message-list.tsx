@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVisibleMessageRead } from "../hooks/use-visible-message-read";
 import type { MessageListProps } from "../types/message-list";
 import { MAX_RETAINED_MESSAGES } from "../constants/pagination";
-import { useMessageEditing, useMessageScroll, useUnreadDivider } from "../hooks";
+import { useArrivalAnnouncement, useMessageEditing, useMessageScroll, useUnreadDivider } from "../hooks";
 import { useMessageNavigationPosition } from "../hooks/use-message-navigation-position";
 import { getReadReceipt } from "../utils";
 import { MessageEditHistory } from "./message-edit-history";
@@ -91,6 +91,7 @@ export function MessageList({
 		isLoadingNewer,
 		onLoadNewer,
 	});
+	const arrivalAnnouncement = useArrivalAnnouncement({ messages, currentUserId, participants });
 	// Historical search windows can skip unread messages; resume the cursor at latest.
 	useVisibleMessageRead(containerRef, conversationId, currentUserId, messages, !isLoadingThread && !isViewingHistory);
 	// Memoised because it is a prop of the memoised `MessageRows`, and it is an
@@ -204,11 +205,11 @@ export function MessageList({
 			    does nothing once the thread is long enough to scroll. */}
 				<div ref={contentRef} className="conversation-message-content flex min-h-full flex-col justify-end">
 					{isLoadingOlder && (
-						<p className="eyebrow py-4 text-center text-ink-faint">Loading earlier messages…</p>
+						<p className="note py-4 text-center text-ink-faint">Loading earlier messages…</p>
 					)}
 
 					{!hasMoreOlder && messages.length > 0 && (
-						<p className="eyebrow py-4 text-center text-ink-faint">
+						<p className="note py-4 text-center text-ink-faint">
 							This is the beginning of the conversation.
 						</p>
 					)}
@@ -247,7 +248,7 @@ export function MessageList({
 							/>
 
 							{isLoadingNewer && (
-								<p className="eyebrow py-4 text-center text-ink-faint">Loading newer messages…</p>
+								<p className="note py-4 text-center text-ink-faint">Loading newer messages…</p>
 							)}
 						</div>
 					)}
@@ -268,6 +269,7 @@ export function MessageList({
 			<ScrollToLatestButton
 				hasReturnAction={hasReadingPosition}
 				isVisible={isFarFromBottom || canReturnToLatest || isReturningToLatest}
+				arrivalAnnouncement={arrivalAnnouncement}
 				isLoading={isReturningToLatest}
 				newMessageCount={newMessageCount}
 				typingMessage={typingMessage ?? null}

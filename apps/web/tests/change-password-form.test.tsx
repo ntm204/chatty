@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangePasswordForm } from "@/features/profile/components/change-password-form";
@@ -128,6 +128,8 @@ describe("ChangePasswordForm", () => {
 
 		await submit(typist, { current: "NotMyPassword", next: "BrandNewSecret456" });
 
-		expect(await screen.findByRole("alert")).toHaveTextContent("Current password is incorrect");
+		const current = screen.getByLabelText("Current password");
+		await waitFor(() => expect(current).toHaveFocus());
+		expect(current).toHaveAccessibleDescription("Current password is incorrect");
 	});
 });

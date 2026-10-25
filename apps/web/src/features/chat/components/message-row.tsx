@@ -150,7 +150,7 @@ export const MessageRow = memo(function MessageRow({
 			    over the bubble rather than over the face. Groups only: in a 1-1 the
 			    header already names the one person it could possibly be. */}
 			{!isMine && isFirstOfRun && isGroup && (
-				<span className="eyebrow mb-1 ml-12 text-ink-soft sm:ml-13">
+				<span className="note font-content font-medium mb-1 ml-12 text-ink-soft sm:ml-13">
 					{/* A USER message with no author is one whose writer deleted their
 					    account — still theirs to have said, no longer theirs to be
 					    named for. */}
@@ -254,6 +254,7 @@ export const MessageRow = memo(function MessageRow({
 						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin, onBookmark })}
 						{...(hasReactions && { onShowReactions })}
 						isPinned={isPinned}
+						isBookmarked={Boolean(message.isBookmarked)}
 						myReaction={myReaction}
 						authorActionExpiresAt={message.authorActionExpiresAt}
 						align={isMine ? "end" : "start"}

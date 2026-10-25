@@ -7,8 +7,8 @@ export interface ConversationPresence {
 	/** The other person in a 1-1, or null in a group. */
 	peer: ParticipantDTO | null;
 	isPeerOnline: boolean;
-	/** The line a 1-1 shows under the name: "Online", a last-seen phrase, or the opt-out. */
-	peerStatus: string;
+	/** The line a 1-1 shows under the name: "Online" or a last-seen phrase; null when they hide it. */
+	peerStatus: string | null;
 	/** How many participants are online, which is what a group shows instead. */
 	onlineCount: number;
 }
@@ -18,14 +18,14 @@ export interface ConversationPresence {
  *
  * One function because two surfaces now ask the same question — the thread
  * header and the details panel — and they have to give the same answer. It was
- * four lines copied between them, `"Last seen hidden"` included, which is the
- * shape a divergence starts in: change the phrasing or the opt-out fallback in
- * one and the app quietly reports a person's presence two different ways
- * depending on which panel you are looking at.
+ * four lines copied between them, which is the shape a divergence starts in:
+ * change the phrasing or the opt-out fallback in one and the app quietly reports
+ * a person's presence two different ways depending on which panel you are
+ * looking at.
  *
- * The fallback matters more than it reads. `formatLastSeen` returns null when
- * somebody has turned last-seen off, and that is not the same fact as "we have
- * no timestamp" — so it gets its own sentence rather than an empty line.
+ * A hidden last-seen is null, not a sentence. "Last seen hidden" told the reader
+ * nothing they could act on; the header drops the line instead of leaving an
+ * empty one, so the name centres rather than looking like it is still loading.
  */
 export function getConversationPresence(
 	conversation: ConversationDTO,
@@ -40,10 +40,10 @@ export function getConversationPresence(
 		peer,
 		isPeerOnline,
 		peerStatus: isSavedConversation(conversation, currentUserId)
-			? "Your personal storage"
+			? "Only you can see this"
 			: isPeerOnline
 				? "Online"
-				: (lastSeen ?? "Last seen hidden"),
+				: lastSeen,
 		onlineCount: conversation.participants.filter((participant) => onlineUserIds.has(participant.id)).length,
 	};
 }

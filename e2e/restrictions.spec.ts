@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, messages, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import {
+	makeUser,
+	messages,
+	openConversationWith,
+	register,
+	sendMessage,
+	startDirectChat,
+	startGroupChat,
+} from "./helpers.js";
 
 /**
  * Restricting, through the interface rather than the service.
@@ -88,5 +96,68 @@ test.describe("restricting", () => {
 		await expect(maiPage.getByRole("menuitem", { name: "Restrict", exact: true })).toBeVisible({
 			timeout: 15_000,
 		});
+	});
+
+	test("keeps one badge rule across tabs, reloads and a shared group", async ({ browser }) => {
+		const mai = makeUser("Mai");
+		const linh = makeUser("Linh");
+		const binh = makeUser("Binh");
+		const maiContext = await browser.newContext();
+		const linhContext = await browser.newContext();
+		const binhContext = await browser.newContext();
+		const maiPage = await maiContext.newPage();
+		const linhPage = await linhContext.newPage();
+		const binhPage = await binhContext.newPage();
+
+		await register(maiPage, mai);
+		await register(linhPage, linh);
+		await register(binhPage, binh);
+		const maiOtherTab = await maiContext.newPage();
+		await maiOtherTab.goto("/chat");
+		await startDirectChat(linhPage, mai);
+		await expect(maiOtherTab.getByRole("button", { name: new RegExp(linh.displayName) })).toBeVisible({
+			timeout: 15_000,
+		});
+
+		await maiPage.reload();
+		await maiPage.getByRole("button", { name: "Conversation actions" }).first().click();
+		await maiPage.getByRole("menuitem", { name: "Restrict", exact: true }).click();
+		await expect(maiPage.getByRole("menu")).toHaveCount(0, { timeout: 15_000 });
+
+		// The other tab learns the restriction over the socket, not from a reload.
+		await sendMessage(linhPage, "quiet in the direct thread");
+		for (const page of [maiPage, maiOtherTab]) {
+			await expect(page.locator("aside").getByText("quiet in the direct thread")).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect(page.getByLabel(/unread messages/u)).toHaveCount(0);
+		}
+		await maiOtherTab.reload();
+		await expect(maiOtherTab.locator("aside").getByText("quiet in the direct thread")).toBeVisible({
+			timeout: 15_000,
+		});
+		await expect(maiOtherTab.getByLabel(/unread messages/u)).toHaveCount(0);
+
+		// The menu promises shared groups are not affected.
+		await startGroupChat(linhPage, [mai, binh], "Shared room");
+		await sendMessage(linhPage, "loud in the group");
+		await expect(maiOtherTab.getByLabel("1 unread messages")).toHaveCount(1, { timeout: 15_000 });
+
+		// Unrestricting on one tab brings the hidden direct badge back on the other.
+		await maiPage
+			.locator("aside")
+			.getByRole("button", { name: new RegExp(linh.displayName) })
+			.first()
+			.hover();
+		await maiPage
+			.locator("li", { hasText: "quiet in the direct thread" })
+			.getByRole("button", { name: "Conversation actions" })
+			.click();
+		await maiPage.getByRole("menuitem", { name: "Unrestrict", exact: true }).click();
+		await expect(maiOtherTab.getByLabel("1 unread messages")).toHaveCount(2, { timeout: 15_000 });
+
+		await maiContext.close();
+		await linhContext.close();
+		await binhContext.close();
 	});
 });

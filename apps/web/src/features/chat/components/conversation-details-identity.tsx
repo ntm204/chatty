@@ -32,7 +32,7 @@ export function ConversationDetailsIdentity({
 				</h3>
 
 				{isSavedConversation(conversation, currentUserId) ? (
-					<p className="text-xs text-ink-faint">Your personal storage</p>
+					<p className="text-xs text-ink-faint">Only you can see this</p>
 				) : peer ? (
 					<p className="meta max-w-full truncate text-ink-faint">@{peer.handle}</p>
 				) : (

@@ -8,3 +8,6 @@
  * promise it breaks after the upload.
  */
 export const AVATAR_UPLOAD_HINT = "PNG or JPG · up to 5 MB · square works best";
+
+/** Same limit as the server's `MAX_AVATAR_BYTES`, checked before upload so a too-large file fails at once. */
+export const AVATAR_MAX_BYTES = 5 * 1024 * 1024;

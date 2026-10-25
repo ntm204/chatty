@@ -79,7 +79,12 @@ export function PinnedMessagesList({ pinnedMessages, currentUserId, onOpenMessag
 				</p>
 			)}
 			<ul aria-label="Pinned messages" className="flex flex-col gap-1 p-2">
-				{pinnedMessages.length === 0 && <li className="p-4 text-sm text-ink-faint">No pinned messages yet.</li>}
+				{pinnedMessages.length === 0 && (
+					<li className="p-4 text-sm text-ink-faint">
+						No pinned messages yet.
+						<span className="mt-1 block text-xs">Pin one from its ⋯ menu to keep it at the top.</span>
+					</li>
+				)}
 				{pinnedMessages.map((message) => {
 					const attachment = message.message?.attachments[0];
 					const isImage = attachment?.kind === "image";

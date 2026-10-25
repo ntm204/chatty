@@ -61,7 +61,6 @@ test("validation and the submit action stay reachable in a short viewport", asyn
 
 test("the chat welcome stays fully visible and does not scroll on short laptops", async ({ page }) => {
 	await register(page, makeUser("Layout"));
-	await page.getByRole("button", { name: "Your quiet corner" }).click();
 	for (const viewport of [
 		{ width: 1440, height: 800 },
 		{ width: 1280, height: 650 },
@@ -72,13 +71,15 @@ test("the chat welcome stays fully visible and does not scroll on short laptops"
 			await page.emulateMedia({ colorScheme });
 			const welcome = page.getByRole("region", { name: "Welcome to your chats" });
 			await expect(welcome.getByRole("heading")).toBeInViewport({ ratio: 1 });
-			await expect(welcome.getByRole("button", { name: "Find your people" })).toBeInViewport({ ratio: 1 });
+			await expect(welcome.getByRole("button", { name: "Find someone to chat with" })).toBeInViewport({
+				ratio: 1,
+			});
 			expect(await welcome.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true);
 			await welcome.hover();
 			await page.mouse.wheel(0, 600);
 			expect(await welcome.evaluate((element) => element.scrollTop)).toBe(0);
 			expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
-			await welcome.getByRole("button", { name: "Find your people" }).click();
+			await welcome.getByRole("button", { name: "Find someone to chat with" }).click();
 			await expect(page.getByLabel("Find someone")).toBeFocused();
 		}
 	}

@@ -71,33 +71,33 @@ export function ConversationHeader({
 				without increasing the fixed header height.
 			*/}
 			<div className="flex min-w-0 flex-1 flex-col justify-center">
-				<h1 className="truncate text-[14px] font-semibold leading-[18px] tracking-tight text-ink">
+				<h1 className="font-content truncate text-[14px] font-semibold leading-[18px] tracking-tight text-ink">
 					{getConversationTitle(conversation, currentUserId)}
 				</h1>
 
-				<div className="flex h-[14px] items-center gap-2">
-					{typingMessage ? (
-						<>
-							<span className="truncate text-[11px] text-ink-soft">
-								{typingMessage?.replace(/…$/, "")}
+				{(typingMessage || conversation.isGroup || peerStatus) && (
+					<div className="flex h-[17px] items-center gap-2">
+						{typingMessage ? (
+							<>
+								<span className="note truncate text-ink-soft">{typingMessage?.replace(/…$/, "")}</span>
+							</>
+						) : conversation.isGroup ? (
+							<>
+								<span className="note text-ink-faint">{conversation.participants.length} members</span>
+								{onlineCount > 0 && (
+									<>
+										<span aria-hidden="true" className="h-2.5 w-px bg-rule" />
+										<span className="note text-live">{onlineCount} online</span>
+									</>
+								)}
+							</>
+						) : (
+							<span className={cn("note truncate", isPeerOnline ? "text-live" : "text-ink-faint")}>
+								{peerStatus}
 							</span>
-						</>
-					) : conversation.isGroup ? (
-						<>
-							<span className="eyebrow text-ink-faint">{conversation.participants.length} members</span>
-							{onlineCount > 0 && (
-								<>
-									<span aria-hidden="true" className="h-2.5 w-px bg-rule" />
-									<span className="eyebrow text-live">{onlineCount} online</span>
-								</>
-							)}
-						</>
-					) : (
-						<span className={cn("eyebrow truncate", isPeerOnline ? "text-live" : "text-ink-faint")}>
-							{peerStatus}
-						</span>
-					)}
-				</div>
+						)}
+					</div>
+				)}
 			</div>
 
 			{onOpenMessageSearch && (

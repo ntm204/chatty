@@ -108,19 +108,19 @@ export function ConversationMessageSearch({
 				</Button>
 			)}
 			{isSearching && (
-				<span role="status" className="eyebrow text-ink-faint">
+				<span role="status" className="note text-ink-faint">
 					Searching…
 				</span>
 			)}
 			{error && (
-				<span role="alert" className="eyebrow max-w-48 text-signal">
+				<span role="alert" className="note max-w-48 text-signal">
 					{error}
 					<Button variant="ghost" onClick={retry} className="px-2 text-xs">
 						Retry search
 					</Button>
 				</span>
 			)}
-			{hasNoResults && !isSearching && <span className="eyebrow text-ink-faint">No results</span>}
+			{hasNoResults && !isSearching && <span className="note text-ink-faint">No results</span>}
 			{query.trim().length >= MESSAGE_SEARCH_MIN_LENGTH && results.length > 0 && (
 				<span className="meta shrink-0 text-ink-faint">
 					{activeIndex + 1} of {results.length}

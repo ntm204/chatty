@@ -60,6 +60,12 @@ describe("searchEmoji", () => {
 		expect(searchEmoji("tim").map((entry) => entry.char)).toContain("❤️");
 	});
 
+	it("matches a multi-word Vietnamese phrase word by word", () => {
+		expect(searchEmoji("trái tim").map((entry) => entry.char)).toContain("❤️");
+		expect(searchEmoji("tim trai").map((entry) => entry.char)).toContain("❤️");
+		expect(searchEmoji("trái tim tan vỡ").map((entry) => entry.char)).toEqual(["💔"]);
+	});
+
 	it("matches inside a keyword, not only at its start", () => {
 		expect(searchEmoji("cry").map((entry) => entry.char)).toContain("😭");
 	});

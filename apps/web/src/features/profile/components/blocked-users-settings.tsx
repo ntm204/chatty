@@ -20,6 +20,8 @@ export function BlockedUsersSettings() {
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(true);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	// A failed first load is not an empty list; saying "none" there would be a guess.
+	const [hasLoaded, setHasLoaded] = useState(false);
 	const [unblockingUserId, setUnblockingUserId] = useState<string | null>(null);
 
 	const loadPage = useCallback(async (before?: string, shouldReplace = false) => {
@@ -30,6 +32,7 @@ export function BlockedUsersSettings() {
 			const page = await api.listBlockedUsers(before);
 			setUsers((current) => (shouldReplace ? page.items : [...current, ...page.items]));
 			setNextCursor(page.nextCursor);
+			setHasLoaded(true);
 		} catch (caught) {
 			setError(caught instanceof Error ? caught.message : "Could not load blocked users");
 		} finally {
@@ -65,6 +68,15 @@ export function BlockedUsersSettings() {
 
 			{isLoading ? (
 				<p className="text-[13px] text-ink-faint">Loading blocked users…</p>
+			) : !hasLoaded ? (
+				<div className="flex flex-col items-start gap-2">
+					<p role="alert" className="text-[13px] text-signal">
+						{error || "Could not load blocked users."}
+					</p>
+					<Button variant="outline" onClick={() => void loadPage(undefined, true)} className="px-4">
+						Try again
+					</Button>
+				</div>
 			) : users.length === 0 ? (
 				<p className="text-[13px] text-ink-faint">You have not blocked anyone.</p>
 			) : (
@@ -73,7 +85,7 @@ export function BlockedUsersSettings() {
 						<li key={user.id} className="flex items-center gap-3 px-3 py-3">
 							<Avatar user={user} size="sm" />
 							<div className="min-w-0 flex-1">
-								<p className="truncate text-[13.5px] font-semibold text-ink">{user.displayName}</p>
+								<p className="truncate text-[14px] font-semibold text-ink">{user.displayName}</p>
 								<p className="meta truncate text-ink-faint">@{user.handle}</p>
 							</div>
 							<Button
@@ -89,7 +101,7 @@ export function BlockedUsersSettings() {
 				</ul>
 			)}
 
-			{error && (
+			{hasLoaded && error && (
 				<p role="alert" className="text-[13px] text-signal">
 					{error}
 				</p>
