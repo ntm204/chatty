@@ -101,14 +101,14 @@ export function NewConversationPanel({ onConversationStarted, onOpenMessageSearc
 
 			<SelectedParticipants participants={selectedUsers} onRemove={handleRemoveUser} />
 
-			{isSearching && <p className="eyebrow mt-3 text-ink-faint">Searching…</p>}
+			{isSearching && <p className="note mt-3 text-ink-faint">Searching…</p>}
 			{hasNoResults && (
 				<p role="status" className="mt-3 text-sm text-ink-soft">
 					No people found. Try another name or handle.
 				</p>
 			)}
 			{(searchError || createError) && (
-				<p role="alert" className="eyebrow mt-3 text-signal">
+				<p role="alert" className="note mt-3 text-signal">
 					{searchError || createError}
 				</p>
 			)}

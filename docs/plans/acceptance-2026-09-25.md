@@ -17,6 +17,24 @@ bản web build với CSP production, các đường phục hồi và quyền li
 Đợt nghiệm thu ban đầu không commit/push; đợt tiếp nối có yêu cầu đẩy code.
 Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
 
+## Cập nhật 2026-10-26: WebKit toàn bộ, offline, Safari
+
+Sổ XP sau đợt này: **49 done / 9 partial / 2 planned** (XP-46, XP-49 cần điện thoại).
+Các thay đổi nằm ở ROADMAP phase 54–59; mục này chỉ ghi bằng chứng hiện tại.
+
+| Cổng | Kết quả | Ghi chú |
+| --- | --- | --- |
+| `npm run verify` | Đạt | web 438 test liên quan, audit 0 hit |
+| Full Chromium e2e | **100/100** (6,5 phút) | Máy thức, không retry |
+| Full WebKit e2e | **Chưa có lượt trọn vẹn** | Một lượt bỏ vì máy ngủ (3 giờ); một lượt bị dừng ở 94/100 vì hệ thống thiếu RAM, lỗi gồm cả spec chạy riêng thì đạt |
+| WebKit từng spec | Đạt sau sửa | affordances, compact-thread, composer-input-boundaries, entry-layout, group, editor-expiry, offline-actions, menu-viewport, reactions, restrictions, blocking, conversation-actions, design-polish |
+| Built web trên WebKit | Đạt tới trước bước offline | Playwright WebKit không reload offline được khi có service worker |
+
+Lỗi Safari thật đã sửa: menu thao tác thành viên nhóm đóng trước khi nhận click ("Make admin",
+"Remove from group" không có tác dụng); bong bóng gọn thừa 26–60px vì `text-wrap: pretty`.
+Còn nợ: một lượt full WebKit khi máy đủ RAM; kiểm tay shell offline trên Safari desktop;
+thiết bị thật, VoiceOver và bộ gõ Telex bằng tay.
+
 ## Tiếp nối nhỏ: bàn phím menu và Retry tìm kiếm
 
 - XP-51: menu không chiếm phím khi focus ở ngoài hoặc đang composition; Escape trả đúng

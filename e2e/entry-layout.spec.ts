@@ -20,7 +20,10 @@ test("sign-in and registration fit ordinary laptop and phone viewports", async (
 			await page.evaluate(() => document.fonts.ready);
 			for (const isRegistering of [false, true]) {
 				if (isRegistering) await page.getByRole("button", { name: "Get started", exact: true }).click();
-				await expect(page.locator(".auth-form-card")).toBeInViewport({ ratio: 1 });
+				// 0.99, not 1: WebKit's intersection ratio rounds fractional positions (a card
+				// at y=96.53 measured 0.998 while fully on screen, with nothing to scroll).
+				// Real overflow is caught by the page and form scroll checks below.
+				await expect(page.locator(".auth-form-card")).toBeInViewport({ ratio: 0.99 });
 				await expect(page.locator(".auth-fields > button")).toBeInViewport({ ratio: 1 });
 				const overflow = await page.evaluate(() => {
 					const form = document.querySelector(".auth-form-side")!;

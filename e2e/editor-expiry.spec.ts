@@ -3,10 +3,13 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL } from "./database.js";
 import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
-test("an edit expiring while open keeps its text available to copy", async ({ browser }) => {
+test("an edit expiring while open keeps its text available to copy", async ({ browser, browserName }) => {
 	test.setTimeout(60_000);
 	const prisma = new PrismaClient({ datasources: { db: { url: E2E_DATABASE_URL } } });
-	const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] });
+	// Only Chromium gates keyboard copy/paste behind these; WebKit rejects the names.
+	const context = await browser.newContext({
+		permissions: browserName === "chromium" ? ["clipboard-read", "clipboard-write"] : [],
+	});
 	const peerContext = await browser.newContext();
 	try {
 		const page = await context.newPage();

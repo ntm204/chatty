@@ -1,5 +1,13 @@
 import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+// Contexts opened with `browser.newContext()` belong to the worker's browser, not
+// to the test, so any a spec forgets to close keep their pages and sockets for the
+// rest of the run. Chromium shrugged that off; WebKit slowed until late specs timed
+// out during sign-up. Every spec imports this file, so this hook covers them all.
+test.afterEach(async ({ browser }) => {
+	await Promise.all(browser.contexts().map((context) => context.close()));
+});
 
 /**
  * Everything here drives the real UI rather than the API.
@@ -43,7 +51,9 @@ export async function register(page: Page, user: TestUser): Promise<void> {
 	// The welcome sequence has its own suite. Ordinary fixtures should not pay
 	// its 3.8 seconds for every account, or depend on its animation to unlock auth.
 	await expect(skipIntro.or(createAccount).first()).toBeVisible();
-	if (await skipIntro.isVisible()) await skipIntro.click();
+	// Dispatched rather than clicked: the curtain keeps moving, and WebKit's
+	// "element is stable" wait could outlast the test before the click landed.
+	if (await skipIntro.isVisible()) await skipIntro.dispatchEvent("click");
 	await createAccount.click();
 
 	await page.getByLabel("Display name").fill(user.displayName);

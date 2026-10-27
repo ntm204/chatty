@@ -73,11 +73,22 @@ test.describe("affordances", () => {
 
 		await maiPage.getByRole("button", { name: "Search in conversation" }).click();
 		const field = maiPage.getByRole("textbox", { name: "Search in conversation" });
-		const barColour = () => field.evaluate((element) => getComputedStyle(element.parentElement!).borderBottomColor);
+		// Compared as painted pixels, not strings: the bar's colour-mix serialises as
+		// oklab() and the text as rgb(), and engines differ in which they report.
+		const toPixel = (colour: string) =>
+			maiPage.evaluate((value) => {
+				const context = document.createElement("canvas").getContext("2d")!;
+				context.fillStyle = value;
+				context.fillRect(0, 0, 1, 1);
+
+				return Array.from(context.getImageData(0, 0, 1, 1).data).join(",");
+			}, colour);
+		const barColour = async () =>
+			toPixel(await field.evaluate((element) => getComputedStyle(element.parentElement!).borderBottomColor));
 		for (const theme of ["light", "dark"]) {
 			await maiPage.evaluate((value) => document.documentElement.setAttribute("data-theme", value), theme);
 			await expect(field).toBeFocused();
-			const ink = await field.evaluate((element) => getComputedStyle(element).color);
+			const ink = await toPixel(await field.evaluate((element) => getComputedStyle(element).color));
 			await expect.poll(barColour).toBe(ink);
 			await field.press("Shift+Tab");
 			await expect(field).not.toBeFocused();

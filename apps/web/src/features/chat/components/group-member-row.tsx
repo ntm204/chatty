@@ -141,6 +141,10 @@ export function GroupMemberRow({
 									if (!event.currentTarget.contains(event.relatedTarget as Node | null))
 										setIsExpanded(false);
 								}}
+								// Safari does not focus a button on click: pressing a menu item moved
+								// focus to the page, the blur above closed the menu, and the click never
+								// arrived, so "Make admin" did nothing. Keeping focus put fixes that.
+								onMouseDown={(event) => event.preventDefault()}
 								className="fixed z-50 w-48 overflow-hidden rounded-panel border border-rule bg-paper-raised p-1.5 shadow-lift"
 							>
 								{canChangeAdmin && (

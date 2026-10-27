@@ -10,7 +10,9 @@ interface WorkerEnvironment {
 
 test("a complete shell upgrade waits for old tabs and a failed install preserves the active build", async ({
 	browser,
+	browserName,
 }) => {
+	test.skip(browserName !== "chromium", "Playwright exposes service worker events in Chromium only");
 	const template = await readFile("apps/web/public/sw.js", "utf8");
 	let version = 1;
 	let hasMissingAsset = false;

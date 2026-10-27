@@ -51,7 +51,8 @@ const SESSION_EXPIRED_KEY = "chatty:session-expired";
 
 /** A request that never reached an HTTP response, so the local session is still valid. */
 export class NetworkUnavailableError extends Error {
-	constructor(message = "The network is unavailable") {
+	// Shown as-is wherever a write fails offline, so it says what to do, not what broke.
+	constructor(message = "You're offline. Check your connection and try again.") {
 		super(message);
 		this.name = "NetworkUnavailableError";
 	}

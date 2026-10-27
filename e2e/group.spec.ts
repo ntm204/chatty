@@ -148,7 +148,9 @@ test.describe("a group with an owner", () => {
 		await admin.page.getByRole("button", { name: "Group members" }).click();
 		await admin.page.getByRole("button", { name: "Members", exact: true }).click();
 		// Two "Admin" badges now — the owner is symmetric with any other admin, see ADR 0021.
-		await expect(admin.page.getByText("Admin", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+		// Exactly two: `.first()` passed on the owner's badge alone, which hid a Safari
+		// menu that closed before "Make admin" could be clicked.
+		await expect(admin.page.getByText("Admin", { exact: true })).toHaveCount(2, { timeout: 15_000 });
 		// "Customize chat" is open by default — the rename row is right there.
 		await expect(admin.page.getByRole("button", { name: /Rename/ })).toBeEnabled();
 		await expect(admin.page.getByRole("button", { name: "Add people" })).toBeEnabled();

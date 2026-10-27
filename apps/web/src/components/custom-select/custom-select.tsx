@@ -81,6 +81,9 @@ export function CustomSelect({ label, value, options, disabled, onChange }: Cust
 					id={id}
 					role="listbox"
 					aria-label={label}
+					// Safari blurs instead of focusing a clicked button; without this the
+					// root's blur handler closed the list before the option's click landed.
+					onMouseDown={(event) => event.preventDefault()}
 					className="absolute inset-x-0 top-full z-30 mt-1 rounded-panel border border-rule bg-paper-raised p-1 shadow-lift"
 				>
 					{options.map((option) => (

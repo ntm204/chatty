@@ -72,25 +72,45 @@ export function useCompactMessage(content: string, isEnabled: boolean) {
 			const horizontalBorder =
 				Number.parseFloat(styles.borderLeftWidth) + Number.parseFloat(styles.borderRightWidth);
 			const horizontalInsets = horizontalPadding + horizontalBorder;
-			const left = Math.min(...rectangles.map((rectangle) => rectangle.left));
-			const right = Math.max(...rectangles.map((rectangle) => rectangle.right));
-			// One pixel prevents fractional glyph widths from introducing a new line after rounding.
-			const compactWidth = Math.ceil(right - left + horizontalInsets) + 1;
-			if (!Number.isFinite(compactWidth) || compactWidth <= 0 || compactWidth >= originalBounds.width - 1) return;
-			bubble.style.width = `${styles.boxSizing === "border-box" ? compactWidth : compactWidth - horizontalInsets}px`;
+			const setWidth = (width: number) => {
+				bubble.style.width = `${styles.boxSizing === "border-box" ? width : width - horizontalInsets}px`;
+			};
+			const fitsLikeOriginal = () => {
+				const fittedTextBounds = textElement.getBoundingClientRect();
+				const hasExtraHeight =
+					fittedTextBounds.height > originalTextHeight + 1 ||
+					bubble.getBoundingClientRect().height > originalBounds.height + 1;
+				const hasOverflow =
+					textElement.scrollWidth > textElement.clientWidth + 1 ||
+					bubble.scrollWidth > bubble.clientWidth + 1 ||
+					readTextRects().some(
+						(rectangle) =>
+							rectangle.left < fittedTextBounds.left - 1 || rectangle.right > fittedTextBounds.right + 1,
+					);
 
-			const fittedTextBounds = textElement.getBoundingClientRect();
-			const hasExtraHeight =
-				fittedTextBounds.height > originalTextHeight + 1 ||
-				bubble.getBoundingClientRect().height > originalBounds.height + 1;
-			const hasOverflow =
-				textElement.scrollWidth > textElement.clientWidth + 1 ||
-				bubble.scrollWidth > bubble.clientWidth + 1 ||
-				readTextRects().some(
-					(rectangle) =>
-						rectangle.left < fittedTextBounds.left - 1 || rectangle.right > fittedTextBounds.right + 1,
-				);
-			if (hasExtraHeight || hasOverflow) bubble.style.width = "auto";
+				return !hasExtraHeight && !hasOverflow;
+			};
+			// One pixel prevents fractional glyph widths from introducing a new line after rounding.
+			const widthFor = (textRectangles: DOMRect[]) =>
+				Math.ceil(
+					Math.max(...textRectangles.map((rectangle) => rectangle.right)) -
+						Math.min(...textRectangles.map((rectangle) => rectangle.left)) +
+						horizontalInsets,
+				) + 1;
+
+			let fittedWidth = originalBounds.width;
+			let nextWidth = widthFor(rectangles);
+			// A few passes, not one: `text-wrap: pretty` re-breaks lines at each new width,
+			// and WebKit re-balances so much that one fit left 26–60px of empty bubble.
+			for (let pass = 0; pass < 3; pass++) {
+				if (!Number.isFinite(nextWidth) || nextWidth <= 0 || nextWidth >= fittedWidth - 1) break;
+				setWidth(nextWidth);
+				if (!fitsLikeOriginal()) break;
+				fittedWidth = nextWidth;
+				nextWidth = widthFor(readTextRects());
+			}
+			if (fittedWidth >= originalBounds.width) bubble.style.width = "auto";
+			else setWidth(fittedWidth);
 		}
 
 		compactBubble();

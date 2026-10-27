@@ -3,7 +3,7 @@ import { makeUser, openConversationWith, register, startDirectChat } from "./hel
 
 test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] } });
 
-test("built web previews and sends image/voice under the production CSP", async ({ browser }) => {
+test("built web previews and sends image/voice under the production CSP", async ({ browser, browserName }) => {
 	test.setTimeout(60_000);
 	const author = makeUser("BuiltAuthor");
 	const peer = makeUser("BuiltPeer");
@@ -65,6 +65,11 @@ test("built web previews and sends image/voice under the production CSP", async 
 		await openConversationWith(page, peer);
 		await expect(page.getByRole("main").getByAltText("Built photo")).toBeVisible();
 		await expect(page.getByRole("button", { name: "Play voice message" })).toBeVisible();
+		expect(violations).toEqual([]);
+		// Playwright's WebKit throws an internal error reloading a service-worker page
+		// under setOffline, so the offline shell is exercised in Chromium only; Safari
+		// itself is checked by hand (see acceptance report).
+		if (browserName === "webkit") return;
 		await page.getByLabel("Message", { exact: true }).fill("Offline draft stays here");
 		await page.evaluate(async () => {
 			await navigator.serviceWorker.ready;

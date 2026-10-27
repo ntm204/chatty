@@ -3824,6 +3824,48 @@ suite then passed 98/98 (8.8 minutes) on 2026-10-25. An earlier full run was dis
 slept during it (4.2 hours), and Docker and OrbStack stopped answering, so the e2e database could not
 be reached.
 
+## Phase 59 — WebKit for the whole suite, offline actions, Safari menus — `done`
+
+| # | Item | Status |
+| --- | --- | --- |
+| 187 | Group member actions work in Safari: the menu no longer closes before a click lands | `done` |
+| 188 | Compact bubbles fit in Safari, where `text-wrap: pretty` re-breaks lines at each width | `done` |
+| 189 | Offline server-only actions say what to do, keep input and leave no false state (XP-56) | `done` |
+| 190 | Menus from every edge stay inside the viewport, checked in both engines (XP-13) | `done` |
+| 191 | The whole browser suite runs on WebKit; the built app has a WebKit config | `done` |
+
+This was the first time the whole suite ran on WebKit; before, only selected acceptance paths did. Two
+real Safari bugs came out of it. Safari blurs instead of focusing a clicked button, so the group member
+menu's blur handler closed it before "Make admin" or "Remove from group" received the click: the
+action silently did nothing. Holding focus on `mousedown` fixes it; the same guard went into
+`CustomSelect`. The spec had missed it because `getByText("Admin").first()` passed on the owner's own
+badge, so it now requires both admins. Separately, the compact bubble fit ran once, and WebKit's
+`text-wrap: pretty` re-balanced the lines at the new width, leaving 26–60px of empty bubble. The fit
+now takes up to three passes and stops as soon as a pass would add a line.
+
+Offline, the shared error read "The network is unavailable". It now says "You're offline. Check your
+connection and try again.", and people search no longer shouts its message in the uppercase label
+style. `e2e/offline-actions.spec.ts` covers mute, people search, message search and a profile save:
+each reports, keeps what was typed, and a reload once online shows none of them applied.
+`e2e/menu-viewport.spec.ts` opens message, reaction and sidebar menus at the top and bottom edges at
+1280×800 and 1024×560.
+
+Several WebKit failures were the suite rather than the app. Contexts that specs never closed piled up
+in the worker, so `helpers.ts` now closes them after every test. Skip intro is dispatched, because
+the moving curtain never counts as "stable". Text is selected with `setSelectionRange`, because Home
+does not move the caret on macOS. Colours are compared as pixels, because WebKit reports some as
+`oklab()`. The card ratio allows WebKit's sub-pixel rounding. Clipboard permissions are requested in
+Chromium only, and the service-worker lifecycle spec is skipped elsewhere: Playwright reports those
+events in Chromium only. For the same reason, `playwright.built.webkit.config.ts` stops before the
+offline reload, which Playwright's WebKit cannot perform with a service worker.
+
+Verified 2026-10-25/26 on macOS. `npm run verify` passes (web 438). The full Chromium suite passed
+100/100 in 6.5 minutes. Each WebKit spec named above passed on its own after its fix, and the built
+app passed on WebKit up to the offline step. A full WebKit run is still owed. One was discarded
+because the machine slept, and the next was stopped at 94/100 when the system ran low on memory; its
+failures included specs that pass alone. Not covered: Safari's offline shell by hand, real phones,
+VoiceOver by ear.
+
 ## Verification bar
 
 Typing follow-up, 2026-09-06: a live-thread bubble now sits below the last message, aligned with incoming

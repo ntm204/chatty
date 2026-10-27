@@ -34,9 +34,9 @@ test("only the composer accepts drops and emoji replaces the selected text", asy
 	await page.getByRole("button", { name: "Close message search" }).click();
 	await expect(page.getByAltText(/Attached image preview/)).toHaveCount(1);
 	await field.fill("Hi OLD there");
-	await field.press("Home");
-	for (let index = 0; index < 3; index++) await field.press("ArrowRight");
-	for (let index = 0; index < 3; index++) await field.press("Shift+ArrowRight");
+	// Select "OLD" directly: Home does not move the caret on macOS (WebKit
+	// follows the platform), and the test is about replacing a selection.
+	await field.evaluate((element: HTMLTextAreaElement) => element.setSelectionRange(3, 6));
 	await page.getByRole("button", { name: "Insert an emoji" }).click();
 	const picker = page.getByRole("dialog", { name: "Choose an emoji" });
 	const emojiButton = picker.getByRole("button", { name: /^Insert / }).first();
