@@ -3,7 +3,7 @@
 ## Kết luận và phạm vi
 
 Chatty ở mốc **0.2.0-rc.1, nghiệm thu nội bộ/local**, chưa phải bản phát hành public.
-Sổ XP: **41 done, 10 partial, 9 planned**; XP-59 chỉ chuyển done sau khi đo, sửa trim
+Sổ XP tại mốc 2026-09-25: **41 done, 10 partial, 9 planned**; XP-59 chỉ chuyển done sau khi đo, sửa trim
 và chạy lại cùng workload, không phải chỉ vì test xanh.
 Lượt này đưa XP-60 từ planned sang partial nhờ nghiệm thu local và hợp nhất tài liệu,
 không đánh dấu done khi ma trận thiết bị thật và các tiêu chí còn lại chưa hoàn tất.
@@ -16,6 +16,82 @@ bản web build với CSP production, các đường phục hồi và quyền li
 đối chiếu tài liệu và dọn file trùng. Không triển khai hosting/domain, không phát hành,
 Đợt nghiệm thu ban đầu không commit/push; đợt tiếp nối có yêu cầu đẩy code.
 Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
+
+## Cập nhật 2026-11-05: hoàn thiện phần mềm còn lại và đối chiếu cả 60 XP
+
+Chủ dự án xác nhận **chưa có thiết bị thật để kiểm tra**. Giữ nguyên tiêu chí gốc,
+không đổi nhãn thành done để bù cho việc thiếu thiết bị. Sổ hiện có **49 done /
+11 partial / 0 planned**: XP-46/49 đã triển khai phần mềm, còn nghiệm thu thiết bị.
+`node scripts/check-experience-progress.mjs --json` đọc đủ 60 định nghĩa và sổ trạng thái,
+kiểm tra trùng ID và phát hiện số README lệch sổ; không tính phase lịch sử thành tiến độ.
+
+Phần sửa trong lượt này:
+
+- Mobile: shell theo VisualViewport khi keyboard che layout viewport; bỏ qua pinch zoom;
+  safe area ngang; sửa selector input cũ để textarea có chữ 16px; giới hạn composer,
+  ảnh preview và picker theo chiều cao còn nhìn thấy; mở rộng vùng chạm có phạm vi.
+- Viewer: caption dài được xuống dòng; toolbar wrap ở màn hẹp, nút 44px trên mobile;
+  album có scroller giới hạn chiều rộng để vẫn tới được ảnh đầu/cuối và nút đóng.
+- Keyboard/accessibility: menu đính kèm bỏ qua composition/229 và phím ngoài focus;
+  Escape chỉ đóng menu đó; trợ giúp phím tắt có điểm vào ở sidebar, focus trap và
+  trả focus; voice kết thúc trả focus từ nút speed sắp ẩn về nút Play.
+- Notification: recheck quyền khi mở settings/quay lại ứng dụng; chống yêu cầu quyền
+  trùng; lỗi trình duyệt từ chối request có thông báo và có thể thử lại.
+- AI: thêm `AGENTS.md` ngắn với nguồn tiến độ, cách đọc có mục tiêu, quy tắc bằng chứng,
+  giới hạn agent và test/database. Không thêm skill/dependency chỉ để tăng số lượng.
+
+### Chốt theo yêu cầu chủ dự án — 2026-11-05
+
+Dừng các lượt nghiệm thu dài theo yêu cầu, không commit/push và không đánh dấu đủ 60/60.
+Mã đã sửa còn ở working tree; sổ giữ **49 done / 11 partial / 0 planned**.
+
+| Kiểm tra thực tế | Kết quả và giới hạn |
+| --- | --- |
+| Full web unit | 652/652 đạt trước các chỉnh cuối về touch/identity; sau chỉnh cuối, 19/19 unit tập trung đạt, gồm viewer thật qua draft → ack → history |
+| Full server | Một lượt đạt 507/507; lượt gate sau có 506 đạt và một timeout 5 giây ở typing/socket. Trace/log cho thấy fixture tạo 3 tài khoản bcrypt và socket gần hết ngân sách; chưa chốt sửa fixture, không gọi gate cuối là đạt |
+| Voice HTTP | 25/25 đạt sau khi chỉ tăng deadline ca FFmpeg từ 5 lên 15 giây; mọi assert codec/duration/waveform/range giữ nguyên |
+| Chromium các ca mới | 6/6 viewer, keyboard/voice, mobile viewport và touch targets đạt. Bài baseline riêng sau sửa phần chuẩn bị đạt 1/1 với đủ 200 HTTP writes theo batch 4 |
+| Full Chromium | Lượt rộng tìm ra lỗi viewer optimistic/ack và fixture baseline, đã sửa và chạy lại có mục tiêu; chưa có lượt full hoàn chỉnh trên toàn bộ mã cuối |
+| WebKit | Các lượt rộng/nhỏ chưa hoàn tất trên mã cuối; kết quả 26/10 phía dưới là lịch sử, không thay cho lượt mới |
+| Static checks | Typecheck/lint đạt sau sửa; audit cuối 0 hit. ChatPage tách nhóm overlay thành component để giữ quy ước kích thước file |
+| Built/CSP/offline | Chưa chạy lại trên mã cuối trong lượt này; giữ nguyên bằng chứng lịch sử và phần Safari thật còn nợ |
+
+Viewer được portalled khỏi vùng stacking của hàng tin; thao tác touch không focus hàng nền.
+Map UI identity giới hạn theo các hàng đang render, giữ viewer/ảnh chọn khi upload đổi ID và
+khi history bỏ clientId. Vùng chạm coarse ngoài composer cũng đã có cho menu/reaction,
+thanh reaction wrap ở 320px và chip có layout riêng thay vì các hitbox chồng nhau.
+
+Test PostgreSQL tùy chọn đã xác minh filesystem thực là tmpfs 256 MB, fsync/synchronous_commit
+vẫn bật. Kết nối override dùng 127.0.0.1 để tránh fallback localhost/IPv6 vượt maxWait.
+Database phát triển được giữ nguyên; tablespace thử nghiệm đã dọn; dừng stack test khi chốt.
+Chạy lại bằng hướng dẫn README khi có đủ thời gian/tài nguyên. Các lượt fixture lỗi, bị dừng
+hoặc full suite chưa hoàn tất không được tính thành pass. Chatty dev được khởi động lại trên 5173/4000.
+
+### Tiếp nối theo yêu cầu xử lý và push — 2026-11-05
+
+Ca typing/socket hết 5 giây ở phần chuẩn bị ba tài khoản, chưa hoàn tất cửa sổ quan sát sự kiện.
+Fixture nay tạo user trực tiếp và ký JWT hợp lệ; vẫn kết nối socket thật, kiểm tra xác thực,
+membership và giữ nguyên cửa sổ quan sát 700 ms. Không tăng timeout hoặc sửa logic relay.
+Chạy lại riêng file đạt **10/10**. Fixture read-receipts cũng tạo user trực tiếp vì không
+kiểm tra đăng nhập; giữ nguyên toàn bộ assert và timeout. Backend chạy lại đạt **507/507**.
+AGENTS bổ sung phạm vi nhỏ, chốt thay đổi trước kiểm tra
+diện rộng và tôn trọng giới hạn usage; không cài thêm skill/dependency.
+
+### Các bước cần thiết bị thật để đóng ma trận
+
+Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy
+không được ghi pass; mô phỏng viewport/CDP/Notification recorder không thay các bước này.
+
+| XP | Kiểm tra thật còn lại | Kết quả cần đạt |
+| --- | --- | --- |
+| 02, 03 | Gõ Telex/composition, giữ Enter, Shift+Enter, dán nhiều dòng; bật keyboard ảo và bàn phím vật lý, kèm reply + 2 ảnh | Không gửi trong composition/không gửi lặp; giữ chữ/reply/ảnh; ô soạn cuộn riêng, Send luôn dùng được |
+| 13, 49 | Chọn/copy một phần chữ, chạm menu/reaction, bỏ từng ảnh và sticker bằng một tay | Không mất vùng chọn, không mở nhầm thao tác hoặc chạm hai nút; giữ nội dung chưa gửi |
+| 20 | Cho phép/từ chối/thu hồi quyền native; nhận tin khi 2 tab ẩn, tắt preview, bấm popup và logout | Một popup, không lộ preview đã ẩn, mở đúng thread, hướng dẫn quyền rõ và dọn popup khi được API hỗ trợ |
+| 34 | Ảnh rất dọc/ngang, caption dài, album 10 ảnh; zoom/pan, xoay màn hình và đóng viewer | Không che Close; ảnh/điều khiển dự đoán được; trở về đúng ảnh mở, không cuộn nền ngoài ý muốn |
+| 46 | Mở/đóng keyboard khi đang đọc tin cũ; xoay ngang, co giãn thanh địa chỉ, text zoom, home indicator | Không che composer/Send; giữ hàng tin đang đọc và nháp; tránh notch/home indicator |
+| 51, 52 | Đi sidebar → gửi/reply/reaction/search/forward/voice seek bằng bàn phím; nghe VoiceOver/NVDA hoặc TalkBack | Không kẹt focus; tên/role/state đúng; thông báo tin mới một lần, không đọc lại lịch sử hoặc cướp focus |
+| 58 | Safari thật: mở built web online, lưu nháp, offline rồi reload; mở settings; online lại; cập nhật shell khi tab cũ còn mở | Nháp được hỗ trợ còn nguyên; media offline không giả phát; không ghép assets cũ/mới hoặc ngắt việc đang làm |
+| 60 | Hoàn tất các bước trên và ghi lỗi/retest, đối chiếu lại toàn bộ sổ XP | Chỉ đổi done cho từng XP khi mọi tiêu chí của chính XP đó có bằng chứng |
 
 ## Cập nhật 2026-10-26: WebKit toàn bộ, offline, Safari
 
@@ -270,16 +346,20 @@ Kịch bản: `e2e/interaction-baseline.spec.ts`. Chưa đo đủ panel/search/s
 
 ## Những phần chưa được nghiệm thu trọn vẹn
 
+Danh sách hiện hành lấy từ sổ XP; các kiểm chứng lịch sử phía trên không tự đổi trạng thái.
+Ngày 2026-11-05 chủ dự án xác nhận chưa có thiết bị thật để thử. XP-46 và XP-49 đã
+triển khai phần mềm, chuyển từ planned sang partial. Hiện còn **11 mục chưa done**:
+
 | Nhóm việc còn lại | XP |
 | --- | --- |
 | Composer/IME và tương tác menu/chọn văn bản trên thiết bị | 02, 03, 13 |
-| Ổn định đọc/cuộn và ma trận unread/quyền/notification | 17, 18, 20 |
-| Đồng nhất bookmark và viewer ảnh khó/touch/rotate | 29, 34 |
-| Account/autofill; mobile keyboard/safe area; Back; vùng chạm | 44, 46, 47, 49 |
-| Bàn phím xuyên suốt, công nghệ hỗ trợ, typography, bộ trạng thái UI | 51, 52, 53, 55 |
-| Offline toàn ma trận, vòng đời shell, performance và nghiệm thu thiết bị | 56, 58, 59, 60 |
+| Notification native và quyền trình duyệt trên thiết bị thật | 20 |
+| Viewer ảnh khó, touch và xoay màn hình | 34 |
+| Mobile keyboard/safe area và vùng chạm một tay | 46, 49 |
+| Bàn phím xuyên suốt và công nghệ hỗ trợ | 51, 52 |
+| Shell offline Safari và nghiệm thu tổng thể trên thiết bị thật | 58, 60 |
 
-Đây là **20 mục có cả công việc phần mềm và kiểm chứng**, không phải “chỉ còn deploy”.
+Các mục này có cả công việc phần mềm và kiểm chứng, không phải “chỉ còn deploy”.
 Đặc biệt chưa có bằng chứng iPhone/Android thật, OS IME, screen reader thật, native notification
 hoặc production tải thật. Chưa có dữ liệu người dùng/retention để kết luận product–market fit.
 

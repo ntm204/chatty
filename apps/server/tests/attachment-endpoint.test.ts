@@ -365,6 +365,7 @@ describe("POST /conversations/:id/messages with a file", () => {
 });
 
 describe("POST /conversations/:id/messages with voice", () => {
+	// Native FFmpeg startup can exceed five seconds on Windows; this is a correctness check.
 	it("normalizes a recording to AAC/MP4 with duration and waveform metadata", async () => {
 		const { token, conversationId } = await makeSender();
 		const body = new FormData();
@@ -387,7 +388,7 @@ describe("POST /conversations/:id/messages with voice", () => {
 		expect(ranged.status).toBe(206);
 		expect(ranged.headers.get("content-type")).toBe("audio/mp4");
 		expect(ranged.headers.get("content-disposition")).toContain("inline");
-	});
+	}, 15_000);
 
 	it("refuses audio whose decoded duration exceeds the server tolerance", async () => {
 		const { token, conversationId } = await makeSender();

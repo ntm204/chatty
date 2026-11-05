@@ -1,13 +1,14 @@
-import { GlobalMessageSearch } from "../components/global-message-search";
+import { ChatOverlays } from "../components/chat-overlays";
 import type { ConversationDTO } from "@chatty/shared-types";
 import { useCallback, useRef, useState } from "react";
 import { useGlobalSearchSession } from "../hooks/use-global-search-session";
 import { useConversationRoute } from "../hooks/use-conversation-route";
 import { useChatLayers } from "../hooks/use-chat-layers";
+import { useChatViewport } from "../hooks/use-chat-viewport";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
-import { ConnectionBanner, ChatConversationPane, ConversationSidebar, KeyboardShortcutsPanel } from "../components";
+import { ChatConversationPane, ConversationSidebar } from "../components";
 import {
 	useBlockedUsersSync,
 	useConversationList,
@@ -28,6 +29,8 @@ import {
 import { findFirstUnreadConversation, getTotalUnreadCount } from "../utils";
 
 export function ChatPage() {
+	const shellRef = useRef<HTMLDivElement>(null);
+	useChatViewport(shellRef);
 	const currentUser = useAuth((state) => state.currentUser);
 	const logout = useAuth((state) => state.logout);
 
@@ -146,25 +149,20 @@ export function ChatPage() {
 	if (!currentUser) return null;
 
 	return (
-		<div className="chat-shell relative flex h-dvh flex-col overflow-hidden bg-paper">
-			{globalSearch.isOpen && (
-				<GlobalMessageSearch
-					search={globalSearch.search}
-					scrollPosition={globalSearch.scrollPosition}
-					currentUserId={currentUser.id}
-					onClose={globalSearch.close}
-					onSelectMessage={(conversation, messageId) => {
-						handleConversationStarted(conversation.id, conversation);
-						setRequestedMessageId(messageId);
-						globalSearch.selectConversation(conversation.id);
-						globalSearch.close();
-					}}
-				/>
-			)}
-			{layers.isShortcutHelpOpen && (
-				<KeyboardShortcutsPanel onClose={() => layers.setIsShortcutHelpOpen(false)} />
-			)}
-			{isConnectionLost && <ConnectionBanner />}
+		<div ref={shellRef} className="chat-shell relative flex h-dvh flex-col overflow-hidden bg-paper">
+			<ChatOverlays
+				globalSearch={globalSearch}
+				currentUserId={currentUser.id}
+				isShortcutHelpOpen={layers.isShortcutHelpOpen}
+				isConnectionLost={isConnectionLost}
+				onCloseShortcutHelp={() => layers.setIsShortcutHelpOpen(false)}
+				onSelectMessage={(conversation, messageId) => {
+					handleConversationStarted(conversation.id, conversation);
+					setRequestedMessageId(messageId);
+					globalSearch.selectConversation(conversation.id);
+					globalSearch.close();
+				}}
+			/>
 
 			<div className="chat-workspace flex min-h-0 flex-1 lg:gap-3 lg:p-3">
 				<ConversationSidebar
@@ -177,6 +175,7 @@ export function ChatPage() {
 					onConversationStarted={handleConversationStarted}
 					onSignOut={logout}
 					onOpenMessageSearch={globalSearch.open}
+					onShowKeyboardShortcuts={() => layers.setIsShortcutHelpOpen(true)}
 					onOpenBookmarkedMessage={(conversation, messageId) => {
 						handleConversationStarted(conversation.id, conversation);
 						setRequestedMessageId(messageId);

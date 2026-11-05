@@ -3,9 +3,10 @@ import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { io as connect, type Socket } from "socket.io-client";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
+import { env } from "../src/config/env.js";
 import { prisma } from "../src/lib/prisma.js";
-import { register } from "../src/modules/auth/auth.service.js";
 import { blockUser } from "../src/modules/blocks/blocks.service.js";
 import { createConversation } from "../src/modules/conversations/conversations.service.js";
 import { initSockets } from "../src/sockets/index.js";
@@ -46,12 +47,18 @@ afterAll(() => {
 });
 
 async function createUser(name: string): Promise<{ id: string; token: string }> {
-	const { user, token } = await register({
-		email: `${name}@chatty.test`,
-		password: "SuperSecret123",
-		handle: `${name}_test`,
-		displayName: name,
+	// These cases exercise authenticated sockets, not password hashing. Keep
+	// fixture setup out of the event-observation budget on slower machines.
+	const user = await prisma.user.create({
+		data: {
+			email: `${name}@chatty.test`,
+			passwordHash: "not-a-real-hash",
+			handle: `${name}_test`,
+			displayName: name,
+		},
+		select: { id: true },
 	});
+	const token = jwt.sign({ sub: user.id }, env.JWT_SECRET, { expiresIn: "15m" });
 
 	return { id: user.id, token };
 }

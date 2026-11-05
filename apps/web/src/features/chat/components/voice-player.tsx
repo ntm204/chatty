@@ -2,6 +2,7 @@ import { OFFLINE_BINARY_URL } from "@/constants/offline-media";
 import { api } from "@/api/client";
 import type { AttachmentDTO, ConversationTheme } from "@chatty/shared-types";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { getConversationThemeClasses } from "../constants/conversation-theme";
@@ -18,6 +19,7 @@ interface VoicePlayerProps {
 }
 
 export function VoicePlayer({ attachment, isMine = false, themeColor = null, className }: VoicePlayerProps) {
+	const rootRef = useRef<HTMLDivElement>(null);
 	const theme = getConversationThemeClasses(themeColor);
 	const isOffline = attachment.url === OFFLINE_BINARY_URL;
 	const {
@@ -39,9 +41,18 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 	const playedFraction = durationMs > 0 ? Math.min(1, elapsedMs / durationMs) : 0;
 	const elapsedLabel = formatDuration(Math.min(elapsedMs, durationMs));
 	const durationLabel = formatDuration(durationMs);
+	useEffect(() => {
+		const speedControl = rootRef.current?.querySelector<HTMLButtonElement>("[data-playback-speed]");
+		// Playback may end while the speed button owns keyboard focus. Keep that
+		// focus in the player rather than on a control hidden from assistive technology.
+		if (!isPlaying && speedControl && document.activeElement === speedControl) {
+			rootRef.current?.querySelector<HTMLButtonElement>("[data-playback-toggle]")?.focus({ preventScroll: true });
+		}
+	}, [isPlaying]);
 
 	return (
 		<div
+			ref={rootRef}
 			role="group"
 			aria-label="Voice message"
 			className={cn(
@@ -53,6 +64,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 			<audio ref={audioRef} src={isOffline ? undefined : attachment.url} preload="none" />
 			<div className="flex items-center gap-2">
 				<Button
+					data-playback-toggle
 					variant="ghost"
 					onClick={() => void togglePlayback()}
 					disabled={isOffline}
@@ -127,6 +139,7 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 						{elapsedMs > 0 ? formatDuration(Math.max(0, durationMs - elapsedMs)) : durationLabel}
 					</span>
 					<Button
+						data-playback-speed
 						variant="ghost"
 						onClick={cyclePlaybackRate}
 						aria-label="Change playback speed"

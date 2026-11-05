@@ -60,7 +60,7 @@ export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 			aria-label="React to message"
 			className={cn(
 				anchor,
-				"flex items-center gap-0.5 rounded-full border border-rule bg-paper-raised p-1 shadow-lift",
+				"reaction-bar flex items-center gap-0.5 rounded-full border border-rule bg-paper-raised p-1 shadow-lift",
 			)}
 		>
 			{QUICK_REACTIONS.map((emoji) => {

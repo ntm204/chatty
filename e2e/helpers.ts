@@ -45,6 +45,7 @@ export function makeUser(name: string): TestUser {
 
 /** Registers through the form and waits until the chat screen is up. */
 export async function register(page: Page, user: TestUser): Promise<void> {
+	await page.bringToFront();
 	await page.goto("/login");
 	const createAccount = page.getByRole("button", { name: "No account? Create one" });
 	const skipIntro = page.getByRole("button", { name: "Skip intro" });
@@ -53,7 +54,9 @@ export async function register(page: Page, user: TestUser): Promise<void> {
 	await expect(skipIntro.or(createAccount).first()).toBeVisible();
 	// Dispatched rather than clicked: the curtain keeps moving, and WebKit's
 	// "element is stable" wait could outlast the test before the click landed.
-	if (await skipIntro.isVisible()) await skipIntro.dispatchEvent("click");
+	// The intro can finish between a visibility check and a locator action,
+	// especially on WebKit. Resolve and skip atomically; a finished intro is fine.
+	await skipIntro.evaluateAll((buttons) => (buttons[0] as HTMLButtonElement | undefined)?.click());
 	await createAccount.click();
 
 	await page.getByLabel("Display name").fill(user.displayName);

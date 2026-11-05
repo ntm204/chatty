@@ -21,11 +21,14 @@ interface NotificationSettingState {
 	/** The stored preference. True does not on its own mean a notification will appear. */
 	isEnabled: boolean;
 	permission: NotificationPermissionState;
+	isEnabling: boolean;
+	error: string;
 	/** Whether a desktop popup may include the sender and message text. */
 	isMessagePreviewEnabled: boolean;
 	/** Asks the browser if it has to, then stores the preference if it was granted. */
 	enable: () => Promise<void>;
 	disable: () => void;
+	refreshPermission: () => void;
 	setMessagePreviewEnabled: (isEnabled: boolean) => void;
 }
 
@@ -45,17 +48,20 @@ function readPermission(): NotificationPermissionState {
 	return typeof Notification === "undefined" ? "unsupported" : Notification.permission;
 }
 
-export const useNotificationSetting = create<NotificationSettingState>((set) => ({
+export const useNotificationSetting = create<NotificationSettingState>((set, get) => ({
 	// Read once at module load. The preference only changes through this store,
-	// so there is nothing to re-read; the permission is refreshed on every
-	// `enable`, which is the only moment it can change from inside this app.
+	// so there is nothing to re-read. Permission is refreshed when settings open
+	// or regain focus because the browser can change it outside the app.
 	isEnabled: readStoredBoolean(NOTIFICATIONS_STORAGE_KEY, false),
 	permission: readPermission(),
+	isEnabling: false,
+	error: "",
 	// Existing readers already receive message text today. Defaulting to true
 	// preserves that choice until they explicitly turn previews off.
 	isMessagePreviewEnabled: readStoredBoolean(NOTIFICATION_MESSAGE_PREVIEW_STORAGE_KEY, true),
 
 	async enable() {
+		if (get().isEnabling) return;
 		if (typeof Notification === "undefined") {
 			set({ permission: "unsupported" });
 
@@ -64,7 +70,19 @@ export const useNotificationSetting = create<NotificationSettingState>((set) => 
 
 		// `requestPermission` resolves immediately with the existing answer when
 		// one has already been given, so this needs no branch of its own.
-		const permission = await Notification.requestPermission();
+		set({ isEnabling: true, error: "" });
+		let permission: NotificationPermission;
+		try {
+			permission = await Notification.requestPermission();
+		} catch {
+			set({
+				permission: readPermission(),
+				isEnabling: false,
+				error: "Could not request notifications. Check your browser’s site settings and try again.",
+			});
+
+			return;
+		}
 		// Stored only when it will actually do something. Writing `true` against a
 		// denied permission produces a switch that is on and silent, which is worse
 		// than one that refused to move.
@@ -77,7 +95,7 @@ export const useNotificationSetting = create<NotificationSettingState>((set) => 
 			// still work for the rest of it.
 		}
 
-		set({ permission, isEnabled });
+		set({ permission, isEnabled, isEnabling: false });
 	},
 
 	disable() {
@@ -87,7 +105,11 @@ export const useNotificationSetting = create<NotificationSettingState>((set) => 
 			// As above — the setting applies now and may not survive a reload.
 		}
 
-		set({ isEnabled: false });
+		set({ isEnabled: false, error: "" });
+	},
+
+	refreshPermission() {
+		set({ permission: readPermission() });
 	},
 
 	setMessagePreviewEnabled(isEnabled) {

@@ -1,6 +1,7 @@
 import type { AttachmentDTO } from "@chatty/shared-types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useBackDismiss } from "@/hooks/use-back-dismiss";
 import { useDialog } from "@/hooks/use-dialog";
 import { Button } from "@/components/button";
@@ -152,7 +153,8 @@ export function AttachmentLightbox({
 		}
 	}
 
-	return (
+	// Message rows can create stacking contexts; the viewer must cover the composer too.
+	return createPortal(
 		<div
 			ref={dialogRef}
 			tabIndex={-1}
@@ -167,7 +169,7 @@ export function AttachmentLightbox({
 					onClick={(event) => event.stopPropagation()}
 					className="mx-auto flex w-full max-w-2xl shrink-0 flex-col items-center gap-1 px-2 text-center"
 				>
-					<p className="max-h-20 overflow-y-auto whitespace-pre-wrap text-center text-sm/[1.55] text-on-media/85">
+					<p className="max-h-20 max-w-full overflow-y-auto whitespace-pre-wrap break-words text-center text-sm/[1.55] text-on-media/85">
 						{caption}
 					</p>
 				</div>
@@ -291,6 +293,7 @@ export function AttachmentLightbox({
 					<AttachmentLightboxThumbnails attachments={attachments} activeIndex={index} onSelect={setIndex} />
 				)}
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }

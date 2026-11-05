@@ -15,8 +15,10 @@ live vault/bookmark updates, authorized media recovery, group permissions and ve
 Current results, known gaps and the distinction between automated and physical-device checks live in
 [one acceptance report](docs/plans/acceptance-2026-09-25.md); do not infer readiness from historical phase counts.
 
-The XP ledger records **41 of 60 items accepted locally** (10 partial, 9 planned).
+The XP ledger records **49 of 60 items accepted locally** (11 partial, 0 planned).
 Physical-device acceptance and public deployment remain separate.
+Run `node scripts/check-experience-progress.mjs --json` for the current counts and
+remaining IDs; the command fails if this summary disagrees with the ledger.
 
 Chat and settings load on demand; offline caching still includes their chunks. Sidebar startup
 reads cache and fetches fresh data concurrently, without allowing late cache to overwrite the server.
@@ -175,6 +177,23 @@ npm run format          # rewrites, rather than just reporting
 
 The server test setup creates its disposable `chatty_test` database automatically on the local
 Postgres instance. A fresh clone therefore needs no database command between `db:up` and either gate.
+
+On Windows, the development bind mount can make PostgreSQL test cleanup slow. An optional,
+separate test instance keeps disposable data and WAL in a bounded 256 MB RAM filesystem,
+with no change to development data. Stopping/recreating it discards only test fixtures:
+
+```powershell
+docker compose -f docker-compose.test.yml up -d --wait
+$env:CHATTY_TEST_POSTGRES_PORT = "5433"
+$env:VITEST_MAX_WORKERS = "1"
+npm run verify:full
+npx playwright test --config playwright.webkit.config.ts --timeout=90000
+```
+
+The override selects IPv4 loopback and the test port; database names remain fixed to `chatty_test` and `chatty_e2e`.
+The default remains 5432 when the variable is unset. `--timeout=90000` allows a complete
+browser scenario more time on slower Windows/WebKit runs; assertions and zero retries stay unchanged.
+Stop this optional instance with `docker compose -f docker-compose.test.yml down`.
 
 `verify` keeps whole-project type safety but reuses TypeScript/ESLint/Prettier caches and lets Vitest
 follow the changed import graph. Schema, migration, package, config and global-test-setup changes

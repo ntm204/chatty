@@ -38,7 +38,17 @@ export function ComposerAttachmentMenu({
 		}
 
 		function handleKeyDown(event: KeyboardEvent): void {
+			if (
+				event.defaultPrevented ||
+				event.isComposing ||
+				event.keyCode === 229 ||
+				!rootRef.current?.contains(document.activeElement)
+			) {
+				return;
+			}
 			if (event.key === "Escape") {
+				event.preventDefault();
+				event.stopPropagation();
 				setIsOpen(false);
 				rootRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup='menu']")?.focus();
 
@@ -56,12 +66,12 @@ export function ComposerAttachmentMenu({
 		}
 
 		document.addEventListener("pointerdown", handlePointerDown);
-		document.addEventListener("keydown", handleKeyDown);
+		document.addEventListener("keydown", handleKeyDown, true);
 
 		return () => {
 			window.cancelAnimationFrame(focusFrame);
 			document.removeEventListener("pointerdown", handlePointerDown);
-			document.removeEventListener("keydown", handleKeyDown);
+			document.removeEventListener("keydown", handleKeyDown, true);
 		};
 	}, [isOpen]);
 

@@ -92,6 +92,12 @@ and retries failed drafts on reconnect. Signed media URLs are replaced by inert 
 the snapshot because they expire; the online refresh mints fresh ones. See
 [ADR 0017](adr/0017-durable-local-message-outbox.md).
 
+Rendered rows keep their UI identity when an own draft is acknowledged with a server ID.
+A render-scoped alias map retains that key even when later history/update DTOs omit `clientId`,
+and drops aliases for rows outside the rendered window. DOM IDs and API IDs still use the
+server message ID. This keeps an open gallery on its selected image through upload confirmation.
+The viewer is portalled above the thread/composer; touch events from it do not focus the row below.
+
 Large JSON responses are compressed above 1KB. WebSocket compression is deliberately off: its frames
 are already deltas and Socket.IO documents substantial CPU/memory overhead for `permessage-deflate`.
 Binary encoding remains a measured future optimisation, not a default complexity cost.

@@ -35,6 +35,23 @@ it("only exposes speed while playing and keeps duration available initially", ()
 	rerender(<VoicePlayer attachment={attachment} />);
 	expect(screen.queryByRole("button", { name: "Change playback speed" })).toBeNull();
 });
+it("returns focused speed to playback when audio stops without stealing unrelated focus", () => {
+	state.isPlaying = true;
+	const attachment = makeAttachment();
+	const { rerender } = render(<VoicePlayer attachment={attachment} />);
+	screen.getByRole("button", { name: "Change playback speed" }).focus();
+	state.isPlaying = false;
+	rerender(<VoicePlayer attachment={attachment} />);
+	expect(screen.getByRole("button", { name: "Play voice message" })).toHaveFocus();
+
+	state.isPlaying = true;
+	rerender(<VoicePlayer attachment={attachment} />);
+	const slider = screen.getByRole("slider", { name: "Seek voice message" });
+	slider.focus();
+	state.isPlaying = false;
+	rerender(<VoicePlayer attachment={attachment} />);
+	expect(slider).toHaveFocus();
+});
 it.each([1, 1.25, 1.5, 1.75, 2])("aligns equal-width bars to physical pixels at scale %s", (ratio) => {
 	vi.spyOn(window, "devicePixelRatio", "get").mockReturnValue(ratio);
 	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ left: 10.3, width: 143.5 } as DOMRect);

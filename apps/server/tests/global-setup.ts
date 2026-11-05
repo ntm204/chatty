@@ -22,9 +22,12 @@ const TEST_RUN_LOCK_KEY = 4_070_120_250_811n;
  * gap without adding a manual step to every contributor's first test run.
  */
 async function ensureTestDatabase(): Promise<void> {
+	const adminUrl = new URL(TEST_DATABASE_URL);
+	adminUrl.pathname = "/postgres";
+	adminUrl.searchParams.set("connection_limit", "1");
 	const adminClient = new PrismaClient({
 		datasources: {
-			db: { url: "postgresql://chatty:chatty@localhost:5432/postgres?connection_limit=1" },
+			db: { url: adminUrl.toString() },
 		},
 	});
 

@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 import { makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
 
 test("records a repeatable interaction baseline and preserves mixed image choices", async ({ browser }, testInfo) => {
-	test.setTimeout(60_000);
+	// The 200 real HTTP writes are fixture work, not the measured interaction's latency budget.
+	test.setTimeout(120_000);
 	const context = await browser.newContext({ viewport: { width: 1280, height: 760 }, reducedMotion: "reduce" });
 	const peerContext = await browser.newContext({ reducedMotion: "reduce" });
 	try {
@@ -20,15 +21,21 @@ test("records a repeatable interaction baseline and preserves mixed image choice
 			};
 			const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
 			const id = conversations.items[0].id;
-			for (let index = 0; index < 200; index++) {
-				const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
-					method: "POST",
-					headers,
-					body: JSON.stringify({
-						content: `Baseline ${index}: tiếng Việt có dấu, emoji 🙂 and https://example.com/a-long-readable-path`,
+			// Keep all 200 real HTTP writes, but overlap small batches of fixture work.
+			for (let offset = 0; offset < 200; offset += 4) {
+				await Promise.all(
+					Array.from({ length: 4 }, async (_, batchIndex) => {
+						const index = offset + batchIndex;
+						const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
+							method: "POST",
+							headers,
+							body: JSON.stringify({
+								content: `Baseline ${index}: tiếng Việt có dấu, emoji 🙂 and https://example.com/a-long-readable-path`,
+							}),
+						});
+						if (!response.ok) throw new Error("Baseline seeding failed");
 					}),
-				});
-				if (!response.ok) throw new Error("Baseline seeding failed");
+				);
 			}
 		});
 		await page.reload();
