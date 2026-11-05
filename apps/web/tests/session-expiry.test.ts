@@ -121,3 +121,57 @@ describe("other failures", () => {
 		expect(wasSessionExpired()).toBe(false);
 	});
 });
+
+describe("a 401 whose renewal cannot be confirmed", () => {
+	function expiredThenRefresh(refresh: () => Promise<unknown>) {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((url: string) =>
+				url.endsWith("/auth/refresh")
+					? refresh()
+					: Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }),
+			),
+		);
+	}
+
+	it("keeps the session when the refresh never reaches the server", async () => {
+		expiredThenRefresh(() => Promise.reject(new TypeError("offline")));
+
+		await expect(api.listConversations()).rejects.toBeInstanceOf(NetworkUnavailableError);
+		expect(onSessionExpired).not.toHaveBeenCalled();
+		expect(wasSessionExpired()).toBe(false);
+	});
+
+	it("keeps the session when the auth server answers with a 5xx", async () => {
+		expiredThenRefresh(() => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) }));
+
+		await expect(api.listConversations()).rejects.toBeInstanceOf(NetworkUnavailableError);
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+
+	it("retries the request with the renewed token", async () => {
+		let calls = 0;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((url: string) => {
+				if (url.endsWith("/auth/refresh")) {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({ token: "renewed" }),
+					});
+				}
+				calls += 1;
+
+				return Promise.resolve(
+					calls === 1
+						? { ok: false, status: 401, json: () => Promise.resolve({}) }
+						: { ok: true, status: 200, json: () => Promise.resolve({ items: [], nextCursor: null }) },
+				);
+			}),
+		);
+
+		await expect(api.listConversations()).resolves.toBeDefined();
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+});

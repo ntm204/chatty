@@ -138,31 +138,50 @@ export function wasSessionExpired(): boolean {
  * one success and four "invalid session" errors, and the client would sign
  * itself out at the exact moment it had just successfully renewed.
  */
-let refreshInFlight: Promise<boolean> | null = null;
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
-async function performRefresh(): Promise<boolean> {
+/**
+ * Only `rejected` means the session is over. A refresh that never got an answer,
+ * or got a 5xx, says nothing about the session: ending it there would sign people
+ * out (and clear their unsent messages) every time a train went into a tunnel.
+ */
+type RefreshOutcome = "renewed" | "rejected" | "unreachable";
+
+async function performRefresh(): Promise<RefreshOutcome> {
+	let response: Response;
 	try {
-		const response = await fetch(`${API_URL}/auth/refresh`, {
+		response = await fetch(`${API_URL}/auth/refresh`, {
 			method: "POST",
 			// The credential: the refresh-token cookie set by the last login or
-			// refresh. There is no body any more — a stolen response could once be
-			// replayed by reading it out of client-side storage, and a cookie this
-			// module cannot read is not something it can leak by accident either.
+			// refresh. There is no body — a cookie this module cannot read is not
+			// something it can leak by accident either.
 			credentials: "include",
 		});
+	} catch {
+		return "unreachable";
+	}
 
-		if (!response.ok) return false;
+	if (response.status >= 500) return "unreachable";
+	if (!response.ok) return "rejected";
 
+	try {
 		const session = (await response.json()) as RefreshTokenResponse;
 		storeSession(session.token);
 
-		return true;
+		return "renewed";
 	} catch {
-		// A network failure is not an expired session, and treating it as one
-		// would sign people out every time their train went into a tunnel. The
-		// caller reports the original request's failure instead.
-		return false;
+		// A 2xx that is not our JSON came from something in between (a captive
+		// portal, a proxy), not from the auth server deciding anything.
+		return "unreachable";
 	}
+}
+
+function refreshSession(): Promise<RefreshOutcome> {
+	refreshInFlight ??= performRefresh().finally(() => {
+		refreshInFlight = null;
+	});
+
+	return refreshInFlight;
 }
 
 /**
@@ -172,13 +191,26 @@ async function performRefresh(): Promise<boolean> {
  * because the access token expired has no HTTP request to piggyback on, so it
  * asks for the renewal itself.
  */
-export function ensureFreshSession(): Promise<boolean> {
-	refreshInFlight ??= performRefresh().finally(() => {
-		refreshInFlight = null;
-	});
-
-	return refreshInFlight;
+export async function ensureFreshSession(): Promise<boolean> {
+	return (await refreshSession()) === "renewed";
 }
+
+/**
+ * Settles a 401 that is not a credential check: renew and let the caller retry,
+ * end the session only when the server refused the renewal, and otherwise
+ * report the outage without touching the session.
+ */
+async function recoverFromUnauthorized(path: string, method: string): Promise<void> {
+	const outcome = await refreshSession();
+	if (outcome === "renewed") return;
+	if (outcome === "unreachable") throw new NetworkUnavailableError(SERVER_UNREACHABLE_MESSAGE);
+
+	reportUnauthorized(path, method);
+	throw new Error(SESSION_ENDED_MESSAGE);
+}
+
+const SERVER_UNREACHABLE_MESSAGE = "Couldn't reach Chatty. Check your connection and try again.";
+const SESSION_ENDED_MESSAGE = "Your session has ended. Sign in again.";
 
 /**
  * Thin fetch wrapper: attaches the base URL and Authorization header, and
@@ -221,7 +253,9 @@ async function request<T>(path: string, options: RequestInit = {}, hasRetried = 
 		if (response.status === 401 && !hasRetried && !isCredentialFailure(path, method)) {
 			// The ordinary case now that access tokens last minutes: renew and go
 			// again, so an expiry is invisible rather than an error on screen.
-			if (await ensureFreshSession()) return request<T>(path, options, true);
+			await recoverFromUnauthorized(path, method);
+
+			return request<T>(path, options, true);
 		}
 
 		if (response.status === 401) reportUnauthorized(path, method);
@@ -254,33 +288,85 @@ const FILE_FIELD = "file";
 const VOICE_FIELD = "voice";
 const STICKER_FIELD = "sticker";
 
+/** No upload or response bytes for this long means the connection has stalled. */
+const UPLOAD_STALL_MS = 60_000;
+
+function parseJson<T>(text: string): T | null {
+	try {
+		return JSON.parse(text) as T;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Multipart sends go through XHR because `fetch` cannot report upload progress.
+ * That puts them outside `request()`, so this repeats its contract: a 401 renews
+ * the session once and resends the same body (same `clientId`, so the server
+ * deduplicates), and every outcome — including a proxy's HTML error page or a
+ * connection that stops moving — settles the promise, so the composer can never
+ * be left pending.
+ */
 function uploadMessage(
 	conversationId: string,
 	body: FormData,
 	onProgress: ((percent: number) => void) | undefined,
 	interruptedMessage: string,
+	hasRetried = false,
 ): Promise<MessageDTO> {
 	const path = `/conversations/${conversationId}/messages`;
 
 	return new Promise<MessageDTO>((resolve, reject) => {
 		const upload = new XMLHttpRequest();
+		let stallTimer: ReturnType<typeof setTimeout> | undefined;
+		const armStallTimer = () => {
+			clearTimeout(stallTimer);
+			stallTimer = setTimeout(() => upload.abort(), UPLOAD_STALL_MS);
+		};
+		const fail = (error: Error) => {
+			clearTimeout(stallTimer);
+			reject(error);
+		};
+
 		upload.open("POST", `${API_URL}${path}`);
 		const token = getStoredToken();
 		if (token) upload.setRequestHeader("Authorization", `Bearer ${token}`);
 		upload.upload.addEventListener("progress", (event) => {
+			armStallTimer();
 			if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
 		});
+		upload.upload.addEventListener("load", () => onProgress?.(100));
+		upload.addEventListener("progress", armStallTimer);
 		upload.addEventListener("load", () => {
+			clearTimeout(stallTimer);
+			const payload = parseJson<MessageDTO & { message?: string }>(upload.responseText || "{}");
+
 			if (upload.status >= 200 && upload.status < 300) {
-				resolve(JSON.parse(upload.responseText) as MessageDTO);
+				if (payload?.id) resolve(payload);
+				else fail(new NetworkUnavailableError(interruptedMessage));
 
 				return;
 			}
+
+			if (upload.status === 401 && !hasRetried) {
+				recoverFromUnauthorized(path, "POST")
+					.then(() => uploadMessage(conversationId, body, onProgress, interruptedMessage, true))
+					.then(resolve, reject);
+
+				return;
+			}
+
 			if (upload.status === 401) reportUnauthorized(path, "POST");
-			const errorBody = JSON.parse(upload.responseText || "{}") as { message?: string };
-			reject(new Error(errorBody.message ?? `Request to ${path} failed with ${upload.status}`));
+			if (upload.status >= 500 && !payload?.message) {
+				fail(new NetworkUnavailableError(SERVER_UNREACHABLE_MESSAGE));
+
+				return;
+			}
+			fail(new Error(payload?.message ?? `Request to ${path} failed with ${upload.status}`));
 		});
-		upload.addEventListener("error", () => reject(new NetworkUnavailableError(interruptedMessage)));
+		upload.addEventListener("error", () => fail(new NetworkUnavailableError(interruptedMessage)));
+		upload.addEventListener("abort", () => fail(new NetworkUnavailableError(interruptedMessage)));
+		armStallTimer();
 		upload.send(body);
 	});
 }
@@ -599,35 +685,7 @@ export const api = {
 		if (mentionedUserIds.length > 0) body.append("mentionedUserIds", JSON.stringify(mentionedUserIds));
 		if (clientId) body.append("clientId", clientId);
 
-		return new Promise<MessageDTO>((resolve, reject) => {
-			const upload = new XMLHttpRequest();
-			upload.open("POST", `${API_URL}${path}`);
-			upload.upload.addEventListener("progress", (event) => {
-				if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
-			});
-			upload.upload.addEventListener("load", () => onProgress?.(100));
-			const token = getStoredToken();
-
-			if (token) upload.setRequestHeader("Authorization", `Bearer ${token}`);
-			upload.addEventListener("load", () => {
-				if (upload.status >= 200 && upload.status < 300) {
-					resolve(JSON.parse(upload.responseText) as MessageDTO);
-
-					return;
-				}
-
-				// The one request that does not go through `request()` still has to
-				// report a dead session, or an expired token during an image send
-				// would strand the user on a composer that only ever errors.
-				if (upload.status === 401) reportUnauthorized(path, "POST");
-				const errorBody = JSON.parse(upload.responseText || "{}") as { message?: string };
-				reject(new Error(errorBody.message ?? `Request to ${path} failed with ${upload.status}`));
-			});
-			upload.addEventListener("error", () =>
-				reject(new NetworkUnavailableError("The image upload was interrupted")),
-			);
-			upload.send(body);
-		});
+		return uploadMessage(conversationId, body, onProgress, "The image upload was interrupted");
 	},
 
 	sendFile(
