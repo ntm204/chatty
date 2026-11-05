@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/button";
+import { useDialog } from "@/hooks/use-dialog";
 import { KEYBOARD_SHORTCUTS } from "../constants/keyboard-shortcuts";
 
 interface KeyboardShortcutsPanelProps {
@@ -7,8 +8,12 @@ interface KeyboardShortcutsPanelProps {
 }
 
 export function KeyboardShortcutsPanel({ onClose }: KeyboardShortcutsPanelProps) {
+	const dialogRef = useDialog<HTMLDivElement>(onClose);
+
 	return (
 		<div
+			ref={dialogRef}
+			tabIndex={-1}
 			className="absolute inset-0 z-50 flex items-center justify-center bg-scrim/20 p-4 dark:bg-scrim/50"
 			role="dialog"
 			aria-modal="true"

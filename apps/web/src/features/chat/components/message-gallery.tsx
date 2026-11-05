@@ -1,6 +1,6 @@
 import type { AttachmentDTO } from "@chatty/shared-types";
 import { Layers } from "lucide-react";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import {
@@ -51,6 +51,12 @@ export function MessageGallery({
 	const isAlbum = attachments.length > 1;
 	const behind = attachments.slice(1, 1 + ALBUM_CARDS_BEHIND);
 
+	function openViewer(event: MouseEvent<HTMLButtonElement>): void {
+		// Safari does not focus clicked buttons; the dialog needs its real opener.
+		event.currentTarget.focus({ preventScroll: true });
+		setOpenIndex(0);
+	}
+
 	return (
 		<>
 			{isAlbum ? (
@@ -89,7 +95,7 @@ export function MessageGallery({
 
 					<Button
 						variant="ghost"
-						onClick={() => setOpenIndex(0)}
+						onClick={openViewer}
 						aria-label={`Open album of ${attachments.length} images${caption ? " and its caption" : ""}`}
 						className={cn(
 							"absolute block cursor-zoom-in overflow-hidden rounded-media p-0 hover:bg-transparent",
@@ -130,7 +136,7 @@ export function MessageGallery({
 				<div className="relative max-w-full overflow-hidden rounded-media" style={{ width: size.width }}>
 					<Button
 						variant="ghost"
-						onClick={() => setOpenIndex(0)}
+						onClick={openViewer}
 						aria-label={caption ? `Open image and caption: ${caption}` : "Open image"}
 						className={cn(
 							"relative block max-w-full cursor-zoom-in overflow-hidden rounded-media p-0 hover:bg-transparent",

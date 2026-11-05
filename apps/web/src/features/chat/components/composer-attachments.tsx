@@ -20,7 +20,7 @@ interface ComposerAttachmentsProps {
  */
 export function ComposerAttachments({ previewUrls, onRemove }: ComposerAttachmentsProps) {
 	return (
-		<div className="flex gap-2 overflow-x-auto px-4 pb-1 pt-4">
+		<div className="composer-attachments flex gap-2 overflow-x-auto px-4 pb-1 pt-4">
 			{previewUrls.map((previewUrl, index) => (
 				// Keyed by the URL: object URLs are unique per file, and the index
 				// would re-key every thumbnail after the one that was removed.

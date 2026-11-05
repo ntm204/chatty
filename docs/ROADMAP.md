@@ -3938,3 +3938,27 @@ Pinned DTOs include message details for signed attachment previews and sender id
 are secondary to media type; text edits update the pin preview and deleted messages leave the list.
 Original messages have a small Pinned marker; list rows include unpin with pending/error feedback.
 The existing three-pin limit is unchanged.
+## Local acceptance follow-up — 2026-11-05
+
+The remaining experience work fixes mobile VisualViewport sizing, safe-area padding and text-input
+zoom, independent coarse-pointer targets for composer/menu/reaction controls, and a reaction bar
+that wraps within a 320px viewport while desktop keeps its compact layout.
+
+An image viewer now escapes message stacking contexts and returns focus to its actual opener on
+Safari. Message rows keep their React identity across optimistic upload acknowledgement and later
+history DTOs without clientId, so the viewer and selected image survive the server ID change.
+Aliases are bounded to the rendered rows; DOM/API IDs and authorization rules are unchanged.
+
+Attachment menus ignore composition and keys outside their focus scope. Shortcut help has a
+sidebar entry and the shared dialog lifecycle. Voice playback returns focus from the speed control
+when the clip ends. Notification settings refresh browser permission and expose retryable prompt
+errors instead of leaving an unhandled rejection.
+
+The optional test PostgreSQL stack uses a separate loopback port and bounded disposable RAM storage;
+fixed test database names and existing reset guards remain. AGENTS.md points agents to the XP ledger
+and a small progress checker that detects README count drift. No extra skill or production service
+is required for those rules.
+
+Current commands, evidence and limits are in [the acceptance report](plans/acceptance-2026-09-25.md).
+Only [the XP ledger](plans/experience-polish.md) determines completion: automated browser emulation
+cannot close the physical-device, native notification, IME or screen reader requirements.

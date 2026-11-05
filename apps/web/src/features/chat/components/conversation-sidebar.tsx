@@ -1,6 +1,6 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { Archive, ArrowLeft, LogOut, Settings } from "lucide-react";
+import { Archive, ArrowLeft, Keyboard, LogOut, Settings } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -22,6 +22,7 @@ interface ConversationSidebarProps {
 	onConversationStarted: (conversationId: string, conversation?: ConversationDTO) => void;
 	onSignOut: () => void;
 	onOpenMessageSearch: () => void;
+	onShowKeyboardShortcuts?: () => void;
 	onOpenBookmarkedMessage: (conversation: ConversationDTO, messageId: string) => void;
 	isShowingArchived: boolean;
 	onToggleArchived: () => void;
@@ -47,6 +48,7 @@ export function ConversationSidebar({
 	onConversationStarted,
 	onSignOut,
 	onOpenMessageSearch,
+	onShowKeyboardShortcuts,
 	onOpenBookmarkedMessage,
 	isShowingArchived,
 	onToggleArchived,
@@ -134,6 +136,17 @@ export function ConversationSidebar({
 					<p className="meta truncate text-ink-faint">@{currentUser.handle}</p>
 				</div>
 
+				{onShowKeyboardShortcuts && (
+					<Button
+						variant="ghost"
+						onClick={onShowKeyboardShortcuts}
+						aria-label="Keyboard shortcuts"
+						title="Keyboard shortcuts (?)"
+						className="size-8 shrink-0 p-0"
+					>
+						<Keyboard className="size-4" />
+					</Button>
+				)}
 				<Link
 					to="/profile"
 					// Keeps the open thread behind the dialog and lets closing return to it.

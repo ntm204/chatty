@@ -181,7 +181,7 @@ export function MessageActions({
 		<div
 			ref={rootRef}
 			className={cn(
-				"relative flex shrink-0 items-center",
+				"message-actions relative flex shrink-0 items-center",
 				"opacity-0 transition-opacity",
 				// Keep the controls keyboard-discoverable, but remove the invisible
 				// pointer target until a touch focuses this message.

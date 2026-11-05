@@ -1,0 +1,27 @@
+# Disposable local test data; production and development storage stay unchanged.
+name: chatty-tests
+
+services:
+  test-postgres:
+    image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      POSTGRES_USER: chatty
+      POSTGRES_PASSWORD: chatty
+      POSTGRES_DB: postgres
+    tmpfs:
+      - /var/lib/postgresql/data:size=256m
+    command:
+      - postgres
+      - -c
+      - max_wal_size=64MB
+      - -c
+      - min_wal_size=32MB
+      - -c
+      - checkpoint_timeout=1min
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatty -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 15

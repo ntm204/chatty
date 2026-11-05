@@ -10,6 +10,7 @@ import { MessageTimeSeparator } from "./message-time-separator";
 import { SystemMessageGroup } from "./system-message-group";
 import { getSystemMessageRuns } from "../utils/system-message-runs";
 import { UnreadDivider } from "./unread-divider";
+import { useMessageRowKeys } from "../hooks/use-message-row-keys";
 
 interface MessageRowsProps extends MessageRowActions {
 	messages: ThreadMessage[];
@@ -42,6 +43,7 @@ export const MessageRows = memo(function MessageRows({
 	pinnedMessageIds,
 	...actions
 }: MessageRowsProps) {
+	const rowKeys = useMessageRowKeys(messages, currentUserId);
 	const systemRuns = getSystemMessageRuns(messages, unreadDividerMessageId);
 
 	return messages.map((message, index) => {
@@ -55,7 +57,7 @@ export const MessageRows = memo(function MessageRows({
 			if (!run) return null;
 
 			return (
-				<Fragment key={message.id}>
+				<Fragment key={rowKeys.get(message.id)}>
 					{divider}
 					{isFirstOfDay && <DaySeparator isoTimestamp={message.createdAt} />}
 					{hasLongPause && <MessageTimeSeparator isoTimestamp={message.createdAt} />}
@@ -93,7 +95,7 @@ export const MessageRows = memo(function MessageRows({
 		const isPinned = pinnedMessageIds.includes(message.id);
 
 		return (
-			<Fragment key={message.id}>
+			<Fragment key={rowKeys.get(message.id)}>
 				{divider}
 				{isFirstOfDay && <DaySeparator isoTimestamp={message.createdAt} />}
 				{hasLongPause && <MessageTimeSeparator isoTimestamp={message.createdAt} />}

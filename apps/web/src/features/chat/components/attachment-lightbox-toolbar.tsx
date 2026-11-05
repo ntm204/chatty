@@ -51,7 +51,7 @@ export function AttachmentLightboxToolbar({
 	return (
 		<div
 			onClick={(event) => event.stopPropagation()}
-			className="flex max-w-full items-center gap-0.5 rounded-full bg-scrim/60 px-1.5 py-1 backdrop-blur-sm"
+			className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-2xl bg-scrim/60 px-1.5 py-1 backdrop-blur-sm sm:rounded-full"
 		>
 			<Button
 				variant="ghost"

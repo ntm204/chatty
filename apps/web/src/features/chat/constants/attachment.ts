@@ -175,7 +175,7 @@ export const LIGHTBOX_THUMBNAIL_CLASS = "size-12 sm:size-14";
  * when you look for it rather than a second toolbar competing with the first.
  */
 export const LIGHTBOX_TOOLBAR_BUTTON_CLASS = cn(
-	"size-7 shrink-0 rounded-full p-0 text-on-media/75 transition duration-150 ease-out",
+	"size-11 shrink-0 rounded-full p-0 text-on-media/75 transition duration-150 ease-out sm:size-7",
 	"hover:bg-on-media/15 hover:text-on-media active:scale-90",
 	"disabled:pointer-events-none disabled:opacity-30",
 	"focus-visible:ring-on-media/40",

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError } from "../src/lib/errors.js";
 import { userRoom } from "../src/lib/socket-bus.js";
-import { register } from "../src/modules/auth/auth.service.js";
+import { prisma } from "../src/lib/prisma.js";
 import {
 	addParticipant,
 	createConversation,
@@ -20,12 +20,15 @@ beforeEach(() => {
 
 /** Creates a user and returns their id, so tests read as intent rather than setup. */
 async function createUser(name: string): Promise<string> {
-	const { user } = await register({
-		email: `${name}@chatty.test`,
-		password: "SuperSecret123",
-		// Suffixed so short names like "an" still clear the 3-character minimum.
-		handle: `${name}_test`,
-		displayName: name,
+	// Read-marker cases do not authenticate; avoid spending their test budget on bcrypt.
+	const user = await prisma.user.create({
+		data: {
+			email: `${name}@chatty.test`,
+			passwordHash: "not-a-real-hash",
+			handle: `${name}_test`,
+			displayName: name,
+		},
+		select: { id: true },
 	});
 
 	return user.id;

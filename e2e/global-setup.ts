@@ -11,8 +11,11 @@ import { E2E_DATABASE_URL } from "./database.js";
  * disconnect the sockets a test is in the middle of asserting on.
  */
 export default async function globalSetup(): Promise<void> {
+	const adminUrl = new URL(E2E_DATABASE_URL);
+	adminUrl.pathname = "/postgres";
+	adminUrl.searchParams.set("connection_limit", "1");
 	const admin = new PrismaClient({
-		datasources: { db: { url: "postgresql://chatty:chatty@localhost:5432/postgres?connection_limit=1" } },
+		datasources: { db: { url: adminUrl.toString() } },
 	});
 	try {
 		const existing = await admin.$queryRaw<{ exists: boolean }[]>`

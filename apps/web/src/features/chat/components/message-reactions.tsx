@@ -72,7 +72,7 @@ export function MessageReactions({
 			role="group"
 			aria-label={isMine ? "Reactions to your message" : "Reactions to received message"}
 			className={cn(
-				"absolute top-full z-10 flex h-5 -translate-y-1/2 items-center gap-0.5 px-1",
+				"message-reactions absolute top-full z-10 flex h-5 -translate-y-1/2 items-center gap-0.5 px-1",
 				"rounded-full border border-rule bg-paper-raised ring-2 ring-paper shadow-reaction",
 				isMine ? "left-2.5" : "right-2.5",
 			)}

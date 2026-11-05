@@ -29,7 +29,7 @@ export function AttachmentLightboxThumbnails({
 	onSelect,
 }: AttachmentLightboxThumbnailsProps) {
 	return (
-		<div onClick={(event) => event.stopPropagation()} className="shrink-0 overflow-x-auto">
+		<div onClick={(event) => event.stopPropagation()} className="max-w-full shrink-0 overflow-x-auto">
 			<div role="group" aria-label="Image thumbnails" className="mx-auto flex w-max gap-2 p-1">
 				{attachments.map((attachment, index) => (
 					<Button

@@ -575,6 +575,14 @@
 }
 
 @media (max-width: 1023px) {
+	.chat-shell {
+		position: fixed;
+		top: var(--chat-viewport-top, 0px);
+		inset-inline: 0;
+		height: var(--chat-viewport-height, 100dvh);
+		padding-left: env(safe-area-inset-left);
+		padding-right: env(safe-area-inset-right);
+	}
 	.chat-workspace {
 		padding: 0;
 		gap: 0;
@@ -590,6 +598,17 @@
 	}
 	.message-composer {
 		padding-bottom: max(16px, env(safe-area-inset-bottom));
+	}
+	.message-composer textarea {
+		max-height: min(160px, max(44px, calc(var(--chat-viewport-height, 100dvh) * 0.2)));
+	}
+	.composer-attachments img {
+		width: min(80px, calc(var(--chat-viewport-height, 100dvh) * 0.15));
+		height: min(80px, calc(var(--chat-viewport-height, 100dvh) * 0.15));
+	}
+	.message-composer [role="dialog"] {
+		max-height: calc(var(--chat-viewport-height, 100dvh) * 0.5);
+		overflow-y: auto;
 	}
 }
 @media (max-width: 760px) {
@@ -674,7 +693,26 @@
 	.settings-dialog header h2 {
 		font-size: 25px;
 	}
-	.message-composer input {
+	.message-composer :is(input:not([type="range"]), textarea) {
+		font-size: 16px;
+	}
+}
+
+@media (pointer: coarse) {
+	.message-composer
+		:is(
+			.composer-well > button,
+			button[aria-haspopup="menu"],
+			button[type="submit"],
+			button[aria-label="Record a voice message"],
+			button[aria-label="Cancel reply"],
+			button[aria-label^="Remove attached image"],
+			button[aria-label="Remove this sticker"]
+		) {
+		min-width: 44px;
+		min-height: 44px;
+	}
+	.message-composer textarea {
 		font-size: 16px;
 	}
 }
@@ -901,5 +939,45 @@
 	.voice-player-duration,
 	.voice-player-speed {
 		transition: none;
+	}
+}
+
+/* Independent touch targets need layout space: expanding invisible hitboxes
+ * around the compact desktop reaction chips would make adjacent actions overlap.
+ */
+@media (pointer: coarse) {
+	.message-actions {
+		gap: 2px;
+	}
+	.message-actions > button,
+	.message-actions [role="menu"] > button,
+	.message-reactions > button {
+		min-width: 44px;
+		min-height: 44px;
+		flex-shrink: 0;
+	}
+	.message-reactions {
+		position: relative;
+		top: auto;
+		left: auto;
+		right: auto;
+		translate: none;
+		width: max-content;
+		max-width: 100%;
+		height: auto;
+		flex-wrap: wrap;
+		gap: 2px;
+		margin-top: 4px;
+		padding: 2px;
+		border-radius: 12px;
+	}
+	.reaction-bar {
+		width: min(336px, calc(100vw - 32px));
+		flex-wrap: wrap;
+		justify-content: center;
+		border-radius: 16px;
+	}
+	.reaction-bar > span {
+		display: none;
 	}
 }

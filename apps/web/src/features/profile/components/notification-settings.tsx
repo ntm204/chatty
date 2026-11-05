@@ -7,6 +7,9 @@ import { playMessageChime } from "@/utils/play-message-chime";
 export function NotificationSettings() {
 	const isEnabled = useNotificationSetting((state) => state.isEnabled);
 	const permission = useNotificationSetting((state) => state.permission);
+	const isEnabling = useNotificationSetting((state) => state.isEnabling);
+	const error = useNotificationSetting((state) => state.error);
+	const refreshPermission = useNotificationSetting((state) => state.refreshPermission);
 	const enable = useNotificationSetting((state) => state.enable);
 	const disable = useNotificationSetting((state) => state.disable);
 	const isMessagePreviewEnabled = useNotificationSetting((state) => state.isMessagePreviewEnabled);
@@ -14,6 +17,17 @@ export function NotificationSettings() {
 	const isSoundEnabled = useSoundSetting((state) => state.isEnabled);
 	const enableSound = useSoundSetting((state) => state.enable);
 	const disableSound = useSoundSetting((state) => state.disable);
+
+	useEffect(() => {
+		refreshPermission();
+		window.addEventListener("focus", refreshPermission);
+		document.addEventListener("visibilitychange", refreshPermission);
+
+		return () => {
+			window.removeEventListener("focus", refreshPermission);
+			document.removeEventListener("visibilitychange", refreshPermission);
+		};
+	}, [refreshPermission]);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -36,6 +50,11 @@ export function NotificationSettings() {
 			</div>
 
 			<div className="flex flex-col gap-4 border-t border-rule pt-6">
+				{error && (
+					<p role="alert" className="text-[13px] text-signal">
+						{error}
+					</p>
+				)}
 				{permission === "unsupported" ? (
 					<p className="text-[13px] text-ink-soft">This browser cannot show desktop notifications.</p>
 				) : (
@@ -55,8 +74,13 @@ export function NotificationSettings() {
 									<Button
 										variant={isEnabled ? "outline" : "primary"}
 										onClick={isEnabled ? disable : () => void enable()}
+										disabled={isEnabling}
 									>
-										{isEnabled ? "Turn notifications off" : "Turn notifications on"}
+										{isEnabling
+											? "Requesting permission…"
+											: isEnabled
+												? "Turn notifications off"
+												: "Turn notifications on"}
 									</Button>
 									<span className="note text-ink-faint">
 										{isEnabled ? "On for this browser" : "Off"}
@@ -81,3 +105,4 @@ export function NotificationSettings() {
 		</div>
 	);
 }
+import { useEffect } from "react";

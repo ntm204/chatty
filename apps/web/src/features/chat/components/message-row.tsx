@@ -119,6 +119,8 @@ export const MessageRow = memo(function MessageRow({
 
 	function revealTouchActions(event: ReactPointerEvent<HTMLDivElement>) {
 		if (event.pointerType === "mouse") return;
+		// A viewer portal still bubbles through React, but must keep focus in its dialog.
+		if (!event.currentTarget.contains(event.target as Node)) return;
 		if (window.getSelection()?.toString()) return;
 		if ((event.target as HTMLElement).closest("a, button, input, textarea, [role='button']")) return;
 
