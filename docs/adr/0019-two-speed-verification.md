@@ -39,6 +39,26 @@ Docker builds use the GitHub Actions layer cache, scoped separately for the serv
 
 ## Consequences
 
+### 2026-11-05: bounded local runs
+
+The earlier policy did not bound the complete process or make the short browser path obvious.
+`scripts/run-check.mjs` now supervises each gate, prints per-step duration, preserves failures,
+and cancels workers (including detached browser/server descendants) on timeout or interruption.
+Budgets: quick/changed 5 minutes, full/unit 10 minutes, smoke 3 minutes, full browser 15 minutes,
+built browser 5 minutes, plus up to 5 seconds for cleanup. Playwright also has its own global deadline;
+local full runs stop after 3 failures and smoke after 1. Zero retries remain unchanged.
+
+The smoke config reuses 7 existing scenarios from chat/sending/outbox; it adds no duplicate specs.
+Affected flows run their explicit spec. Full browser coverage remains a release/broad-regression
+gate; WebKit/built checks are selected by the behaviour changed, not automatically chained.
+An E2E PostgreSQL advisory lock prevents concurrent fixture resets; migration setup has a 60-second
+deadline. Web unit workers default to 2 locally, with an explicit environment override.
+CI still runs all unit tests, now with job deadlines and supervisor regression tests.
+Physical device evidence is excluded by the owner from current work, retained as unverified.
+
+Do not run quick then full for the same frozen batch, repeat passed suites, silently extend a
+timeout, or keep launching browser batches after a failure. A timeout requires diagnosis, not retry.
+
 - A normal local verification reuses type/lint/format work and runs only tests that can import the
   change, while a schema or dependency change automatically widens the gate.
 - CI retains every test and image build. Parallelism reduces wall time rather than coverage.

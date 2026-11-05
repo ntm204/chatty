@@ -77,7 +77,81 @@ kiểm tra đăng nhập; giữ nguyên toàn bộ assert và timeout. Backend c
 AGENTS bổ sung phạm vi nhỏ, chốt thay đổi trước kiểm tra
 diện rộng và tôn trọng giới hạn usage; không cài thêm skill/dependency.
 
-### Các bước cần thiết bị thật để đóng ma trận
+### Rà soát core và giới hạn chi phí test — 2026-11-05
+
+Chủ dự án yêu cầu chia hai agent phân tích và xử lý test kéo dài. Mobile/thiết bị thật,
+native notification và công nghệ hỗ trợ **ngoài phạm vi hiện tại theo yêu cầu chủ dự án**.
+Không yêu cầu chủ dự án làm thêm, không dùng nhiều lượt mô phỏng để bù; các XP liên quan
+vẫn partial khi thiếu tiêu chí gốc. Sổ giữ **49 done / 11 partial / 0 planned**.
+
+Hai agent chỉ rà soát core, không sửa sản phẩm và không chạy DB/browser song song.
+Nền tảng đã có: gửi idempotent với `clientId`, transaction/row lock, outbox text/ảnh bền,
+phân trang, loại response cũ, search theo membership và media renew kiểm quyền. Chưa có
+bằng chứng cần thêm feature lớn hoặc thay kiến trúc. Cần ưu tiên các đường phục hồi sau:
+
+| Ưu tiên / phát hiện | Bằng chứng | Điều kiện sửa đạt |
+| --- | --- | --- |
+| P1: access-token 401 rồi refresh lỗi mạng/5xx vẫn báo hết phiên, có thể dọn outbox — **đã sửa 2026-11-05** | `apps/web/src/api/client.ts:144–165, 221–227`; `hooks/use-auth.ts:116`. Agent chạy probe API client trong bộ nhớ, handler hết phiên bị gọi khi refresh lỗi mạng | Giữ phiên/outbox khi mạng hoặc server lỗi; chỉ logout khi refresh bị từ chối xác thực |
+| P1: upload nhận HTML/JSON hỏng làm Promise kẹt — **đã sửa 2026-11-05** | `api/client.ts:273–281, 612–624`; probe 502 HTML ném SyntaxError ngoài Promise, trạng thái vẫn pending | Upload kết thúc pending bằng lỗi có Retry; giữ payload/clientId; deadline cho request treo |
+| P1: upload 401 logout ngay dù refresh còn dùng được — **đã sửa 2026-11-05** | Hai XHR path trong `api/client.ts`; probe image upload: handler hết phiên 1 lần, refresh 0 lần | Refresh một lần và gửi lại cùng payload/clientId; chỉ kết thúc phiên khi refresh bị từ chối |
+| P1: socket sống không áp lại hạn JWT 15 phút | `apps/server/src/sockets/index.ts:36`; `auth.service.ts:77`, xác thực ở handshake; phát hiện qua code, chưa tái hiện integration | Hết hạn mất quyền nhận sự kiện; refresh/reconnect hợp lệ không mất/trùng tin |
+| P1: đọc rooms rồi mới join personal room có cửa sổ bỏ sót remove/reset | `sockets/index.ts:19–24`; eviction/revocation ở `conversations.service.ts:427`, `auth.service.ts:263`; giả thuyết interleaving từ code, chưa có integration | Barrier giữ bootstrap, thu hồi quyền giữa chừng, thả barrier: socket không nhận sự kiện đã mất quyền |
+| P2: mail outbox claim 10 thư với lease 120 giây nhưng gửi tuần tự | `lib/outbox.ts:30,58,120,226`; `lib/mailer.ts:80` không cấu hình timeout riêng; nguy cơ gửi lặp khi SMTP chậm, chưa tái hiện integration | Hai worker với SMTP chậm không gửi cùng claim; timeout/lease tương thích, worker cũ không ghi đè claim mới |
+
+Các probe frontend mất khoảng 0,2 giây, không cần browser/thiết bị. Chúng chứng minh nhánh logic,
+không thay nghiệm thu tích hợp. Các phát hiện trên **chưa được sửa trong đợt hạ tầng test này**.
+Batch core kế tiếp nên gom ba đường phục hồi API client; socket và mail xử lý riêng với test có điều khiển.
+
+Nguyên nhân test tốn thời gian: chính sách từng yêu cầu full Chromium → WebKit → built dù ADR 0019
+đã cho phép chạy spec liên quan; không có deadline cho cả lượt, giới hạn số lỗi hoặc chặn E2E
+trùng database; worker web mặc định có thể dùng quá nhiều tài nguyên. Báo cáo cũ ghi nhận máy ngủ,
+thiếu RAM và chạy lại nhiều batch. Các số thời gian cũ không phải benchmark của mã hiện tại.
+
+Đợt này chỉ sửa ba nhóm:
+
+1. Supervisor không thêm dependency: verify 5 phút, full/unit 10 phút, smoke 3 phút, full browser
+   15 phút, built 5 phút; in thời gian từng bước, dừng ở bước lỗi, timeout exit 124, Ctrl-C exit 130;
+   dọn cả worker/browser/server tách process group, thêm tối đa 5 giây cleanup.
+2. Smoke dùng lại **7 ca** từ chat/sending/outbox; full suite còn nguyên. Browser local dừng sau
+   3 lỗi, smoke sau 1, không retry; PostgreSQL advisory lock giữ suốt lượt E2E, migration timeout 60 giây.
+   Web unit mặc định 2 worker local; CI vẫn full và có deadline theo job.
+3. Đồng bộ AGENTS/CLAUDE/README/CONTRIBUTING/ADR: một gate cho batch đã đóng băng,
+   browser chọn theo thay đổi; không tự chạy cả ma trận hoặc lặp suite xanh. Thiết bị thật ghi giới hạn.
+
+Bằng chứng ngày 2026-11-05 trên macOS arm64, Node 26.13.0, npm 11.20.0,
+PostgreSQL 16 qua Docker/OrbStack:
+
+| Lệnh / kiểm tra | Kết quả thực tế |
+| --- | --- |
+| `npm run test:tooling` | 5/5 đạt, khoảng 2,4 giây; exit code, timeout chung, child/descendant tách process group, Ctrl-C và chặn bước sau lỗi |
+| `npm run verify` | Exit 1: static checks đạt, server 507/507 đạt trong 138,82 giây; web 571 đạt/82 lỗi do Node 26 che storage của jsdom. Không gọi gate này là pass |
+| `npm run test --workspace apps/web` sau sửa config | 653/653 đạt, 26,52 giây. Tắt Node experimental webstorage trong worker để jsdom sở hữu browser storage; không sửa logic sản phẩm |
+| Kiểm tra phần thay đổi sau gate | Prettier/ESLint config web đạt; `npm run typecheck:e2e` đạt; `npm run verify:audit` đạt, 0 hit. Không chạy lại server đã đạt |
+| Probe setup E2E qua `tsx`, PostgreSQL thật | Gọi setup lần hai khi đang giữ lock bị từ chối; teardown rồi claim lại đạt; chỉ dùng `chatty_e2e` |
+| `npm run test:e2e:smoke -- --list` | Đúng 7 ca trong 3 file; full suite giữ nguyên |
+| `npm run test:e2e:smoke` | 7/7 đạt; Playwright 24,0 giây, supervisor đo toàn lượt 24,2 giây |
+
+Chốt theo yêu cầu người dùng, không chạy thêm suite. Không chạy full Chromium/WebKit/built hoặc
+thiết bị thật trong đợt này. Cleanup Windows mới được review code, chưa chạy trên Windows.
+Không commit/push, không đổi env hoặc dữ liệu dev. Các phát hiện core vẫn là việc cần sửa tiếp.
+
+### Sửa ba đường phục hồi API client — 2026-11-05
+
+Gom vào `apps/web/src/api/client.ts`, không thêm dependency:
+
+- Refresh có ba kết quả: gia hạn được, bị từ chối, không liên lạc được (mạng/5xx/2xx không phải JSON).
+  Chỉ "bị từ chối" mới kết thúc phiên; còn lại ném `NetworkUnavailableError`, giữ phiên và outbox.
+- Ba đường upload (ảnh, file, voice) dùng chung một hàm: 401 gia hạn rồi gửi lại đúng body/`clientId`
+  một lần; phản hồi không phải JSON, 5xx từ proxy và kết nối đứng yên 60 giây đều kết thúc bằng lỗi.
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `vitest run tests/session-expiry.test.ts tests/upload-recovery.test.ts` | 17/17 đạt; với `client.ts` cũ có 6 ca mới lỗi (3 ca treo tới timeout) |
+| `npm run verify` (macOS arm64, Node 26.13.0) | Đạt trong 185,7 giây: server 507/507, web 661/661, audit 0 hit |
+
+Socket JWT, join room và mail outbox (P1/P2 còn lại) chưa sửa; xử lý riêng với test có điều khiển.
+
+### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy
 không được ghi pass; mô phỏng viewport/CDP/Notification recorder không thay các bước này.
@@ -102,13 +176,13 @@ Các thay đổi nằm ở ROADMAP phase 54–59; mục này chỉ ghi bằng ch
 | --- | --- | --- |
 | `npm run verify` | Đạt | web 438 test liên quan, audit 0 hit |
 | Full Chromium e2e | **100/100** (6,5 phút) | Máy thức, không retry |
-| Full WebKit e2e | **Chưa có lượt trọn vẹn** | Một lượt bỏ vì máy ngủ (3 giờ); một lượt bị dừng ở 94/100 vì hệ thống thiếu RAM, lỗi gồm cả spec chạy riêng thì đạt |
+| Full WebKit e2e | **92 đạt, 1 bỏ qua có chủ ý** (53 file, chạy 5 đợt ngày 27/10) | Mọi lỗi đều đạt khi chạy riêng; spec bookmark mới đã sửa (chọn nhầm menu hàng khác). Còn 2 lỗi chập chờn khi chạy nối tiếp: `reactions › a second emoji…`, `restrictions › one badge rule…` (chờ màn chat sau đăng ký quá 15 giây; context cô lập đúng, đăng ký đo 0,8 giây; chưa rõ nguyên nhân) |
 | WebKit từng spec | Đạt sau sửa | affordances, compact-thread, composer-input-boundaries, entry-layout, group, editor-expiry, offline-actions, menu-viewport, reactions, restrictions, blocking, conversation-actions, design-polish |
 | Built web trên WebKit | Đạt tới trước bước offline | Playwright WebKit không reload offline được khi có service worker |
 
 Lỗi Safari thật đã sửa: menu thao tác thành viên nhóm đóng trước khi nhận click ("Make admin",
 "Remove from group" không có tác dụng); bong bóng gọn thừa 26–60px vì `text-wrap: pretty`.
-Còn nợ: một lượt full WebKit khi máy đủ RAM; kiểm tay shell offline trên Safari desktop;
+Còn nợ: tìm nguyên nhân 2 lỗi chập chờn WebKit; kiểm tay shell offline trên Safari desktop;
 thiết bị thật, VoiceOver và bộ gõ Telex bằng tay.
 
 ## Tiếp nối nhỏ: bàn phím menu và Retry tìm kiếm

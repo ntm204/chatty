@@ -40,10 +40,9 @@ and "you were removed" all come from `conversation:updated` / `conversation:left
 `chat-page.tsx`. Adding a second code path in the panel that also patched local state would be exactly
 the double-render bug the message-rendering rule above already warns about.
 
-**Group permissions are a three-level hierarchy, not a matrix.** Owner/admin handle naming and
-ordinary-member moderation; only the one owner changes admins, ownership and invite policy. A member
-may always leave and may invite only under open policy. See
-[ADR 0018](../../../../../docs/adr/0018-group-admins-and-invite-policy.md).
+**Group permissions are two roles: admin and member.** Admins name the group, moderate members,
+promote admins and set invite policy; a member may always leave and may invite only under open
+policy. See [ADR 0021](../../../../../docs/adr/0021-flatten-group-roles-to-admin-member.md).
 
 **Search state is `useUserSearch`, not copied.** `NewConversationPanel` and `GroupMembersPanel` both
 need "find someone by name or email" with the same loading/error/results shape; the hook exists so

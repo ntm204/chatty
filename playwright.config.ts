@@ -67,6 +67,8 @@ export default defineConfig({
 	// A retry hides a race rather than fixing one, and a realtime app is made of
 	// races. A flake here is a finding.
 	retries: 0,
+	globalTimeout: 840_000,
+	maxFailures: process.env.CI ? 0 : 3,
 	reporter: [["list"]],
 	use: {
 		baseURL: WEB_URL,

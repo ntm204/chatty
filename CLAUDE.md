@@ -1,7 +1,10 @@
 # Chatty — project rules
 
-Read this before writing any code. It is the entry point: the conventions block below resolves the
-"the project's X" references in the detailed rule files, and those files hold the actual rules.
+Read this before writing any code. It holds the **code** rules; the conventions block below resolves
+the "the project's X" references in the detailed rule files. How an agent works — scope, batches,
+which checks to run, where information goes — lives only in [AGENTS.md](AGENTS.md):
+
+@AGENTS.md
 
 | Where | What it covers |
 | --- | --- |
@@ -10,7 +13,7 @@ Read this before writing any code. It is the entry point: the conventions block 
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the system fits together and why |
 | [docs/conventions/frontend.md](docs/conventions/frontend.md) | React / TypeScript rules for `apps/web` |
 | [docs/conventions/backend.md](docs/conventions/backend.md) | Node / Express / Prisma rules for `apps/server` |
-| [docs/conventions/git-and-workflow.md](docs/conventions/git-and-workflow.md) | Commits, why work goes straight to `main`, the pre-push checklist, agent boundaries |
+| [docs/conventions/git-and-workflow.md](docs/conventions/git-and-workflow.md) | Commits, why work goes straight to `main`, the pre-push checklist |
 | [docs/conventions/releases.md](docs/conventions/releases.md) | SemVer, lockstep workspace versions, tags, release gates and artifacts |
 | [docs/adr/](docs/adr/) | Why each major technical decision was made |
 
@@ -106,19 +109,8 @@ old wording before saying you are done.** When unsure, ask rather than guess.
 
 # Definition of done
 
-Before saying a piece of work is finished, run the fast local gate:
-
-```bash
-npm run verify     # cached typecheck/lint/format → tests related to changes → audit
-```
-
-It needs **Node 22+** (`engines` says so). The full suite is `npm run verify:full`; run it for a
-release, security/auth work, migrations, dependency upgrades, or whenever changed-file selection is
-in doubt. Package/config/schema/global-setup changes automatically widen the relevant quick suite.
-CI always runs every test in parallel shards, so fast local feedback never becomes reduced coverage
-at the acceptance boundary. See ADR 0019.
-
-Two things `verify` does **not** do, and you are responsible for both:
+Pass the gate [AGENTS.md](AGENTS.md#run-and-check) picks for the batch (`verify` or `verify:full`,
+Node 22+; see ADR 0019). Two things the gate does **not** do, and you are responsible for both:
 
 1. **Run the thing.** A green suite means the types agree and the units behave. It does not mean the
    feature works. Phase 2 shipped an avatar endpoint that returned 500 for every request while all 75
@@ -126,10 +118,8 @@ Two things `verify` does **not** do, and you are responsible for both:
    directory is `.data/uploads`. Nothing that tests a service can see that. Exercise the real API,
    then add the test that would have caught it.
 
-   `npm run test:e2e` now covers part of this — a real browser, a real server, a real database — and
-   it is not in `verify` on purpose, because it needs two servers and a browser download. Run it for
-   anything touching a flow rather than a function. It is not a substitute for exercising the change
-   by hand: it found that attaching an image and pressing Enter dropped the picture, and it found
+   The affected-flow browser spec uses a real browser/server/database, but it is not a substitute
+   for exercising the change by hand either: it found that attaching an image and pressing Enter dropped the picture, and it found
    that only because someone wrote a spec that pressed Enter.
 2. **Update what describes the behaviour.** See the section above. No linter reads prose.
 
@@ -149,13 +139,3 @@ by reading the checklist against the diff:
 Sections 26-29 were added to close exactly those four. Assume the next gap is equally invisible:
 when a change adds files, read the **Component checklist** at the top of this file against them by
 hand. A 0-hit audit is evidence, not proof.
-
----
-
-# Workflow
-
-- **Never commit or push unprompted.** Wait for an explicit instruction in the same turn.
-- The agent **may** run `verify` and any part of it on its own. Use `verify:full` only at the risk
-  boundaries above instead of paying its cost after every local edit.
-- Report failures with the actual output. Never describe unverified code as working.
-- When the code is done, say so and let the user decide the next step.

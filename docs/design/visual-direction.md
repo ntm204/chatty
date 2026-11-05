@@ -81,6 +81,3 @@ Completed validation:
 
 Browser screenshots use isolated mock data; end-to-end tests use the isolated test database and
 real API. Fonts are served locally, with no browser request to Fontshare or chatty.net.
-
-The [2026-09-09 design review](review-2026-09-09.md) records the subsequent character, feedback,
-validation and compact-layout refinements with their verification scope.

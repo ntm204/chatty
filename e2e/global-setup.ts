@@ -10,7 +10,7 @@ import { E2E_DATABASE_URL } from "./database.js";
  * unique handle, so they do not collide. Truncating between them would also
  * disconnect the sockets a test is in the middle of asserting on.
  */
-export default async function globalSetup(): Promise<void> {
+export default async function globalSetup(): Promise<() => Promise<void>> {
 	const adminUrl = new URL(E2E_DATABASE_URL);
 	adminUrl.pathname = "/postgres";
 	adminUrl.searchParams.set("connection_limit", "1");
@@ -26,14 +26,27 @@ export default async function globalSetup(): Promise<void> {
 		await admin.$disconnect();
 	}
 
-	execSync("npx prisma migrate deploy --schema apps/server/prisma/schema.prisma", {
-		stdio: "inherit",
-		env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
-	});
+	// All browser configs share these fixtures. Keep the claim alive through teardown,
+	// including when a developer launches Chromium and WebKit from separate terminals.
+	const prisma = new PrismaClient({ datasources: { db: { url: `${E2E_DATABASE_URL}?connection_limit=1` } } });
+	try {
+		const [claim] = await prisma.$queryRaw<{ locked: boolean }[]>`
+			SELECT pg_try_advisory_lock(4070120250812::bigint) AS locked
+		`;
+		if (!claim?.locked)
+			throw new Error("Another browser run is already using chatty_e2e. Stop it before starting another run.");
+		execSync("npx prisma migrate deploy --schema apps/server/prisma/schema.prisma", {
+			stdio: "inherit",
+			timeout: 60_000,
+			env: { ...process.env, DATABASE_URL: E2E_DATABASE_URL },
+		});
+		await prisma.$executeRawUnsafe(
+			`TRUNCATE TABLE "Attachment", "Message", "ConversationParticipant", "Conversation", "User" RESTART IDENTITY CASCADE;`,
+		);
+	} catch (error) {
+		await prisma.$disconnect();
+		throw error;
+	}
 
-	const prisma = new PrismaClient({ datasources: { db: { url: E2E_DATABASE_URL } } });
-	await prisma.$executeRawUnsafe(
-		`TRUNCATE TABLE "Attachment", "Message", "ConversationParticipant", "Conversation", "User" RESTART IDENTITY CASCADE;`,
-	);
-	await prisma.$disconnect();
+	return () => prisma.$disconnect();
 }

@@ -21,6 +21,15 @@ quản trị hạ tầng, gọi thoại/video, channels/communities, feed/storie
 Web Push khi đóng ứng dụng và một hệ thống đồng bộ offline mới. File/voice được cải thiện phản hồi và
 thử lại trong phiên; lưu bền chúng qua reload sẽ là kế hoạch riêng nếu sau này được chọn.
 
+**Chốt phạm vi 2026-11-05:** chủ dự án không làm nghiệm thu mobile/thiết bị thật hoặc công nghệ hỗ trợ.
+Các tiêu chí đó giữ là chưa có bằng chứng, ngoài công việc hiện tại; không hỏi lại hoặc chạy thêm
+browser để bù. Sổ vẫn **49 done / 11 partial / 0 planned**. Chúng không cản cải tiến phần mềm.
+Rà soát core bằng hai agent và tối ưu test được ghi tại mục cùng ngày trong
+[báo cáo nghiệm thu](acceptance-2026-09-25.md); không tạo thêm một sổ tiến độ.
+Đợt test đã chốt: supervisor 5/5, server 507/507; web 653/653 sau sửa xung đột storage
+Node 26/jsdom; smoke 7/7 trong 24,2 giây. Gate đầu exit 1 được giữ nguyên lịch sử,
+chỉ chạy lại phần lỗi; không chạy thêm full browser hoặc đổi XP thành done.
+
 ## Phần chỉnh trực tiếp theo phản hồi giao diện
 
 Phản hồi mới được triển khai thành một lượt riêng tại
@@ -330,6 +339,11 @@ Mỗi lần triển khai chạy `npm run verify` theo quy ước. XP-11 và thay
 chạy `npm run verify:full`. Luồng thay đổi cần browser/API thật và regression đúng lỗi đã gặp;
 thay đổi thị giác nhỏ, đảo ngược dễ thì kiểm tra thủ công/ảnh trước–sau, không viết test chỉ lặp lại implementation.
 
+Mỗi batch đóng băng chạy **một** gate phù hợp: verify tối đa 5 phút, full tối đa 10 phút.
+Browser chọn spec liên quan hoặc smoke 7 ca/3 phút; full chỉ cho release/regression rộng (15 phút).
+WebKit/built chạy khi thay đổi cần chúng, tuần tự; database lock chặn chồng lượt.
+Lỗi/timeout thì dừng, phân tích và chạy lại đúng phần sau khi sửa; không tự tăng deadline/chạy lại suite đã đạt.
+
 Browser E2E Vite không chứng minh CSP/service worker của build; XP-31 và XP-58 cần local build
 cách ly với database/uploads test và origin riêng, không đổi cổng dev của người dùng hoặc dùng dữ liệu thật.
 Thử Firefox/WebKit, touch emulation và thiết bị thật ở các luồng nhạy cảm nếu môi trường hỗ trợ;
@@ -405,7 +419,7 @@ danh sách đầy đủ để triển khai dần, không phải yêu cầu làm 
 | XP-36 | done | Lỗi permission/no mic/busy device/recorder/disconnect riêng; auto-stop 5 phút có thông báo và giữ preview. Release track/context/timer và bỏ callback cũ; send lỗi retry cùng blob. Unit và Chromium fake microphone: ghi/preview/discard/send giữ nháp chữ trên mobile viewport đạt. Chưa thử microphone điện thoại thật | 2026-09-25 |
 | XP-37 | done | Slider native với value text, tốc độ/thời lượng có thông tin đọc được; chỉ một player, pending/error/offline rõ. Unit ownership/recovery và Chromium mouse/keyboard/mobile touch emulation play/seek/speed đạt; WebKit media recovery đã đạt ở đợt trước. Không thay screen reader/thiết bị thật ở XP-60 | 2026-09-25 |
 | XP-45 | done | Đã rà copy block/restrict/mute/last-seen/receipts và remove/leave/delete: phạm vi DM/nhóm, giữ lịch sử/copy ngoài app rõ. Delete chọn Cancel mặc định; confirm có tên/phạm vi và chặn đóng khi pending. Unit và Chromium privacy/delete/group, WebKit action recovery đạt | 2026-09-25 |
-| XP-60 | partial | 2026-10-26: `verify` đạt (web 438); full Chromium 100/100 (6,5 phút). Toàn bộ suite lần đầu chạy trên WebKit: từng spec hỏng đã được sửa (2 lỗi Safari thật: menu thành viên nhóm, bong bóng gọn) và đạt khi chạy riêng; một lượt full WebKit trọn vẹn còn nợ (một lượt máy ngủ, một lượt bị dừng ở 94/100 vì thiếu RAM). Chưa: Safari offline shell bằng tay, thiết bị thật, VoiceOver/IME thật. Chi tiết ở [báo cáo nghiệm thu](acceptance-2026-09-25.md) | 2026-10-26 |
+| XP-60 | partial | 2026-10-26: `verify` đạt (web 438); full Chromium 100/100 (6,5 phút). Toàn bộ suite lần đầu chạy trên WebKit: từng spec hỏng đã được sửa (2 lỗi Safari thật: menu thành viên nhóm, bong bóng gọn) và đạt khi chạy riêng; full WebKit 27/10 theo 5 đợt: 92 đạt, 1 bỏ qua có chủ ý, còn 2 lỗi chập chờn khi chạy nối tiếp (reactions, restrictions) chưa rõ nguyên nhân. Chưa: Safari offline shell bằng tay, thiết bị thật, VoiceOver/IME thật. Chi tiết ở [báo cáo nghiệm thu](acceptance-2026-09-25.md) | 2026-10-26 |
 
 Khi triển khai, thêm/cập nhật dòng đúng ID tại đây. Trạng thái `done` cần ghi môi trường, lệnh hoặc
 kịch bản đã kiểm tra và giới hạn còn lại. Nếu một mục được bỏ sau kiểm tra vì hành vi hiện tại đã đúng,

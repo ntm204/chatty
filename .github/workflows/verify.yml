@@ -22,6 +22,7 @@ jobs:
   quality:
     name: Typecheck, lint, format and conventions
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -31,6 +32,8 @@ jobs:
       - run: npm ci
       - run: npx prisma generate --schema apps/server/prisma/schema.prisma
       - run: npm run version:check
+      - run: node scripts/check-experience-progress.mjs --json
+      - run: npm run test:tooling
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
@@ -39,6 +42,7 @@ jobs:
   server-tests:
     name: Server tests ${{ matrix.shard }}/2
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +77,7 @@ jobs:
   web-tests:
     name: Web tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -85,6 +90,7 @@ jobs:
   images:
     name: Build ${{ matrix.name }} image
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

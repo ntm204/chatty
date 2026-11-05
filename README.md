@@ -32,7 +32,7 @@ bright yellow, faint violet gradients, restrained typography and rounded surface
 Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
 The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
 The chat welcome has an expandable activity status. “New chat” in the sidebar opens people search; validation
-and compact conversation/settings layouts follow the [design review](docs/design/review-2026-09-09.md).
+and compact conversation/settings layouts follow the [visual direction](docs/design/visual-direction.md).
 Every login reload plays a 3.8-second welcome: a descending curtain, the symbol and six letters
 falling separately, then a curious left/right glance, eye contact and wink before dissolving into the ready form.
 The intro keeps both eyes on the same animation timeline, including when opened in a background tab.
@@ -158,8 +158,8 @@ message counts and every attachment kind. To exercise group administration direc
 ## Checks
 
 ```bash
-npm run verify          # fast: cached static checks + tests related to changed files
-npm run verify:full     # every server/web test; release and high-risk gate
+npm run verify          # changed tests + cached static checks; 5-minute budget
+npm run verify:full     # every server/web test; release/high-risk gate, 10-minute budget
 npm run version:check   # SemVer is identical in every workspace and the lockfile
 ```
 
@@ -187,7 +187,7 @@ docker compose -f docker-compose.test.yml up -d --wait
 $env:CHATTY_TEST_POSTGRES_PORT = "5433"
 $env:VITEST_MAX_WORKERS = "1"
 npm run verify:full
-npx playwright test --config playwright.webkit.config.ts --timeout=90000
+npm run test:e2e -- e2e/<affected>.spec.ts --config playwright.webkit.config.ts --timeout=90000
 ```
 
 The override selects IPv4 loopback and the test port; database names remain fixed to `chatty_test` and `chatty_e2e`.
@@ -205,8 +205,23 @@ End-to-end tests are separate, because they need both servers and a browser:
 
 ```bash
 npm run e2e:install     # once — downloads chromium
-npm run test:e2e        # starts the API and web on :4100/:5273 against chatty_e2e
+npm run test:e2e:smoke  # 7 existing core scenarios; 3-minute budget
+npm run test:e2e -- e2e/sending.spec.ts # only the affected flow
+npm run test:e2e        # full Chromium; release/broad regression, 15-minute budget
 ```
+
+The smoke check covers realtime text, replies, images, search, send failure/retry and two-tab
+durable replay. It is not full acceptance. Browser commands start isolated API/web servers on
+:4100/:5273; an advisory lock refuses a second run against `chatty_e2e`. Do not overlap browser runs.
+Use `--config playwright.webkit.config.ts` only for relevant engine behaviour; use
+`npm run test:e2e:built` (5-minute budget) for production CSP/offline/media changes.
+
+Which checks to run for a change is decided in [AGENTS.md](AGENTS.md#run-and-check).
+The supervisor prints step durations, stops on the first failed step and terminates the process tree
+on timeout or Ctrl-C (up to 5 seconds for cleanup). Timeout is a failure (exit 124), never a pass;
+inspect it before a targeted rerun. Local browser runs stop after 3 failures, smoke after 1, with
+zero retries. Web unit tests default to 2 workers locally to bound memory; `VITEST_MAX_WORKERS`
+can explicitly override this. CI retains the complete unit suite and job deadlines.
 
 `verify` runs the audit with `--gate`, so a hit fails the command. On its own `audit:rules` stays a
 report and always exits 0 — a heuristic that blocks work is a heuristic people learn to skip.

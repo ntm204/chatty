@@ -35,8 +35,11 @@ Green, on Node 22+. Use `npm run verify:full` for security/auth changes, migrati
 upgrades and releases. CI always runs the complete suite in parallel shards, so the quick local gate
 changes waiting time rather than the amount of code checked before acceptance.
 
-`npm run test:e2e` is **not** part of `verify` — it needs two servers and a browser download — and it
-is what you should run for anything touching a flow rather than a function. It has earned its place:
+For a flow change, run `npm run test:e2e -- e2e/<name>.spec.ts`. The short core check is
+`npm run test:e2e:smoke` (3-minute budget); full `npm run test:e2e` is for release/broad regression
+(15 minutes). The quick/full verification gates have 5/10-minute budgets. Run one appropriate gate
+per frozen batch; inspect failures before a targeted rerun. Browser checks need two servers and a
+browser download, so they are **not** part of `verify`. They have earned their place:
 it found that attaching an image and pressing Enter dropped the picture, which every unit test
 missed because each one clicked the button it meant.
 

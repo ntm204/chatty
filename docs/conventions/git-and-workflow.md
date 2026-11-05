@@ -78,11 +78,6 @@ The value is in the **Consequences** section — the trade-offs you knowingly ac
 
 ---
 
-## What the AI agent may and may not do
+## AI agents
 
-Declared here because chatty is built with an agent in the loop, and these are the boundaries:
-
-- **Never commit or push unprompted.** Wait for an explicit "commit this" / "push it" in the same turn. This did not change when the branch rule did: pushing straight to `main` makes the instruction to push more consequential, not less, because there is no pull request standing between the push and the trunk.
-- Never `git checkout` / `reset` / `clean` over uncommitted work without checking `git status` and stashing first.
-- Running `typecheck` / `lint` / `test` unprompted: **yes** — they are cheap and catch real breakage before it is handed over.
-- Report failures honestly, with the output. A test that fails is reported as failing, not narrated as "should work".
+Agent boundaries (commits, pushes, which checks to run) live only in [AGENTS.md](../../AGENTS.md).

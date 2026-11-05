@@ -27,7 +27,7 @@ invitation focus people search, clarifies error typography/borders and announces
 Message bubble padding is now 8px vertically; theme selection changes immediately. The settings
 content column shrinks on short phone screens so its controls remain reachable. Primary buttons
 and the welcome arrow have small interaction feedback under normal motion preferences.
-See [the review](design/review-2026-09-09.md) for findings, decisions and verification scope.
+See [the visual direction](design/visual-direction.md).
 
 ## Login welcome sequence
 
@@ -2076,7 +2076,7 @@ Asked for directly, after phase 23: there is no way to *see* what a conversation
 way to send anything that is not a picture, no voice, and a list of small things every other messenger
 has. These phases are delivered history. Their original proposals have been consolidated;
 current contracts live in [architecture](ARCHITECTURE.md), ADRs and the implementation, while
-[active plans](plans/README.md) track remaining acceptance rather than obsolete proposals.
+[the acceptance report](plans/acceptance-2026-09-25.md) track remaining acceptance rather than obsolete proposals.
 
 | Phase | Item | Status |
 | --- | --- | --- |
@@ -3861,10 +3861,14 @@ offline reload, which Playwright's WebKit cannot perform with a service worker.
 
 Verified 2026-10-25/26 on macOS. `npm run verify` passes (web 438). The full Chromium suite passed
 100/100 in 6.5 minutes. Each WebKit spec named above passed on its own after its fix, and the built
-app passed on WebKit up to the offline step. A full WebKit run is still owed. One was discarded
-because the machine slept, and the next was stopped at 94/100 when the system ran low on memory; its
-failures included specs that pass alone. Not covered: Safari's offline shell by hand, real phones,
-VoiceOver by ear.
+app passed on WebKit up to the offline step. Two earlier full WebKit runs were discarded (one when
+the machine slept, one stopped at 94/100 by low memory). On 2026-10-27 all 53 spec files ran on
+WebKit in five batches: 92 passed, 1 skipped (service worker, Chromium only). Every failure passed when
+run on its own, except the new bookmark spec, which had picked the wrong row's menu and is now
+scoped. Two flakes remain: `reactions › a second emoji…` and `restrictions › one badge rule…` can time
+out waiting for the chat after sign-up when they follow other specs. Both open three accounts. Contexts
+are isolated, sign-up measured 0.8s in eight straight runs, and alone both pass, so the cause is still
+open. Not covered: Safari's offline shell by hand, real phones, VoiceOver by ear.
 
 ## Verification bar
 
@@ -3962,3 +3966,18 @@ is required for those rules.
 Current commands, evidence and limits are in [the acceptance report](plans/acceptance-2026-09-25.md).
 Only [the XP ledger](plans/experience-polish.md) determines completion: automated browser emulation
 cannot close the physical-device, native notification, IME or screen reader requirements.
+
+## Bounded verification and core review — 2026-11-05
+
+The owner excludes physical-device acceptance from current work. Missing evidence stays explicit
+and does not trigger more browser runs or prevent software improvements. Two read-only agents
+reviewed core reliability; API refresh/upload recovery, socket lifetime/bootstrap and mail leases
+have follow-ups with evidence and acceptance criteria in the existing acceptance report.
+
+Local checks now have a process supervisor with timing, total deadlines and cancellation cleanup,
+including detached browser/server children. Quick/full verification budgets are 5/10 minutes.
+A 3-minute smoke config reuses seven existing core browser scenarios; full browser coverage remains
+available with a 15-minute budget. Browser failures stop local runs early, and an advisory database
+lock prevents concurrent E2E fixture resets. Web unit workers default to two locally; CI retains
+the complete suite with job deadlines. The workflow selects the affected spec/engine instead of
+automatically repeating every suite. No new product feature or dependency is introduced.

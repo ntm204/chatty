@@ -15,6 +15,17 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// Browser storage belongs to jsdom. Newer Node globals otherwise shadow it with
+		// process-level storage (or undefined when no --localstorage-file is supplied).
+		execArgv: process.allowedNodeEnvironmentFlags.has("--no-experimental-webstorage")
+			? ["--no-experimental-webstorage"]
+			: [],
+		// Bound memory locally; CI can spend the isolated runner on the complete suite.
+		maxWorkers: process.env.VITEST_MAX_WORKERS
+			? Number(process.env.VITEST_MAX_WORKERS)
+			: process.env.CI
+				? undefined
+				: 2,
 		// Components touch the DOM; jsdom gives them one without a browser.
 		environment: "jsdom",
 		globals: true,
