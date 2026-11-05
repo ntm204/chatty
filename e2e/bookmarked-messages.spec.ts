@@ -121,8 +121,12 @@ test("the thread menu, other tabs and the bookmarks list agree about one bookmar
 	await expect(otherTab.getByLabel("Message history").getByText("One bookmark, every surface")).toBeVisible();
 
 	async function openMenu(target: typeof page) {
-		await target.getByLabel("Message history").getByText("One bookmark, every surface").hover();
-		await target.getByLabel("Message actions").click();
+		// Scoped to this message's row: WebKit can keep another row's actions revealed.
+		const row = target
+			.locator("[data-message-interaction-row]")
+			.filter({ has: target.getByText("One bookmark, every surface", { exact: true }) });
+		await row.hover();
+		await row.getByLabel("Message actions").click();
 	}
 
 	await openMenu(page);
