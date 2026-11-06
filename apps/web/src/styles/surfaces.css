@@ -931,9 +931,14 @@
 }
 .voice-player-meta[data-playing="true"] .voice-player-speed {
 	opacity: 1;
+	/* Visible at once when shown, so Tab right after Play can reach it; it still fades in. */
 	visibility: visible;
 	transform: translateY(0) scale(1);
 	pointer-events: auto;
+	transition:
+		opacity 180ms ease,
+		transform 180ms ease,
+		visibility 0s;
 }
 @media (prefers-reduced-motion: reduce) {
 	.voice-player-duration,
