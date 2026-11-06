@@ -80,7 +80,9 @@ templates, analytics — and one it eventually will: bounce webhooks.
   a message already promised to that address.
 - Delivery is now at-least-once with a best effort at exactly-once. The claim counts its attempt and
   takes a two-minute lease in the same statement, so a process dying mid-send does not hand the row
-  to another instance immediately. A process dying *after* the provider accepted but *before*
+  to another instance immediately. Rows are claimed one at a time, just before their own send, and
+  SMTP timeouts keep that send under the lease; the counted attempt fences completion, so a worker
+  whose lease was taken over cannot overwrite the newer claim's outcome. A process dying *after* the provider accepted but *before*
   `markSent` still produces a duplicate. Making that impossible needs an idempotency key the provider
   honours, which is a provider decision rather than one this table can make.
 - Settled rows are swept after thirty days by an hourly timer (phase 10). PENDING is never eligible,

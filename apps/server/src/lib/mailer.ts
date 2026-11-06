@@ -77,7 +77,19 @@ class SmtpMailer implements Mailer {
 		private readonly url: string,
 		private readonly from: string,
 	) {
-		this.transporter = nodemailer.createTransport(this.url);
+		// Nodemailer's defaults (two minutes to connect, ten of socket silence) let
+		// one send outlive the outbox's two-minute claim lease, after which another
+		// worker re-claims the row and the mail goes out twice. These bound each
+		// wait on its own; a reset mail is about eight SMTP replies, so a server
+		// stalling at every step still finishes or fails inside the lease. Query
+		// parameters on SMTP_URL override them.
+		this.transporter = nodemailer.createTransport({
+			url: this.url,
+			dnsTimeout: 5_000,
+			connectionTimeout: 10_000,
+			greetingTimeout: 10_000,
+			socketTimeout: 10_000,
+		});
 	}
 
 	async send(mail: Mail): Promise<void> {

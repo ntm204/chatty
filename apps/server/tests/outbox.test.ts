@@ -196,6 +196,47 @@ describe("processOutboxOnce", () => {
 		expect([...delivered].sort()).toEqual([...recipients].sort());
 	});
 
+	it("does not let a slow batch outlive the claim on messages it has not reached yet", async () => {
+		// Real timing would need a provider slower than the two-minute lease, so the
+		// first send instead expires every other row's lease and lets a second
+		// worker in — exactly what the database would see if it had taken that long.
+		// A worker that claimed the whole batch up front would then send the second
+		// message again after the takeover had already delivered it.
+		await queue({ ...MAIL, to: "a@chatty.test" });
+		await queue({ ...MAIL, to: "b@chatty.test" });
+		let hasTakenOver = false;
+		sent.mockImplementation(async (mail: Mail) => {
+			if (hasTakenOver) return;
+
+			hasTakenOver = true;
+			await prisma.$executeRaw`
+				UPDATE "OutboxMessage" SET "nextAttemptAt" = NOW() - INTERVAL '1 hour' WHERE "id" <> ${mail.id}
+			`;
+			await processOutboxOnce();
+		});
+
+		await processOutboxOnce();
+
+		const delivered = sent.mock.calls.map((call: unknown[]) => (call[0] as Mail).to);
+		expect([...delivered].sort()).toEqual(["a@chatty.test", "b@chatty.test"]);
+	});
+
+	it("does not let a worker whose claim was taken over overwrite the newer outcome", async () => {
+		// The send outlives its lease, another worker re-claims and delivers, and
+		// only then does the first send fail. That late failure belongs to a claim
+		// that no longer owns the row, so it must not touch it.
+		const id = await queue();
+		sent.mockImplementationOnce(async () => {
+			await makeOverdue(id);
+			await processOutboxOnce();
+			throw new Error("timed out after the lease");
+		});
+
+		await processOutboxOnce();
+
+		await expect(readRow(id)).resolves.toMatchObject({ status: "SENT", attempts: 2, lastError: null });
+	});
+
 	it("does nothing, quietly, when there is nothing queued", async () => {
 		await expect(processOutboxOnce()).resolves.toBe(0);
 

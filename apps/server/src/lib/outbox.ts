@@ -21,11 +21,12 @@ import { prisma } from "./prisma.js";
  */
 
 /**
- * How many rows one pass may claim.
+ * How many messages one pass may send.
  *
- * Small on purpose. A pass holds a transaction open while it talks to a provider
- * over the network, and a batch of a hundred would hold row locks for as long as
- * the slowest of a hundred sends.
+ * Claimed one at a time, each just before its own send, so a lease only ever
+ * has to cover one send. Claiming the whole batch up front started every lease
+ * at once: ten slow sends in a row outlived the later rows' leases, another
+ * worker re-claimed them, and both delivered the same mail.
  */
 const OUTBOX_BATCH_SIZE = 10;
 
@@ -52,8 +53,9 @@ const OUTBOX_POLL_MS = 5_000;
  * claiming a row and finishing the send. The row is left PENDING with its
  * attempt already counted, so without a lease the next pass — here or on another
  * instance — would pick it up immediately and might deliver it a second time.
- * Long enough to outlast any send, short enough that a genuine crash does not
- * strand somebody's reset link for an hour.
+ * Long enough to outlast one send — the SMTP timeouts in mailer.ts keep one
+ * below it — short enough that a genuine crash does not strand somebody's reset
+ * link for an hour.
  */
 const OUTBOX_CLAIM_LEASE_MS = 120_000;
 
@@ -97,7 +99,7 @@ function backoffSecondsFor(attempts: number): number {
 }
 
 /**
- * Takes ownership of up to `OUTBOX_BATCH_SIZE` due messages.
+ * Takes ownership of the next due message, if there is one.
  *
  * `FOR UPDATE SKIP LOCKED` is what makes more than one instance safe, and it is
  * the reason this is raw SQL rather than a Prisma query. Two workers running the
@@ -112,9 +114,14 @@ function backoffSecondsFor(attempts: number): number {
  * up, and the lease is what stops a crash mid-send from becoming a second
  * delivery. A successful send overwrites the lease with SENT a moment later, and
  * a caught failure overwrites it with the real backoff.
+ *
+ * The counted attempt doubles as the claim's identity. If this worker outlives
+ * its lease and another re-claims the row, the count moves on, and the
+ * `attempts` check in `markSent` and `markFailure` stops the late worker from
+ * overwriting the newer claim's outcome.
  */
-async function claimDueMail(): Promise<ClaimedMail[]> {
-	return prisma.$queryRaw<ClaimedMail[]>`
+async function claimNextMail(): Promise<ClaimedMail | undefined> {
+	const [claimed] = await prisma.$queryRaw<ClaimedMail[]>`
 		UPDATE "OutboxMessage"
 		SET "attempts" = "attempts" + 1,
 		    "nextAttemptAt" = NOW() + make_interval(secs => ${OUTBOX_CLAIM_LEASE_MS / 1000})
@@ -123,23 +130,28 @@ async function claimDueMail(): Promise<ClaimedMail[]> {
 			FROM "OutboxMessage"
 			WHERE "status" = 'PENDING' AND "nextAttemptAt" <= NOW()
 			ORDER BY "nextAttemptAt"
-			LIMIT ${OUTBOX_BATCH_SIZE}
+			LIMIT 1
 			FOR UPDATE SKIP LOCKED
 		)
 		RETURNING "id", "to", "subject", "body", "attempts"
 	`;
+
+	return claimed;
 }
 
-/** Marks a claimed message delivered, and drops the body with it. */
-async function markSent(id: string): Promise<void> {
-	await prisma.outboxMessage.update({
-		where: { id },
+/** Marks a claimed message delivered, and drops the body with it — unless the claim was taken over. */
+async function markSent(claimed: ClaimedMail): Promise<void> {
+	const { count } = await prisma.outboxMessage.updateMany({
+		where: { id: claimed.id, status: "PENDING", attempts: claimed.attempts },
 		// Emptied rather than kept: a delivered password reset body is a working
 		// link to an account, and the row survives for the audit trail. The check
 		// constraint on the table refuses a SENT row that still has one.
 		data: { status: "SENT", sentAt: new Date(), body: "", lastError: null },
-		select: { id: true },
 	});
+
+	// The provider took it, but the row now belongs to a newer claim, which may
+	// send it again. Worth a trace: it means a send outlived the lease.
+	if (count === 0) logger.warn({ outboxId: claimed.id }, "outbox claim was taken over before delivery was recorded");
 }
 
 /**
@@ -153,22 +165,29 @@ async function markFailure(claimed: ClaimedMail, error: unknown): Promise<void> 
 	const lastError = error instanceof Error ? error.message : String(error);
 	const isTerminal = claimed.attempts >= OUTBOX_MAX_ATTEMPTS;
 
+	let updatedCount: number;
 	if (isTerminal) {
-		await prisma.outboxMessage.update({
-			where: { id: claimed.id },
+		({ count: updatedCount } = await prisma.outboxMessage.updateMany({
+			where: { id: claimed.id, status: "PENDING", attempts: claimed.attempts },
 			data: { status: "FAILED", body: "", lastError },
-			select: { id: true },
-		});
+		}));
 	} else {
 		// Raw, so the new schedule is `NOW() + backoff` in the database's clock
 		// rather than this process's. A Prisma `data: { nextAttemptAt: someDate }`
 		// here would reintroduce exactly the skew the schema comment describes.
-		await prisma.$executeRaw`
+		updatedCount = await prisma.$executeRaw`
 			UPDATE "OutboxMessage"
 			SET "nextAttemptAt" = NOW() + make_interval(secs => ${backoffSecondsFor(claimed.attempts)}),
 			    "lastError" = ${lastError}
-			WHERE "id" = ${claimed.id}
+			WHERE "id" = ${claimed.id} AND "status" = 'PENDING' AND "attempts" = ${claimed.attempts}
 		`;
+	}
+
+	// A newer claim owns the row now; its outcome is the one worth reporting.
+	if (updatedCount === 0) {
+		logger.warn({ outboxId: claimed.id }, "outbox claim was taken over before its failure was recorded");
+
+		return;
 	}
 
 	// At `error` only when nothing more will be tried. A single failed attempt
@@ -224,18 +243,20 @@ export async function pruneSettledOutbox(): Promise<number> {
  * suite that is slow when it passes and confusing when it fails.
  */
 export async function processOutboxOnce(): Promise<number> {
-	const claimed = await claimDueMail();
 	let deliveredCount = 0;
 
 	// One at a time rather than `Promise.all`: providers rate limit, and a burst
 	// of parallel sends is the shape of request that gets an API key throttled.
-	for (const mail of claimed) {
+	for (let sendCount = 0; sendCount < OUTBOX_BATCH_SIZE; sendCount += 1) {
+		const mail = await claimNextMail();
+		if (!mail) break;
+
 		try {
 			// The row id travels with the message and becomes its `Message-ID`, so
 			// a retry after a crash mid-send is recognisably the same message
 			// rather than a second one. See `Mail.id`.
 			await mailer.send({ to: mail.to, subject: mail.subject, body: mail.body, id: mail.id });
-			await markSent(mail.id);
+			await markSent(mail);
 			deliveredCount += 1;
 		} catch (error) {
 			await markFailure(mail, error);
