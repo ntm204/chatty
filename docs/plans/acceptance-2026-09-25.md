@@ -2,7 +2,7 @@
 
 ## Kết luận và phạm vi
 
-Chatty phát hành **0.2.0 (2026-11-06), bản local/private**, chưa phải bản phát hành public.
+Chatty phát hành **0.2.1 (2026-11-06), bản local/private**, chưa phải bản phát hành public.
 Đoạn dưới mô tả mốc 0.2.0-rc.1 tại thời điểm nghiệm thu.
 Sổ XP tại mốc 2026-09-25: **41 done, 10 partial, 9 planned**; XP-59 chỉ chuyển done sau khi đo, sửa trim
 và chạy lại cùng workload, không phải chỉ vì test xanh.
@@ -187,6 +187,14 @@ và CSS `data-motion` đi kèm. `npm run verify` đạt trong 160 giây (server 
 | `npm run test:e2e` | 105/106; ca phím Tab tới nút tốc độ voice lỗi khoảng 1/2 lần: nút còn `visibility: hidden` ở đầu transition. Đã sửa CSS; chạy riêng ca đó 8/8 đạt |
 | `docker compose -f docker-compose.prod.yml up --build --wait` (project tạm, secret dùng một lần) | Hai image build được, mọi service healthy |
 | `scripts/smoke.sh http://127.0.0.1:4000` | 17/17 đạt; web 200 kèm CSP; stack tạm đã gỡ cùng volume |
+
+### v0.2.0 không phát hành → v0.2.1 — 2026-11-06
+
+Workflow release của tag `v0.2.0`: CI gate đạt, browser 105/106. `vault-live-pages` lệch 2290px trên runner
+chậm: vault bỏ qua thao tác cuộn trong lúc tải lại, xong lại kéo người đọc về vị trí cũ. Image và GitHub Release
+bị chặn đúng thiết kế. Đã sửa hook (ghi vị trí cả khi đang tải, trừ danh sách rỗng), thêm unit test (lỗi trên
+code cũ). `npm run verify` đạt (166/166 liên quan), `vault-live-pages` 4/4. Tag không dời; phát hành `v0.2.1`,
+workflow release chạy lại toàn bộ gate và E2E trước khi publish.
 
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 

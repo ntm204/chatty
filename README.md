@@ -2,7 +2,7 @@
 
 A messaging app (Zalo/Telegram-style: 1-1 and group chat, realtime delivery) built from scratch to learn how a production-grade chat system is put together.
 
-Current release: **`v0.2.0`** — local/private release; public launch still requires the external
+Current release: **`v0.2.1`** — local/private release; public launch still requires the external
 conditions in [Deployment](docs/DEPLOYMENT.md).
 
 Current development focus: **everyday usability and interface polish**. The

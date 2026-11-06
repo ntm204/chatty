@@ -6,7 +6,16 @@ remain in [the roadmap](docs/ROADMAP.md) and [architecture decisions](docs/adr/)
 This project follows [Semantic Versioning](https://semver.org/) and the repository's
 [release conventions](docs/conventions/releases.md).
 
-## [0.2.0] — 2026-11-06
+## [0.2.1] — 2026-11-06
+
+The first published 0.2 release; it contains everything listed under 0.2.0.
+
+- Keep the vault reading position when the reader scrolls while a live update reloads the list.
+
+## [0.2.0] — 2026-11-06 — not published
+
+Tagged but never published: the release browser gate caught the vault scrolling bug fixed in 0.2.1.
+
 
 Local/private release: images target the same-machine API (`http://localhost:4000`); public hosting,
 domain and real-device acceptance remain outside this version.
@@ -211,5 +220,6 @@ domain and real-device acceptance remain outside this version.
 - Group roles remain impossible in direct conversations at the database boundary.
 - Production audio is permitted by the web Content Security Policy.
 
+[0.2.1]: https://github.com/ntm204/chatty/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ntm204/chatty/releases/tag/v0.2.0
 [0.2.0-rc.1]: https://github.com/ntm204/chatty/releases/tag/v0.2.0-rc.1
