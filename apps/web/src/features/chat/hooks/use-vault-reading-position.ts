@@ -34,7 +34,10 @@ export function useVaultReadingPosition(
 
 	return () => {
 		const container = containerRef.current;
-		if (!container || !activeTab || isLoading) return;
+		// Recorded during a refresh too: a live update reloads the list while the
+		// reader keeps scrolling, and ignoring that scroll snapped them back to a
+		// stale spot once it finished. Only an emptied list has nothing to anchor.
+		if (!container || !activeTab || items.length === 0) return;
 		const top = container.getBoundingClientRect().top;
 		const anchor = Array.from(container.querySelectorAll<HTMLElement>("[data-vault-item]")).find(
 			(item) => item.getBoundingClientRect().bottom > top,
