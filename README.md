@@ -2,8 +2,8 @@
 
 A messaging app (Zalo/Telegram-style: 1-1 and group chat, realtime delivery) built from scratch to learn how a production-grade chat system is put together.
 
-Current release: **`v0.2.0-rc.1`** — feature-complete release candidate for private acceptance;
-public launch still requires the external conditions in [Deployment](docs/DEPLOYMENT.md).
+Current release: **`v0.2.0`** — local/private release; public launch still requires the external
+conditions in [Deployment](docs/DEPLOYMENT.md).
 
 Current development focus: **everyday usability and interface polish**. The
 [experience polish plan](docs/plans/experience-polish.md) lists 60 scoped tasks in 12 batches, with

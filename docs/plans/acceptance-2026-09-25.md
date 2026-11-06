@@ -2,7 +2,8 @@
 
 ## Kết luận và phạm vi
 
-Chatty ở mốc **0.2.0-rc.1, nghiệm thu nội bộ/local**, chưa phải bản phát hành public.
+Chatty phát hành **0.2.0 (2026-11-06), bản local/private**, chưa phải bản phát hành public.
+Đoạn dưới mô tả mốc 0.2.0-rc.1 tại thời điểm nghiệm thu.
 Sổ XP tại mốc 2026-09-25: **41 done, 10 partial, 9 planned**; XP-59 chỉ chuyển done sau khi đo, sửa trim
 và chạy lại cùng workload, không phải chỉ vì test xanh.
 Lượt này đưa XP-60 từ planned sang partial nhờ nghiệm thu local và hợp nhất tài liệu,
@@ -177,6 +178,15 @@ Review độc lập tìm ra ba khe hở trong hai đợt trên; mỗi khe có m�
 
 Bỏ code không còn nơi dùng: `CustomSelect`, `useAnimatedDismiss`, `useMotionPresence`, `constants/motion.ts`
 và CSS `data-motion` đi kèm. `npm run verify` đạt trong 160 giây (server 472/472, web 451/451 liên quan, audit 0 hit).
+
+### Cổng phát hành v0.2.0 — 2026-11-06
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt trong 172,9 giây: server 511/511, web 661/661, audit 0 hit |
+| `npm run test:e2e` | 105/106; ca phím Tab tới nút tốc độ voice lỗi khoảng 1/2 lần: nút còn `visibility: hidden` ở đầu transition. Đã sửa CSS; chạy riêng ca đó 8/8 đạt |
+| `docker compose -f docker-compose.prod.yml up --build --wait` (project tạm, secret dùng một lần) | Hai image build được, mọi service healthy |
+| `scripts/smoke.sh http://127.0.0.1:4000` | 17/17 đạt; web 200 kèm CSP; stack tạm đã gỡ cùng volume |
 
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 

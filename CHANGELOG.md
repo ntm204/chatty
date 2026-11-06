@@ -6,7 +6,23 @@ remain in [the roadmap](docs/ROADMAP.md) and [architecture decisions](docs/adr/)
 This project follows [Semantic Versioning](https://semver.org/) and the repository's
 [release conventions](docs/conventions/releases.md).
 
-## Unreleased
+## [0.2.0] — 2026-11-06
+
+Local/private release: images target the same-machine API (`http://localhost:4000`); public hosting,
+domain and real-device acceptance remain outside this version.
+
+- Keep the session through network failures, rate limits and 5xx during token renewal; only a refused
+  renewal signs out, so unsent messages survive outages.
+- Settle every attachment upload: renew and resend on 401, and fail cleanly on non-JSON replies,
+  stalled connections and a renewal that never answers.
+- Close sockets when their access token expires and reconnect after renewal; close the window in which
+  a socket could keep a room it had just lost.
+- Prevent duplicate outbox mail under slow SMTP: claim one message per send, fence completion by
+  attempt, and bound SMTP waits below the claim lease.
+- Bound local verification with time budgets, early stop and process cleanup; add a 7-case browser
+  smoke run and refuse overlapping E2E runs.
+- Make the voice speed control reachable by Tab as soon as playback starts.
+- Remove unused components, hooks and stale design documents; keep agent process rules in `AGENTS.md`.
 
 - Keep message-menu keyboard handling within its focused layer, respect IME, and restore the correct action/reaction opener after Escape.
 - Retry the failed search page without clearing loaded results, including offline pagination and results hidden by live events.
@@ -195,4 +211,5 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 - Group roles remain impossible in direct conversations at the database boundary.
 - Production audio is permitted by the web Content Security Policy.
 
+[0.2.0]: https://github.com/ntm204/chatty/releases/tag/v0.2.0
 [0.2.0-rc.1]: https://github.com/ntm204/chatty/releases/tag/v0.2.0-rc.1
