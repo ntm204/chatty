@@ -94,9 +94,9 @@ bằng chứng cần thêm feature lớn hoặc thay kiến trúc. Cần ưu ti�
 | P1: access-token 401 rồi refresh lỗi mạng/5xx vẫn báo hết phiên, có thể dọn outbox — **đã sửa 2026-11-05** | `apps/web/src/api/client.ts:144–165, 221–227`; `hooks/use-auth.ts:116`. Agent chạy probe API client trong bộ nhớ, handler hết phiên bị gọi khi refresh lỗi mạng | Giữ phiên/outbox khi mạng hoặc server lỗi; chỉ logout khi refresh bị từ chối xác thực |
 | P1: upload nhận HTML/JSON hỏng làm Promise kẹt — **đã sửa 2026-11-05** | `api/client.ts:273–281, 612–624`; probe 502 HTML ném SyntaxError ngoài Promise, trạng thái vẫn pending | Upload kết thúc pending bằng lỗi có Retry; giữ payload/clientId; deadline cho request treo |
 | P1: upload 401 logout ngay dù refresh còn dùng được — **đã sửa 2026-11-05** | Hai XHR path trong `api/client.ts`; probe image upload: handler hết phiên 1 lần, refresh 0 lần | Refresh một lần và gửi lại cùng payload/clientId; chỉ kết thúc phiên khi refresh bị từ chối |
-| P1: socket sống không áp lại hạn JWT 15 phút | `apps/server/src/sockets/index.ts:36`; `auth.service.ts:77`, xác thực ở handshake; phát hiện qua code, chưa tái hiện integration | Hết hạn mất quyền nhận sự kiện; refresh/reconnect hợp lệ không mất/trùng tin |
-| P1: đọc rooms rồi mới join personal room có cửa sổ bỏ sót remove/reset | `sockets/index.ts:19–24`; eviction/revocation ở `conversations.service.ts:427`, `auth.service.ts:263`; giả thuyết interleaving từ code, chưa có integration | Barrier giữ bootstrap, thu hồi quyền giữa chừng, thả barrier: socket không nhận sự kiện đã mất quyền |
-| P2: mail outbox claim 10 thư với lease 120 giây nhưng gửi tuần tự | `lib/outbox.ts:30,58,120,226`; `lib/mailer.ts:80` không cấu hình timeout riêng; nguy cơ gửi lặp khi SMTP chậm, chưa tái hiện integration | Hai worker với SMTP chậm không gửi cùng claim; timeout/lease tương thích, worker cũ không ghi đè claim mới |
+| P1: socket sống không áp lại hạn JWT 15 phút — **đã sửa 2026-11-05** | `apps/server/src/sockets/index.ts:36`; `auth.service.ts:77`, xác thực ở handshake; phát hiện qua code, chưa tái hiện integration | Hết hạn mất quyền nhận sự kiện; refresh/reconnect hợp lệ không mất/trùng tin |
+| P1: đọc rooms rồi mới join personal room có cửa sổ bỏ sót remove/reset — **đã sửa 2026-11-05** | `sockets/index.ts:19–24`; eviction/revocation ở `conversations.service.ts:427`, `auth.service.ts:263`; giả thuyết interleaving từ code, chưa có integration | Barrier giữ bootstrap, thu hồi quyền giữa chừng, thả barrier: socket không nhận sự kiện đã mất quyền |
+| P2: mail outbox claim 10 thư với lease 120 giây nhưng gửi tuần tự — **đã sửa 2026-11-05** | `lib/outbox.ts:30,58,120,226`; `lib/mailer.ts:80` không cấu hình timeout riêng; nguy cơ gửi lặp khi SMTP chậm, chưa tái hiện integration | Hai worker với SMTP chậm không gửi cùng claim; timeout/lease tương thích, worker cũ không ghi đè claim mới |
 
 Các probe frontend mất khoảng 0,2 giây, không cần browser/thiết bị. Chúng chứng minh nhánh logic,
 không thay nghiệm thu tích hợp. Các phát hiện trên **chưa được sửa trong đợt hạ tầng test này**.
@@ -149,7 +149,34 @@ Gom vào `apps/web/src/api/client.ts`, không thêm dependency:
 | `vitest run tests/session-expiry.test.ts tests/upload-recovery.test.ts` | 17/17 đạt; với `client.ts` cũ có 6 ca mới lỗi (3 ca treo tới timeout) |
 | `npm run verify` (macOS arm64, Node 26.13.0) | Đạt trong 185,7 giây: server 507/507, web 661/661, audit 0 hit |
 
-Socket JWT, join room và mail outbox (P1/P2 còn lại) chưa sửa; xử lý riêng với test có điều khiển.
+### Sửa socket và mail outbox — 2026-11-05
+
+Cả ba đều được tái hiện bằng test thất bại trên code cũ trước khi sửa:
+
+- **Socket quá hạn token:** middleware ghi lại `exp` của token đã xác thực; tới hạn, server đóng
+  kết nối (không gửi DISCONNECT) để client tự gia hạn và vào lại.
+- **Race khi vào phòng:** join personal room trước, đọc danh sách, join, đọc lại và rời phòng đã mất quyền.
+- **Mail gửi trùng:** claim từng thư ngay trước khi gửi; `attempts` làm token claim nên worker trễ không
+  ghi đè claim mới; timeout SMTP (5/10/10/10 giây) giữ một lần gửi dưới lease 120 giây (ADR 0011).
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `vitest run tests/typing.socket.test.ts tests/outbox.test.ts` | 31/31 đạt; code cũ: socket 2 lỗi, outbox 2 lỗi |
+| `npm run verify` (macOS arm64, Node 26.13.0) | Đạt trong 141,7 giây: server 472/472 liên quan, audit 0 hit |
+
+Giới hạn còn lại: đăng xuất một thiết bị chỉ cắt socket khi access token hết hạn (tối đa 15 phút, như HTTP);
+SMTP gửi nhỏ giọt liên tục vẫn có thể vượt lease (gửi trùng hiếm, không ghi đè trạng thái); chưa thử SMTP chậm thật.
+
+### Sửa theo review — 2026-11-06
+
+Review độc lập tìm ra ba khe hở trong hai đợt trên; mỗi khe có một test thất bại trên code trước đó:
+
+- Handshake bị từ chối làm socket ngừng hẳn; client nay `connect()` lại sau khi gia hạn thành công.
+- Refresh trả 429 từng bị coi là hết phiên; nay chỉ 401 mới kết thúc phiên.
+- Refresh không có deadline nên upload chờ 401 có thể treo; nay refresh dừng sau 15 giây.
+
+Bỏ code không còn nơi dùng: `CustomSelect`, `useAnimatedDismiss`, `useMotionPresence`, `constants/motion.ts`
+và CSS `data-motion` đi kèm. `npm run verify` đạt trong 160 giây (server 472/472, web 451/451 liên quan, audit 0 hit).
 
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
