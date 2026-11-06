@@ -12,6 +12,8 @@ import type { Server, Socket } from "socket.io";
  */
 export interface ChattySocketData {
 	userId: string;
+	/** When the handshake's access token expires, in ms since the epoch. */
+	tokenExpiresAt: number;
 }
 
 /** No server-to-server events yet; the slot exists because SocketData follows it. */

@@ -1,6 +1,7 @@
 import type { Server as HttpServer } from "node:http";
+import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
-import { verifyAccessToken } from "../lib/access-token.js";
+import { verifyAccessToken, type JwtPayload } from "../lib/access-token.js";
 import { env } from "../config/env.js";
 import { logger } from "../lib/logger.js";
 import { recordSocketConnected, recordSocketDisconnected, startSocketSetup } from "../lib/metrics.js";
@@ -17,11 +18,19 @@ import { registerTypingHandlers } from "./typing.js";
  * process exists, and reconnects would silently stop delivering messages.
  */
 async function joinConversationRooms(socket: ChattySocket, userId: string): Promise<void> {
+	// The personal room is how services reach this user's live sockets to join or
+	// evict them. Joined before the read, so a change committed after the read
+	// cannot slip past this socket.
+	await socket.join(userRoom(userId));
 	const conversationIds = await listRealtimeConversationIds(userId);
+	await socket.join(conversationIds);
 
-	// The personal room is how the conversation service reaches this user's live
-	// sockets to add them to a conversation created after they connected.
-	await socket.join([userRoom(userId), ...conversationIds]);
+	// A removal that committed after the read but evicted before the join above
+	// found nothing to evict. Reading again after joining catches exactly that:
+	// anything committed earlier shows here, anything later evicts through the
+	// personal room.
+	const currentIds = new Set(await listRealtimeConversationIds(userId));
+	await Promise.all(conversationIds.filter((id) => !currentIds.has(id)).map((id) => socket.leave(id)));
 }
 
 /**
@@ -42,6 +51,9 @@ export function initSockets(httpServer: HttpServer): ChattyServer {
 		verifyAccessToken(token)
 			.then((userId) => {
 				socket.data.userId = userId;
+				// Already verified above, so decoding only reads the claim it proved.
+				const { exp } = jwt.decode(token) as JwtPayload;
+				socket.data.tokenExpiresAt = (exp ?? 0) * 1000;
 				next();
 			})
 			.catch(() => next(new Error("Invalid or expired token")));
@@ -51,6 +63,14 @@ export function initSockets(httpServer: HttpServer): ChattyServer {
 		const { userId } = socket.data;
 		const stopSetupTimer = startSocketSetup();
 		recordSocketConnected();
+
+		// The token is checked only at the handshake, so without this a socket would
+		// outlive it — and the session it belonged to — for as long as it stays open.
+		// Closing the connection rather than `socket.disconnect()`: socket.io-client
+		// never retries after a server-sent disconnect, but does after a dropped
+		// connection — and the web client renews its token on the refused handshake
+		// and resyncs once back.
+		const expiryTimer = setTimeout(() => socket.conn.close(), socket.data.tokenExpiresAt - Date.now());
 
 		// Rooms have to exist before either of the next two steps: typing checks
 		// membership against them, and presence uses them as its audience.
@@ -77,6 +97,7 @@ export function initSockets(httpServer: HttpServer): ChattyServer {
 		});
 
 		socket.on("disconnect", (reason) => {
+			clearTimeout(expiryTimer);
 			recordSocketDisconnected(reason);
 			announceDisconnected(io, userId, roomsAtDisconnect)
 				.catch((error: unknown) => logger.error({ err: error, userId }, "failed to announce disconnect"))

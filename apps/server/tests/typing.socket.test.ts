@@ -2,14 +2,41 @@ import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { io as connect, type Socket } from "socket.io-client";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import jwt from "jsonwebtoken";
 import { createApp } from "../src/app.js";
 import { env } from "../src/config/env.js";
 import { prisma } from "../src/lib/prisma.js";
 import { blockUser } from "../src/modules/blocks/blocks.service.js";
-import { createConversation } from "../src/modules/conversations/conversations.service.js";
+import { createConversation, removeParticipant } from "../src/modules/conversations/conversations.service.js";
+import { sendMessage } from "../src/modules/messages/messages.service.js";
 import { initSockets } from "../src/sockets/index.js";
+
+/**
+ * Lets a test pause a connecting socket after it has read its rooms from the
+ * database and before it joins them — the window a concurrent removal can fall
+ * into. One-shot: only the next read waits, every other read passes straight through.
+ */
+const roomRead = vi.hoisted(() => ({ barrier: undefined as Promise<void> | undefined, reached: () => {} }));
+
+vi.mock("../src/modules/blocks/blocks.service.js", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../src/modules/blocks/blocks.service.js")>();
+
+	return {
+		...actual,
+		async listRealtimeConversationIds(userId: string): Promise<string[]> {
+			const conversationIds = await actual.listRealtimeConversationIds(userId);
+			const { barrier } = roomRead;
+			roomRead.barrier = undefined;
+			if (barrier) {
+				roomRead.reached();
+				await barrier;
+			}
+
+			return conversationIds;
+		},
+	};
+});
 
 /**
  * The socket layer over a real connection.
@@ -275,5 +302,55 @@ describe("presence over the socket", () => {
 		expect(event).toEqual({ userId: minh.id, isOnline: false, lastSeenAt: null });
 		const stored = await prisma.user.findUniqueOrThrow({ where: { id: minh.id }, select: { lastSeenAt: true } });
 		expect(stored.lastSeenAt).not.toBeNull();
+	});
+});
+
+describe("socket session lifetime", () => {
+	it("drops a socket when its access token expires, and lets a renewed token back in", async () => {
+		const minh = await createUser("minh");
+		// Two seconds rather than one: `exp` is whole seconds, and a one-second
+		// token signed late in a second could expire before the handshake checks it.
+		let token = jwt.sign({ sub: minh.id }, env.JWT_SECRET, { expiresIn: 2 });
+		const socket = connect(url, {
+			auth: (callback) => callback({ token }),
+			reconnectionDelay: 50,
+		});
+		openSockets.push(socket);
+		await onceEvent(socket, "presence:snapshot");
+
+		// What the web client does on `connect_error`: renew, and let the next
+		// attempt read the replacement.
+		token = minh.token;
+		const dropped = nextEvent(socket, "disconnect", 3_000);
+
+		// "transport close", not "io server disconnect": socket.io-client only
+		// reconnects by itself after the former.
+		expect(await dropped).toBe("transport close");
+		await onceEvent(socket, "presence:snapshot");
+		expect(socket.connected).toBe(true);
+	});
+
+	it("does not keep a conversation the user was removed from while the socket was joining its rooms", async () => {
+		const minh = await createUser("minh");
+		const an = await createUser("an");
+		const binh = await createUser("binh");
+		const group = await createConversation(minh.id, { participantIds: [an.id, binh.id], name: "Team" });
+
+		let release = () => {};
+		roomRead.barrier = new Promise((resolve) => (release = resolve));
+		const reached = new Promise<void>((resolve) => (roomRead.reached = resolve));
+		const anSocket = connect(url, { auth: { token: an.token } });
+		openSockets.push(anSocket);
+		const ready = onceEvent(anSocket, "presence:snapshot");
+
+		await reached;
+		await removeParticipant(minh.id, group.id, an.id);
+		release();
+		await ready;
+
+		const heard = nextEvent(anSocket, "message:new");
+		await sendMessage(minh.id, group.id, { content: "after An left" });
+
+		expect(await heard).toBeNull();
 	});
 });

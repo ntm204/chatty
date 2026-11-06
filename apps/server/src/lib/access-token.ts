@@ -20,6 +20,8 @@ export interface JwtPayload {
 	sub: string; // user id
 	/** Seconds since the epoch, added by `jwt.sign`. */
 	iat?: number;
+	/** Seconds since the epoch, added by `jwt.sign` from `expiresIn`. */
+	exp?: number;
 	/** Present only on attachment tokens — see lib/attachment-token.ts. */
 	typ?: string;
 }
