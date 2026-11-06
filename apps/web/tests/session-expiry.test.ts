@@ -149,6 +149,13 @@ describe("a 401 whose renewal cannot be confirmed", () => {
 		expect(onSessionExpired).not.toHaveBeenCalled();
 	});
 
+	it("keeps the session when the refresh is rate limited", async () => {
+		expiredThenRefresh(() => Promise.resolve({ ok: false, status: 429, json: () => Promise.resolve({}) }));
+
+		await expect(api.listConversations()).rejects.toBeInstanceOf(NetworkUnavailableError);
+		expect(onSessionExpired).not.toHaveBeenCalled();
+	});
+
 	it("retries the request with the renewed token", async () => {
 		let calls = 0;
 		vi.stubGlobal(

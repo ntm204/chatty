@@ -56,12 +56,19 @@ export function getSocket(): ChattySocket {
 		 * happening on a tab that was left open overnight, so without this it
 		 * would retry with the same dead token until somebody clicked something.
 		 *
-		 * `ensureFreshSession` is single-flighted and returns false when there is
-		 * nothing to renew with, so a genuinely ended session settles into
-		 * socket.io's own backoff rather than a refresh loop.
+		 * A handshake the server refused leaves the socket inactive: socket.io
+		 * does not retry it on its own, so after a renewal this reconnects. A
+		 * transport error stays active and socket.io's backoff retries it, reading
+		 * the renewed token through the auth callback. `ensureFreshSession` is
+		 * single-flighted and false when nothing was renewed, so an ended session
+		 * stays disconnected rather than looping.
 		 */
-		socket.on("connect_error", () => {
-			void ensureFreshSession();
+		const current = socket;
+		current.on("connect_error", () => {
+			void ensureFreshSession().then((isRenewed) => {
+				// `socket === current`: a logout in the meantime closed this one for good.
+				if (isRenewed && socket === current && !current.active) current.connect();
+			});
 		});
 	}
 

@@ -63,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.useRealTimers();
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
 
@@ -99,6 +100,29 @@ describe("an attachment upload", () => {
 
 		await expect(sendImage()).rejects.toThrow();
 		expect(onSessionExpired).toHaveBeenCalledOnce();
+	});
+
+	it("settles when the renewal behind a 401 never answers", async () => {
+		responses = [{ status: 401 }];
+		// Stands in for the refresh deadline firing, without waiting it out.
+		const deadline = new AbortController();
+		vi.spyOn(AbortSignal, "timeout").mockReturnValue(deadline.signal);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				(_url: string, init: RequestInit) =>
+					new Promise((_resolve, reject) =>
+						init.signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+					),
+			),
+		);
+		const settled = expect(sendImage()).rejects.toBeInstanceOf(NetworkUnavailableError);
+
+		await vi.waitFor(() => expect(fetch).toHaveBeenCalled());
+		deadline.abort();
+
+		await settled;
+		expect(onSessionExpired).not.toHaveBeenCalled();
 	});
 
 	it("gives up on a connection that stops moving", async () => {

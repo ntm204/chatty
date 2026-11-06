@@ -142,10 +142,17 @@ let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
 /**
  * Only `rejected` means the session is over. A refresh that never got an answer,
- * or got a 5xx, says nothing about the session: ending it there would sign people
- * out (and clear their unsent messages) every time a train went into a tunnel.
+ * was rate limited, or got a 5xx says nothing about the session: ending it there
+ * would sign people out (and clear their unsent messages) every time a train went
+ * into a tunnel.
  */
 type RefreshOutcome = "renewed" | "rejected" | "unreachable";
+
+/**
+ * A refresh that has not answered by now is treated as unreachable. It bounds
+ * every caller waiting on it, an upload's 401 retry included.
+ */
+const REFRESH_TIMEOUT_MS = 15_000;
 
 async function performRefresh(): Promise<RefreshOutcome> {
 	let response: Response;
@@ -156,13 +163,16 @@ async function performRefresh(): Promise<RefreshOutcome> {
 			// refresh. There is no body — a cookie this module cannot read is not
 			// something it can leak by accident either.
 			credentials: "include",
+			signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
 		});
 	} catch {
 		return "unreachable";
 	}
 
-	if (response.status >= 500) return "unreachable";
-	if (!response.ok) return "rejected";
+	// The server answers a dead or missing session with 401; anything else that
+	// is not a success (429, 5xx, a proxy's page) is about this moment, not it.
+	if (response.status === 401) return "rejected";
+	if (!response.ok) return "unreachable";
 
 	try {
 		const session = (await response.json()) as RefreshTokenResponse;
