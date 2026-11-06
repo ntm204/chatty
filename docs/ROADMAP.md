@@ -3921,7 +3921,8 @@ reload, mobile Back, clearing and sending; the desktop sidebar screenshot was in
 
 ### Conversation details and pinned navigation — done
 
-Only conversation details retain enter/exit animation, using the shared `useMotionPresence` hook.
+Only conversation details retained enter/exit animation, using a shared `useMotionPresence` hook
+(later removed once nothing used it).
 Reopening cancels pending removal; reduced motion skips animation and the exit delay.
 Images and settings open and close immediately. Existing modal focus handling remains.
 
