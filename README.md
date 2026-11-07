@@ -1,615 +1,175 @@
+<p align="center">
+  <img src="docs/images/hero.webp" alt="Chatty: a group chat in dark mode on a laptop and in light mode on a phone" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/ntm204/chatty/actions/workflows/verify.yml"><img src="https://github.com/ntm204/chatty/actions/workflows/verify.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/ntm204/chatty/releases/latest"><img src="https://img.shields.io/github/v/release/ntm204/chatty?color=06038d" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-fbc80b" alt="MIT license"></a>
+</p>
+
 # Chatty
 
-A messaging app (Zalo/Telegram-style: 1-1 and group chat, realtime delivery) built from scratch to learn how a production-grade chat system is put together.
+A realtime messaging app (1-1 and group chat, Zalo/Telegram-style) built from scratch to learn how a
+production-grade chat system is put together: delivery that survives bad networks, permissions
+checked on every path, and a deployment that runs on two instances behind a gateway.
 
-Current release: **`v0.2.1`** — local/private release; public launch still requires the external
-conditions in [Deployment](docs/DEPLOYMENT.md).
+**Current release: [`v0.2.1`](CHANGELOG.md)**, a local/private release. Public launch still needs
+the external conditions in [Deployment](docs/DEPLOYMENT.md).
 
-Current development focus: **everyday usability and interface polish**. The
-[experience polish plan](docs/plans/experience-polish.md) lists 60 scoped tasks in 12 batches, with
-acceptance criteria and dependencies. Public launch and large feature additions are deferred while
-this work improves the existing messaging experience.
+## Features
 
-The local acceptance pass covers account-scoped drafts, retryable delivery, reply navigation,
-live vault/bookmark updates, authorized media recovery, group permissions and versioned offline shell.
-Current results, known gaps and the distinction between automated and physical-device checks live in
-[one acceptance report](docs/plans/acceptance-2026-09-25.md); do not infer readiness from historical phase counts.
-
-The XP ledger records **49 of 60 items accepted locally** (11 partial, 0 planned).
-Physical-device acceptance and public deployment remain separate.
-Run `node scripts/check-experience-progress.mjs --json` for the current counts and
-remaining IDs; the command fails if this summary disagrees with the ledger.
-
-Chat and settings load on demand; offline caching still includes their chunks. Sidebar startup
-reads cache and fetches fresh data concurrently, without allowing late cache to overwrite the server.
-This is targeted optimization, not a claim of measured end-to-end performance at production scale.
-The repeatable local workload is `npx playwright test --config playwright.performance.config.ts`;
-it rebuilds both apps and resets only `chatty_e2e`, like other E2E runs. Do not run it concurrently
-with other E2E suites. Results and limitations are recorded in the acceptance report.
-
-The interface follows the owner's [chatty.net](https://chatty.net/) reference: deep navy,
-bright yellow, faint violet gradients, restrained typography and rounded surfaces.
-Entry screens prioritize the real form and conversations, with layouts that fit the viewport.
-The logo eyes subtly follow the pointer, blink and wink on hover; reduced motion keeps them still.
-The chat welcome has an expandable activity status. “New chat” in the sidebar opens people search; validation
-and compact conversation/settings layouts follow the [visual direction](docs/design/visual-direction.md).
-Every login reload plays a 3.8-second welcome: a descending curtain, the symbol and six letters
-falling separately, then a curious left/right glance, eye contact and wink before dissolving into the ready form.
-The intro keeps both eyes on the same animation timeline, including when opened in a background tab.
-Skip intro/Escape ends it immediately. Switching between login and registration does not restart
-it; reduced motion skips it, and account-recovery links go straight to their forms.
-Authentication, chat and settings share coordinated light/dark themes and responsive phone layouts.
-See [visual direction](docs/design/visual-direction.md). Fontshare fonts download once when starting
-the web dev server or building, then stay self-hosted with no third-party browser requests.
-
-## Read first
-
-| Document | What it answers |
-| --- | --- |
-| [CLAUDE.md](CLAUDE.md) | The conventions block — button/icon/alias/filename decisions, and the checklists |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to run it, what the gate is, and what a good pull request looks like |
-| [docs/PRODUCT-DIRECTION.md](docs/PRODUCT-DIRECTION.md) | The product values, free-first constraint, UI rules and feature-selection rubric |
-| [docs/plans/experience-polish.md](docs/plans/experience-polish.md) | The current implementation backlog: everyday workflows, interface details and acceptance criteria |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together and why |
-| [docs/conventions/](docs/conventions/) | The rules for writing frontend, backend, and commits |
-| [CHANGELOG.md](CHANGELOG.md) | What changed in each published release |
-| [docs/adr/](docs/adr/) | Why each major technical decision was made |
+- **Messaging**: direct and group chats delivered over WebSocket, replies, mentions, reactions,
+  edit history, retraction, pins, saved messages and bookmarks.
+- **Media**: images (resized in the browser, thumbnails in the thread), files with safe downloads,
+  voice messages with seeking and playback speed, stickers.
+- **Reliability**: a durable offline outbox that resends exactly once, retryable uploads, a
+  session that survives network drops, and an offline app shell.
+- **Groups**: admin/member roles, invite policy, shared nicknames and message color, a media, file
+  and link vault per conversation.
+- **Privacy and accounts**: block and restrict, read-receipt and last-seen controls, email change,
+  password reset by mail, account deletion.
+- **Interface**: light and dark themes, phone layouts, keyboard navigation, reduced motion.
 
 ## Stack
 
-- **Server**: Node.js, Express, TypeScript, Prisma (PostgreSQL), Socket.io, Zod
-- **Web**: React 18, Vite, TypeScript, Tailwind CSS v4, react-router
-- **Shared**: a `packages/shared-types` workspace so server and web agree on API/event shapes at compile time
+| Part | Technology |
+| --- | --- |
+| Server | Node.js, Express, TypeScript, Prisma (PostgreSQL), Socket.IO, Zod |
+| Web | React 18, Vite, TypeScript, Tailwind CSS v4, react-router |
+| Shared | `packages/shared-types`, so server and web agree on API and event shapes at compile time |
+| Deployment | Docker, two API instances behind Caddy, Redis adapter, optional Cloudflare Tunnel |
 
 ## Getting started
 
-Requires **Node 22 or newer** (jsdom 30, used by the web tests, declares `>=22.22.2`). On Node 20 the
-web suite does not fail a test — it fails to start, with an error from deep inside undici that looks
-nothing like a version problem.
+Requires **Node 22 or newer** and Docker. On Node 20 the web test suite fails to start with an
+unrelated-looking error from undici.
 
 ```bash
 npm ci
-# First setup only: copy .env.example to apps/server/.env (do not overwrite an existing file).
-# PowerShell: Copy-Item .env.example apps/server/.env
-# macOS/Linux: cp .env.example apps/server/.env
+cp .env.example apps/server/.env      # first setup only; never overwrite an existing file
 docker compose up -d postgres mailpit
 npx prisma generate --schema apps/server/prisma/schema.prisma
 npm run db:migrate --workspace apps/server
+npm run db:seed --workspace apps/server   # optional: wipes the local database first
 ```
 
-Open the repository folder in your editor (VS Code: **File → Open Folder → chatty**),
-and open terminals in that folder, where this README and the root `package.json` live.
-Start Docker Desktop before the setup commands. Keep an existing `apps/server/.env`;
-never replace it just to restart the app. Install/generate/migrate are setup or update
-steps, not commands to repeat every time you open a terminal.
-
-Before starting Postgres, check `docker compose ps` and `docker compose port postgres 5432`.
-The host-run API needs PostgreSQL reachable at the address in `DATABASE_URL` (the example
-uses `localhost:5432`). A running container with no published host port is not enough.
-Do not start another Postgres against the same `.data/postgres` directory or delete that
-directory to resolve a port conflict; inspect the existing container/Compose configuration first.
-
-For everyday development, run these in two terminals at the repository root:
-
-First ensure the local services are running: `docker compose up -d postgres mailpit`.
+Then run the app in two terminals at the repository root:
 
 ```bash
-npm run dev:server      # terminal 1: API + WebSocket on http://localhost:4000
-npm run dev:web         # terminal 2: open http://localhost:5173
+npm run dev:server   # API + WebSocket on http://localhost:4000
+npm run dev:web      # open http://localhost:5173
 ```
 
-Use **http://localhost:5173** for normal local work. Vite refuses to start if 5173 is occupied;
-it does not silently choose another port. Stop the previous Chatty dev process with Ctrl+C in
-its terminal, then restart. Do not change ports or stop an unrelated application's process to
-work around a conflict.
+The seed creates `minh@test.com`, `an@test.com` and `binh@test.com` (password `SuperSecret123`),
+one direct conversation and one group. It refuses to run against anything that is not localhost.
+Mail goes to Mailpit at http://localhost:8025, so a reset link arrives as an email you can open.
 
-| Mode | Web URL | API URL | Purpose |
+| Mode | Web | API | Purpose |
 | --- | --- | --- | --- |
-| `npm run dev:web` + `npm run dev:server` | `http://localhost:5173` | `http://localhost:4000` | Daily development with live updates |
-| Docker production stack | `http://localhost:8080` | `http://localhost:4000` | Test the built production topology; see [deployment](docs/DEPLOYMENT.md) |
-| `npm run test:e2e` | `http://localhost:5273` | `http://localhost:4100` | Automated tests with a separate database |
+| `dev:web` + `dev:server` | `http://localhost:5173` | `http://localhost:4000` | Daily development |
+| Docker production stack | `http://localhost:8080` | `http://localhost:4000` | The built production topology; see [Deployment](docs/DEPLOYMENT.md) |
+| `npm run test:e2e` | `http://localhost:5273` | `http://localhost:4100` | Browser tests against a separate database |
 
-The development API uses `PORT=4000`, `CORS_ORIGIN=http://localhost:5173` and
-`PUBLIC_URL=http://localhost:4000` in `apps/server/.env`. The web client defaults to that API;
-remove an old `VITE_API_URL` override if it points elsewhere. Do not run the development API
-and Docker production gateway together: both bind port 4000. The Docker production stack also
-has its own database volume. Seeing the same interface at two ports does not mean it is the
-same running build or the same data.
+Good to know:
 
-Redis is optional in development and the server starts without it. Set `REDIS_URL` (and
-`docker compose up -d redis`) only to exercise the multi-instance path — see
-[docs/ROADMAP.md](docs/ROADMAP.md) phase 5 item 12.
-
-Mail is **not** optional: `MAIL_TRANSPORT` has no default and the server will not boot without it.
-`.env.example` points at Mailpit, which is the recommended way to work —
-
-```bash
-docker compose up -d mailpit     # SMTP on :1025, web inbox on http://localhost:8025
-```
-
-— so a password reset link arrives as an email you open, rather than a line you grep for. Setting
-`MAIL_TRANSPORT=console` instead logs the message and is refused outright when `NODE_ENV=production`.
-
-Then seed some accounts to sign in with:
-
-```bash
-npm run db:seed --workspace apps/server
-```
-
-That creates `minh@test.com`, `an@test.com` and `binh@test.com` (password `SuperSecret123` for all),
-one direct conversation and one group. It **wipes the database first** and refuses to run against
-anything that is not localhost.
-
-For a UI/realtime stress dataset against the running Docker stack, use:
-
-```bash
-npm run seed:demo
-```
-
-This goes through the real HTTP API without wiping data. It creates five reusable accounts, a direct
-thread and a managed group with hundreds of alternating messages, image/gallery thumbnails, voice,
-files, reply/forward/mention/link, pin and saved-message examples. Demo files contain no instructional
-caption, matching the standalone file-send flow. Fixed message keys make reruns
-converge rather than duplicate the dataset. The credentials are printed after the script verifies the
-message counts and every attachment kind. To exercise group administration directly, sign in as
-`admin.demo@chatty.test` with password `ChattyDemo123`; that account is an admin in
-`Chatty long-run lab`.
+- Vite refuses to start if port 5173 is taken. Stop the previous dev process instead of changing ports.
+- The development API and the Docker production gateway both bind port 4000, so run one at a time.
+- Redis is optional in development; set `REDIS_URL` only to exercise the multi-instance path.
+- `MAIL_TRANSPORT` has no default and the server will not boot without it.
+- `npm run seed:demo` adds a large realistic dataset (hundreds of messages and every attachment
+  kind) through the real API without wiping anything.
+- Install, generate and migrate are setup steps, not commands to repeat every session.
 
 ## Checks
 
 ```bash
-npm run verify          # changed tests + cached static checks; 5-minute budget
-npm run verify:full     # every server/web test; release/high-risk gate, 10-minute budget
-npm run version:check   # SemVer is identical in every workspace and the lockfile
+npm run verify          # changed tests + cached static checks (5-minute budget)
+npm run verify:full     # every server and web test; release gate (10 minutes)
+npm run test:e2e:smoke  # 7 core browser scenarios (3 minutes)
+npm run test:e2e -- e2e/sending.spec.ts   # one affected flow
+npm run test:e2e        # the full Chromium suite (15 minutes)
 ```
 
-Or individually:
+Browser tests need `npm run e2e:install` once. They start their own servers on `:4100`/`:5273`
+against `chatty_e2e`, and a lock refuses overlapping runs. `--config playwright.webkit.config.ts`
+covers Safari's engine; `npm run test:e2e:built` checks the production build's CSP, offline shell
+and media. Every command has a time budget, stops at the first failure and cleans up its processes.
 
-```bash
-npm run typecheck       # all workspaces
-npm run lint
-npm run format:check    # prettier; skips docs and .prisma, see .prettierignore
-npm run test            # server (Vitest + Postgres) and web (Vitest + Testing Library)
-npm run test:changed    # only tests statically affected by uncommitted files
-npm run audit:rules     # greps apps/web/src against the conventions — a report
-npm run format          # rewrites, rather than just reporting
-```
+CI runs the complete suite on every push; a version tag also runs the browser suite before publishing
+images. Which checks a change needs is decided in [AGENTS.md](AGENTS.md#run-and-check), and the
+reasoning is in [ADR 0019](docs/adr/0019-two-speed-verification.md).
 
-The server test setup creates its disposable `chatty_test` database automatically on the local
-Postgres instance. A fresh clone therefore needs no database command between `db:up` and either gate.
-
-On Windows, the development bind mount can make PostgreSQL test cleanup slow. An optional,
-separate test instance keeps disposable data and WAL in a bounded 256 MB RAM filesystem,
-with no change to development data. Stopping/recreating it discards only test fixtures:
+On Windows, a separate RAM-backed test database avoids slow bind mounts:
 
 ```powershell
 docker compose -f docker-compose.test.yml up -d --wait
 $env:CHATTY_TEST_POSTGRES_PORT = "5433"
-$env:VITEST_MAX_WORKERS = "1"
 npm run verify:full
-npm run test:e2e -- e2e/<affected>.spec.ts --config playwright.webkit.config.ts --timeout=90000
 ```
-
-The override selects IPv4 loopback and the test port; database names remain fixed to `chatty_test` and `chatty_e2e`.
-The default remains 5432 when the variable is unset. `--timeout=90000` allows a complete
-browser scenario more time on slower Windows/WebKit runs; assertions and zero retries stay unchanged.
-Stop this optional instance with `docker compose -f docker-compose.test.yml down`.
-
-`verify` keeps whole-project type safety but reuses TypeScript/ESLint/Prettier caches and lets Vitest
-follow the changed import graph. Schema, migration, package, config and global-test-setup changes
-automatically run the complete affected suite. CI always runs all tests: the PostgreSQL suite is
-split over two isolated shards while web/static checks and image builds run alongside it. See
-[ADR 0019](docs/adr/0019-two-speed-verification.md).
-
-End-to-end tests are separate, because they need both servers and a browser:
-
-```bash
-npm run e2e:install     # once — downloads chromium
-npm run test:e2e:smoke  # 7 existing core scenarios; 3-minute budget
-npm run test:e2e -- e2e/sending.spec.ts # only the affected flow
-npm run test:e2e        # full Chromium; release/broad regression, 15-minute budget
-```
-
-The smoke check covers realtime text, replies, images, search, send failure/retry and two-tab
-durable replay. It is not full acceptance. Browser commands start isolated API/web servers on
-:4100/:5273; an advisory lock refuses a second run against `chatty_e2e`. Do not overlap browser runs.
-Use `--config playwright.webkit.config.ts` only for relevant engine behaviour; use
-`npm run test:e2e:built` (5-minute budget) for production CSP/offline/media changes.
-
-Which checks to run for a change is decided in [AGENTS.md](AGENTS.md#run-and-check).
-The supervisor prints step durations, stops on the first failed step and terminates the process tree
-on timeout or Ctrl-C (up to 5 seconds for cleanup). Timeout is a failure (exit 124), never a pass;
-inspect it before a targeted rerun. Local browser runs stop after 3 failures, smoke after 1, with
-zero retries. Web unit tests default to 2 workers locally to bound memory; `VITEST_MAX_WORKERS`
-can explicitly override this. CI retains the complete unit suite and job deadlines.
-
-`verify` runs the audit with `--gate`, so a hit fails the command. On its own `audit:rules` stays a
-report and always exits 0 — a heuristic that blocks work is a heuristic people learn to skip.
 
 ## Project layout
 
 ```
 apps/
-  server/         API + WebSocket backend (layered: routes -> controller -> service)
-  web/            React frontend (feature-based: features/<name>/...)
+  server/          API + WebSocket (layered: routes -> controller -> service)
+  web/             React app (feature-based: features/<name>/...)
 packages/
-  shared-types/   Types that cross the wire between server and web
-docs/
-  ARCHITECTURE.md How the pieces fit together
-  conventions/    How to write code here
-  adr/            Architecture Decision Records
-e2e/              Playwright specs — a real browser against a real server
-scripts/
-  audit-rules.sh  Convention checker (from evondev's Dev Rules, MIT)
+  shared-types/    Types that cross the wire between server and web
+e2e/               Playwright specs: a real browser against a real server
+docs/              Architecture, conventions, ADRs, plans and deployment
+scripts/           Verification supervisor, convention audit, backup/restore, smoke test
 ```
 
-Deployment lives in `apps/*/Dockerfile`, `docker-compose.prod.yml` (two API instances behind a Caddy
-gateway), the optional free public edge in `docker-compose.tunnel.yml`, and
-`.github/workflows/verify.yml`.
+Deployment lives in `apps/*/Dockerfile`, `docker-compose.prod.yml` and the optional
+`docker-compose.tunnel.yml`.
+
+## Documentation
+
+| Document | What it answers |
+| --- | --- |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | How the pieces fit together and why |
+| [ROADMAP](docs/ROADMAP.md) | What is built, in which order, and the history behind it |
+| [PRODUCT-DIRECTION](docs/PRODUCT-DIRECTION.md) | Product values, the free-first constraint and how features are chosen |
+| [DEPLOYMENT](docs/DEPLOYMENT.md) | The $0/month topology and what launch still needs |
+| [Conventions](docs/conventions/) | Frontend, backend, git and release rules |
+| [ADRs](docs/adr/) | Why each major technical decision was made |
+| [CHANGELOG](CHANGELOG.md) | What changed in each release |
+| [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) | Code rules and how AI agents work in this repository |
 
 ## Status
 
-Working end to end: register, sign in, find people by `@handle`, start a direct chat or a group,
-send messages that arrive in real time over WebSocket, scroll up to load older history, upload an
-avatar, see unread badges, read receipts, typing indicators and who is online, manage a group —
-invite someone under its chosen policy, share day-to-day moderation with admins, rename it, remove a
-member, leave it, with every one of those announced in the chat log, hand it to somebody else — edit your own profile, change your password, or reset a forgotten
-one, move the account to a new email address, turn read receipts off, delete the account entirely,
-send an image with or without a caption, rewrite or retract a recent message, inspect its edit
-history, remove any message from your own view, search inside the open conversation for a message
-you half remember, and block somebody so neither of you can reach the other in a direct
-conversation. Last-seen timestamps follow the privacy choice in account settings, which open as a dialog over the
-chat rather than replacing it.
+The experience-polish ledger records **49 of 60 items accepted locally** (11 partial, 0 planned).
+Every partial item is complete in code and automated tests; what remains is acceptance on physical
+devices (phone keyboards, touch, native notifications, screen readers). Current results live in
+[one acceptance report](docs/plans/acceptance-2026-09-25.md);
+`node scripts/check-experience-progress.mjs --json` lists the remaining items and fails if this
+summary disagrees with the [ledger](docs/plans/experience-polish.md).
 
-Each open conversation has its own address (`/chat/<id>`): reload or a pasted link opens the same
-thread, an unavailable one returns to the list with a reason, and Back closes the top panel, viewer or
-dialog before it leaves the thread. Closing settings returns to the thread it was opened over.
+Known gaps:
 
-Restrict/Unrestrict lives in each direct conversation's sidebar menu, alongside its other actions;
-the account settings list remains available. Choosing, pasting or dropping an ordinary file sends
-that file immediately as a standalone message and keeps the text/reply draft for the next send.
-Images still use the preview-and-send flow. A failed file upload keeps its file with Retry/Remove.
-
-Text runs now use soft 18px ends and 5px joins, while photos/files use their own 12px
-corners. Hover does not add a background tile behind an idle conversation row, emoji or attachment
-trigger, and reaction emoji no longer enlarge. While reading more than 120px above the latest messages,
-a quiet 32px down-arrow control sits above the composer, inside a 44px touch target. It fades into view
-and smoothly expands for actual typing or new arrivals. Returning within 80px hides it, avoiding flicker
-at the boundary. A jump follows its destination as new content arrives and stops when the reader
-deliberately scrolls. Search history uses the same control, with loading feedback and retry on failure.
-Reduced motion skips the transitions; keyboard activation keeps focus in the thread.
-See [the roadmap](docs/ROADMAP.md), phases 47 and 50.
-
-Typing appears beneath the last message as a quiet three-dot bubble. Direct chats show just the
-bubble; groups add the typing names. Each dot rises 2px in a staggered 1.4-second rhythm. The header
-uses quiet sentence-case text; sidebar and Jump labels end in animated dots, without a second ellipsis. Reading history keeps the bubble offscreen and the activity
-available on Jump; historical search never places live typing under an old message. One/two typists
-are named, larger groups are counted, and your own typing is excluded. Sending, clearing the input,
-offline presence and disconnect retract typing; idle and missing-stop timers provide a fallback.
-Reduced motion keeps the dots still. Typing is never stored or counted as a new message.
-
-Unsent text drafts are saved on this browser per account and conversation, and restored when reopening a conversation.
-Reply drafts resolve their original message even outside the loaded history. A failed lookup keeps the draft
-and offers Retry or Remove reply; sending waits until that choice is resolved. Upload feedback distinguishes
-image preparation, transmitted bytes and server confirmation. Offline text/image rows retain their retry/discard path.
-Signing out or deleting the account clears its drafts and invalidates pending writes. Legacy drafts without an
-account owner are discarded. If storage is unavailable, the composer explains that reloading may lose the draft.
-Switching conversations keeps their drafts separate; leaving or hiding the page flushes the latest text before
-the normal save delay. Drafts are not synchronized between devices, and selected files are not saved
-as composer drafts.
-
-The composer supports multiple lines, grows up to 160px and then scrolls internally. Enter sends;
-Shift+Enter inserts a newline. Composition and held Enter do not submit, and Enter completes a visible
-group mention suggestion first. Handles typed in direct chats remain ordinary text. Failed text/image sends
-stay in their retryable thread row without overwriting new words in the composer. If the outbox cannot be
-saved on this device, a warning stays visible until the affected messages are sent or discarded. Retry
-cannot dispatch twice at once; an in-flight send cannot be discarded as though the server had canceled it.
-File, voice and sticker retries reuse the same send identity within the current session. A failed sticker
-stays available in its tray. Editing keeps the text and shows the error when saving fails.
-Delete, hide, reaction and pin actions lock while pending and show failures beside the message.
-Reaction toggles are never retried automatically; check the resulting state before trying again.
-When the app reconnects, durable text/image outbox entries from threads that are no longer open replay in
-bounded order for the signed-in account. The visible thread and background replay share a delivery claim;
-the server-side client ID remains the authority against duplicate cross-tab sends.
-
-Changing a password reconnects the existing chat socket with the replacement session, keeping the open
-thread live. Conversation search shows its keyboard focus border in both light and dark themes.
-
-Group-message edits rebuild mentions from current participant handles and rebuild links in the same
-transaction as the text/history update. Direct-message handles remain plain text. Edits emit only
-`message:updated`, so adding a mention while editing does not replay new-message popup/sound alerts.
-
-Group mentions complete at the caret without deleting the text after it. Arrow keys select a suggestion,
-Enter inserts it, and Escape dismisses the list; email addresses and URL segments do not trigger it.
-
-Forwarding searches conversations on the server, including archived destinations, with paged results and
-participant handles to distinguish matching names. Failed forwards retain their send identity for retry.
-Success names the destination and focuses Done. Source membership, hiding and retraction are checked again
-under transaction locks after media preparation; rejected sends discard their prepared files. File drops are accepted
-only inside the composer, and are ignored while a modal covers it. Pasting remains scoped to the textarea.
-Bookmarked messages is a separate sidebar list of marked originals across conversations. Bookmark message
-adds an original; Remove bookmark leaves it intact. Results show their source and open the original thread.
-The Notes shortcut (formerly "Saved") continues to open personal notes. Bookmarks refresh on observed retraction,
-hiding or loss of membership and do not provide offline media downloads. A confirmed removal supersedes
-concurrent refreshes so a stale response cannot restore the removed bookmark.
-
-Search all messages in the sidebar searches across conversations, including archived threads. Opening
-a result fetches its conversation before jumping to the original message, even outside loaded sidebar pages.
-Search pages ignore stale responses and retract deleted results. Long-message previews center on the first
-match and highlight matching text without changing its original accents. Back to search results restores the query,
-loaded pages and scroll position while the reader remains signed in.
-
-Read markers follow visible messages in the active tab, rather than every message loaded into memory.
-Historical search windows do not advance the marker across an unloaded gap; returning to latest resumes it.
-Popup and sound alerts resolve missing conversation metadata before applying mute and restriction. Group
-mentions may override mute; restriction suppresses direct-chat alerts. Unknown or changing permissions
-suppress a pending alert. Cached file/image placeholders explain that reconnecting is required and cannot
-be downloaded as though they were the original media.
-Desktop notifications are coordinated between tabs of the same account when browser capabilities allow it.
-Clicking one focuses Chatty and resolves the conversation before opening it, including an archived thread.
-Notification settings can hide the sender and message text, and app-owned notifications close on sign-out.
-
-Reply quotes jump to their original when it remains available. A deleted parent is an informative tombstone;
-if an older parent disappears between rendering and navigation, the current thread stays on screen with a
-short explanation. In-conversation search supports ArrowUp/ArrowDown, Enter and Escape as well as its controls.
-
-Mute deadlines update the sidebar, details menu and unread tab title without reloading, including after
-returning to a suspended tab. Conversation actions block duplicate requests and retain errors when their
-menu closes; retrying is deliberate and a successful response clears the error.
-
-The sidebar shows `Draft: <text>` immediately while composing, including the selected conversation.
-A reply without text shows `Draft: Reply`; whitespace alone does not create an indicator. Drafts take
-priority over typing and the last-message preview, but unread/mention badges remain visible. The old
-message timestamp and author prefix are hidden while showing a draft; drafting does not reorder chats.
-Row actions appear on hover, keyboard focus or touch, and do not stay visible merely because a
-row was clicked. Menus close on a second trigger click, Escape, outside clicks or focus leaving
-the menu and trigger.
-Conversation rows use two aligned lines: name and right-aligned time above, preview and unread badge
-below. The actions button has its own space on the lower right, so hover never hides the unread badge
-or shifts the text. Timestamps no longer sit inside the message preview.
-Clearing or sending returns the row to typing/the last message. Files and stickers preserve unrelated
-text drafts. Sidebar previews flatten whitespace without changing the saved text and refresh after
-reload or browser storage changes; this does not synchronize an already open composer's caret or text.
-
-Plain wrapped text bubbles fit their visible lines and recalculate when the thread resizes. Long links
-wrap in full, and message padding, speaker gaps and system notices keep the thread compact.
-
-Voice messages use a compact 256×60px player with a 32px play control and a waveform that can
-be scrubbed by pointer or keyboard. The duration changes to remaining time after playback starts;
-the 1×/1.5×/2× speed control appears while playing.
-Only one player runs at a time; loading and playback failures are visible with a retry action.
-The 44px recording bar shows actual microphone levels and lets you listen, seek, discard or
-send the preview. Failed uploads retain that recording in the current session.
-Starting a recording pauses voice playback, and sidebar previews identify voice messages correctly.
-
-Deleting leaves a marked-out placeholder rather than a hole: the text is emptied and the image and its
-file are removed, but the row stays so that other people's read markers and the paging cursor still
-have something to point at. See [docs/ROADMAP.md](docs/ROADMAP.md) phase 8.
-
-An author may edit or delete for everyone for eight hours after sending. The actions disappear when
-that window closes; deleting only from your own view remains available without a time limit and also
-removes the message from your sidebar preview, search results and unread count.
-
-A group has admins and members, and every admin has equal standing — any admin can rename it, remove
-or promote/demote anyone else (another admin included), and choose whether everyone or only admins may
-invite. Anyone can leave; a non-empty group always keeps at least one admin, promoting the
-longest-standing remaining member if the last one leaves. See
-[ADR 0021](docs/adr/0021-flatten-group-roles-to-admin-member.md).
-
-Deleting your account removes the account, its avatar file and every session it had open — but not
-its messages. Those stay in their conversations with the author taken off them, rendered as "Deleted
-account", for the same reason a deleted message leaves a tombstone: other people's read markers and
-the paging cursor still point at those rows. Read receipts can be turned off, and the setting is
-symmetric — hide yours and you stop seeing everyone else's, with nothing revealed retroactively when
-you turn them back on. See [docs/ROADMAP.md](docs/ROADMAP.md) phase 13.
-
-Verified by complete server tests against real PostgreSQL, web component/unit tests and Playwright
-specs driving a real browser against a real server — plus typecheck, lint, the conventions audit and
-production image builds. Normal CI keeps independent gates parallel; release tags additionally gate
-artifact publication on browser E2E.
-
-**[docs/ROADMAP.md](docs/ROADMAP.md) is the current source of truth for what is done and what is
-next.** Phase 42 now has durable local snapshots/idempotent offline sends, stronger group trust and
-an explicit E2EE protocol/readiness decision; implementation remains behind the audited browser-MLS
-gate in ADR 0020. Future ideas still enter through [docs/PRODUCT-DIRECTION.md](docs/PRODUCT-DIRECTION.md)'s
-rubric. Phase 7 makes group and password-reset transitions safe under
-concurrent requests: one conversation lock orders membership-sensitive writes, PostgreSQL enforces
-the admin/message invariants, and fault-injection tests prove partial writes do not escape. Phase 8
-adds editing and deleting your own messages, on the same lock, with the deletion kept as a tombstone
-so that read markers and paging cursors still have a row to point at. Phase 9 makes outbound mail
-durable: it is queued in the same transaction as the thing that promised it, and a worker retries
-with backoff, claiming rows in a way that is safe to run on every instance — see
-[ADR 0011](docs/adr/0011-transactional-outbox-for-mail.md). Phase 10 gave it a real SMTP transport,
-so a reset link now leaves the process and lands in an inbox; the configuration has no silent
-fallback, and five ways of getting it wrong stop the server booting rather than degrading to a log
-file. Phase 11 makes a misconfigured production refuse to start at all and proves the two-instance
-path for the first time; phase 12 adds full-text search. Phase 13 is what an account needs before
-real people have one — changing its email address, handing a group on, hiding read receipts, and
-deleting the account — and it is where `Message.authorId` stopped cascading, so somebody can leave
-without taking half of everyone else's conversations with them. Phase 14 closed the four Known gaps
-that were defects rather than missing features: unread now starts when you joined a group, a second
-test run refuses rather than corrupting the first, the web app has a Content-Security-Policy, and
-attachment files left by a failed upload are swept. Phase 16 gives the app one declared look instead
-of the framework's defaults — ink on ivory paper, one signal colour, everything a machine produced set
-in mono, self-hosted fonts so the Content-Security-Policy stays as strict as phase 14 left it — and
-moves account settings into a dialog over the chat, so changing your display name no longer costs you
-the conversation you were reading. `/profile` still deep-links to it and Back still closes it. Phase 17
-is the geometry inside that look: a run of messages from one person is now one shape with one tail
-rather than five bubbles each claiming their own, every timestamp moved off its own line into the
-gutter beside the bubble, and the type changed to Geist and Geist Mono — one superfamily, and the
-first pair in this app to ship a Vietnamese subset, so a name with diacritics no longer falls out of
-the font mid-word. It also adds the two things a message could not do: **reactions** (reworked in phase 29 — see below)
-and **replies** (a self-relation, so an edited
-original re-quotes itself, a deleted one quotes as a tombstone, and an image reply keeps a small
-thumbnail). Message bursts now break after a real pause rather than sticking together for hours, and
-the mobile layout is a deliberate conversation-list → thread → back flow instead of a squeezed
-two-column desktop shell.
-
-Phases 18-21 are about the difference between working and being trusted. Phase 18 fixes three ways
-the screen quietly stopped telling the truth: a dropped socket now resyncs the sidebar and the thread
-when it comes back instead of leaving both silently stale, an expired session says so and returns you
-to the login form instead of failing every request separately, and a thread that could not load shows
-the reason and a retry rather than rendering as an empty conversation. Phase 19 closes the
-perceived-quality gap — a text message appears the instant you press Enter and is marked "Not sent"
-with a retry if it does not arrive, the unread count is in the tab title, browser notifications are
-available per-browser, and removing somebody from a group or leaving one now asks first. Phase 20
-makes search work the way Vietnamese is actually typed: `hen gap` finds `hẹn gặp`. Phase 21 makes
-signing out mean something — the session is now a revocable row rather than a seven-day JWT nothing
-could take back, access tokens last fifteen minutes, and a refresh rotates so a stolen one works at
-most once. Phase 22 lets a message carry up to ten images — a gallery in the bubble, a viewer that
-walks the set with the arrow keys — and gives the composer an emoji picker, searchable in English and
-in unaccented Vietnamese. A message that is nothing but one to three emoji is drawn large with no
-bubble at all. Phase 23 keeps that gallery as a compact stacked album, with its caption kept out of the
-thread and stated in the viewer, and adds **stickers**: a personal tray of saved images,
-one tap from every conversation, copied into the message when sent so clearing the tray never blanks a
-picture out of somebody else's chat.
-
-Phases 24–28 complete the everyday messaging surface: arbitrary files are served as safe downloads,
-voice is normalized to AAC/MP4 with a shared waveform, and each conversation has a paged vault for
-media, files, voice and links — opened as a list of categories with their counts, each drilling into
-one list at a time, with a tab row to switch between the other categories without leaving the one
-that's open, under sticky month headings (phase 35). Archive, pin and mute are per participant and sync only
-to that person's devices; the sidebar patches socket events in place. Drafts survive navigation on
-the local device, and the thread adds unread navigation, drag/paste, links, forwarding, mentions,
-message pins, reply jumps, keyboard shortcuts, sidebar typing and group seen-by avatars.
-
-Phase 29 is about the distance between correct and familiar. **Reactions are any emoji rather than a
-closed set of five** — the closed set had been defended twice on the grounds that an ink mark keeps
-colour off the page, and the app had never actually implemented that argument: the chips rendered
-colour emoji while only the picker stayed in ink, so one reaction had three appearances and none of
-them predicted the others. A hover bar offers the familiar six with `+` for the rest, a double-click
-leaves ❤️, the chips straddle the bubble's bottom edge the way Messenger and Instagram draw them, and
-one person gets one reaction per message — picking a second replaces the first, which the primary key
-now enforces. What made the set closed is preserved where it belongs: the request boundary accepts a
-single fully-qualified RGI emoji and nothing else, so `❤` and `❤️` cannot both reach the column and
-split one reaction into two chips. **Who reacted is a panel** rather than a `title` attribute that no
-touch screen could ever reach. **There is a Light / Dark / System setting**, resolved before the first
-paint by a `<head>` script that is a file rather than an inline one, because the Content-Security-Policy
-sets `script-src 'self'` and is worth more than a theme. Pictures now send optimistically — decoded
-first, so the bubble reserves exactly the box the stored image will occupy — and the thread stops
-accumulating history it is not showing, which is item 76 answered by bounding the array rather than by
-windowing it.
-
-Phases 30-34 are the safety and scale pass. **Blocking** is enforced where it can actually be
-enforced: not at conversation creation, which stops nothing for two people who already have a thread,
-but inside the locked transaction that writes a direct message — and at every other write the
-recipient would see, plus user search, in both directions. A PostgreSQL advisory lock keyed on the
-pair of people orders a block against a send, which a row lock cannot do for a row that does not
-exist yet. Realtime follows the same policy: live sockets leave the direct room, presence is
-withdrawn unless a shared group still makes it visible, and read receipts stop being shared while
-leaving the reader able to clear their own badge. Groups are deliberately untouched, the same line
-WhatsApp, Messenger and Telegram draw, and the confirmation dialog says so before the decision rather
-than leaving it to be discovered in a group later. Blocking is reachable from the conversation row's
-menu and from account settings, which is also where the paged list of blocked people lives, and a
-block made on one device now reaches the same account's other sessions without a reload. Phase 33
-closed the last unbounded query — the conversation list is a keyset page, which the five-pin cap made
-expressible without raw SQL.
-
-Phases 36-37 are the picture, looked at closely. A captioned photograph is one object in the thread
-rather than a photograph followed by a bubble, it states its own time in a chip on itself, and it fits
-the phone it is on instead of running past the row it is in. The viewer it opens into is no longer a
-panel: no card, no rules, no outlined buttons — the picture on the scrim, its caption as centred type
-*above* it rather than a wash across the top of it, the set centred underneath, the close button in
-one compact dock below the image beside forward and save. Saving fetches the bytes rather than trusting
-`<a download>`, which is silently ignored across origins and would have navigated away from the
-conversation instead. That same compact dock holds what
-phase 36 was missing: zoom and rotate, with every zoom anchored at the point the reader is looking at
-(a wheel tick, a trackpad pinch, a double-click) rather than at the picture's centre, and dragging to
-pan once zoomed in, clamped to the picture rather than to the screen. A quarter-turn re-fits the whole
-uncropped image to the viewport, so rotating a landscape never destroys its form.
-
-Phase 39 makes network use follow what is actually visible. A picked photo is reduced to the server's
-1600px ceiling and encoded in the browser when that produces fewer bytes, while the server keeps its
-authoritative security re-encode. The thread downloads 480px derivatives and reserves the full image
-for the viewer/save path; large JSON responses are compressed. [ADR 0016](docs/adr/0016-bandwidth-first-message-delivery.md)
-maps those choices to Messenger's published snapshot/delta and separate-media architecture, and states
-the evidence required before adding object storage, durable event cursors, queues or binary encoding.
-
-Largest known gaps:
-
-- **No real deployment yet.** The $0/month topology is implemented: one existing machine or Oracle
-  Always Free runs Postgres, Redis, uploads, two APIs and an internal Caddy gateway; the optional
-  Cloudflare Tunnel compose file provides the public edge. Launch is blocked on buying the one
-  planned purchase (a domain), creating free Cloudflare/Resend accounts and choosing a backup
-  destination. Exact conditions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-- **Blocking does not become a group-wide ban.** Manager-only invite policy limits who can introduce
-  somebody, but if a blocked person already shares a group with you, both of you still see that
-  group's messages. See [ADR 0018](docs/adr/0018-group-admins-and-invite-policy.md).
-- **A system line does not follow a later rename** — "An added Binh" keeps the names people had when
-  it happened, by design. See [ADR 0009](docs/adr/0009-system-messages.md).
-- **Mail sends, but no production account is signed up for.** Phase 10 added a real SMTP transport
-  and development runs against Mailpit; a deployment still needs a provider, a verified sending
-  domain and SPF/DKIM/DMARC records, without which mail is accepted and then filed as spam. Delivery
-  is at-least-once — `Message-ID` makes a retry recognisable, nothing more — and bounces are
-  invisible, because the outbox records that the server *accepted* the message rather than that it
-  arrived. Changing an account's email address (phase 13) runs on the same machinery and inherits the
-  same limits.
-- **An attachment URL works for anyone holding it, until it expires.** Signed and scoped to one attachment
-  with a one-hour life, but bearer proof for that hour — see
-  [ADR 0007](docs/adr/0007-signed-attachment-urls.md). Files left behind by a send that failed midway
-  are swept every six hours as of phase 14; avatar files are not swept yet.
-- **TLS is configured but not exercised on a real hostname.** Caddy now balances the two API
-  instances and the tunnel scaffold provides TLS/public ingress without opening host ports. A domain
-  and tunnel token are still needed to prove it end to end. Object storage is deliberately deferred:
-  the shared volume is the correct $0 boundary while every API instance lives on one host.
-- **The CSP is verified locally against the test API, not a deployed host.** Built-web acceptance exercises image and voice preview/send/reload against the isolated API.
-  The public nginx/TLS topology still needs deployment acceptance.
-- **The message list is not virtualised.** Messages accumulate only through explicit paging, so
-  reaching a DOM large enough to matter takes deliberate work — but the ceiling is real, and the two
-  cheap fixes both risk the scroll-position handling that already works. See phase 19, item 76.
-- Playwright covers one browser, and `test:e2e` is not part of `verify` — it needs two servers and a
-  browser download.
-
-## Built-web acceptance
-
-`npm run test:e2e:built` builds the web client, serves it locally with the exact CSP read from the nginx
-template, and tests image/voice previews and delivery against the isolated test API/database. It uses
-the same ports as ordinary E2E, so run them sequentially. This verifies browser policy and API interaction;
-it does not replace a deployment check of nginx/TLS on the real host.
+- **No public deployment yet.** The topology is implemented; launch needs a domain, free
+  Cloudflare and mail-provider accounts, and a backup destination.
+- **Blocking is not a group-wide ban.** People who block each other still see a group they already
+  share. See [ADR 0018](docs/adr/0018-group-admins-and-invite-policy.md).
+- **Mail delivery is at-least-once**, and bounces are invisible until a production provider is set up.
+- **Attachment URLs are bearer links** for their one-hour life. See
+  [ADR 0007](docs/adr/0007-signed-attachment-urls.md).
+- **Signing out on one device** stops its realtime connection only when its access token expires,
+  at most 15 minutes, the same as its HTTP requests.
+- **The message list is not virtualised.** History grows only through explicit paging, but the
+  ceiling is real.
 
 ## Contributing
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The **Known gaps**
-list above is the real queue, and the most valuable report this repository can receive is a place
-where the docs and the code say different things.
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The most valuable
+report is a place where the docs and the code say different things.
 
 ## License
 
 [MIT](LICENSE). `scripts/audit-rules.sh` is adapted from evondev's Dev Rules, also MIT.
 
-Conversation details dock in a separate right panel on screens at least 1280px wide.
-Desktop panels have subtle frames and gutters. Conversation details have a fixed 320px width,
-without a resize handle. Only the left sidebar can be resized from 260–400px (default 320px):
-drag its divider or use arrow keys, Home/End, and Enter to reset. Its width is remembered locally.
-People search and the message-search button share one sidebar row; Saved and Bookmarks are
-compact adjacent shortcuts, distinguishing personal notes from messages marked in other chats.
-On smaller screens they replace the thread until closed, preserving the composer draft.
-The panel stays open while chatting on desktop; use the header toggle, Close, or Escape to close it.
-
-Only conversation details use the 240ms enter/exit motion system. Reduced motion skips movement
-and the close delay. Images and settings open and close immediately.
-Both direct and group details open on an overview, mirroring Messenger's layout: mute/search quick
-actions, Chat info (pinned messages), Customize chat (rename, group photo, a shared message color,
-and per-member nicknames — all shared with everyone in the conversation, not private to whoever set
-them), then Media/files/links, Members, Group options and Privacy & support as collapsible
-sections — content, then people, then settings, then the rare, sensitive controls, rather than
-interleaving settings between content. Renaming and the group photo are admin-gated; the rest of
-Customize chat is open to any participant — cosmetic, not moderation. See
-[ADR 0022](docs/adr/0022-conversation-customize-and-shared-nicknames.md). Rename, the group photo
-message color and nicknames each open their own modal rather than an inline field-plus-Save; nicknames edit in
-place, replacing the real name rather than opening a second input beside it. Adding people to a
-group is search-then-multi-select-then-confirm in its own modal, matching how starting a new
-conversation already works, rather than adding on first click. A member row's actions menu is
-portalled above the list rather than pushed inline, so opening it never shifts the rows below.
-Invite permissions (Group options, admin-gated) use a toggle switch, not a dropdown — there are
-only two states. Message color opens a preview picker with eight coordinated bubble colors
-and Default; it does not change the conversation background. Previewing or cancelling changes
-nothing for other participants; Apply saves the shared color and syncs it live. Light/dark mode
-remains each person's own preference. The header and 40px pinned-message bar softly blur messages
-as they scroll behind. The pin bar keeps author and preview on one line. Clicking it jumps to the latest
-pin; its expand button opens the full list, also reachable from conversation details.
-
-Pinned messages open in a separate dialog without resizing the thread. Photo/file/voice previews
-include their attachment identity; captions remain secondary. Pins can be removed from the list; their status appears in the bar rather than an inline
-marker. Message jumps scroll only the history viewport and
-wait for it to become visible after closing mobile details.
+The header image shows a demo conversation staged on a local test database; its photos are from
+Unsplash by [Roberto Nickson](https://unsplash.com/photos/7BjmDICVloE),
+[Christian Joudrey](https://unsplash.com/photos/mWRR1xj95hg) and
+[Andrew Coelho](https://unsplash.com/photos/VB-w_3dnyvI).

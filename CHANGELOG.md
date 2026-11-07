@@ -6,6 +6,11 @@ remain in [the roadmap](docs/ROADMAP.md) and [architecture decisions](docs/adr/)
 This project follows [Semantic Versioning](https://semver.org/) and the repository's
 [release conventions](docs/conventions/releases.md).
 
+## Unreleased
+
+- Keep reaction chips and gallery overlays behind the conversation header when they scroll under it.
+- Rewrite the README around one light/dark hero image, setup and known gaps.
+
 ## [0.2.1] — 2026-11-06
 
 The first published 0.2 release; it contains everything listed under 0.2.0.
