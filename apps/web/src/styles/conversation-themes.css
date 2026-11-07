@@ -72,12 +72,14 @@
 }
 
 /* The history passes behind the fixed chrome. A dense translucent wash keeps
- * the controls readable while leaving nearby messages softly visible. */
+ * the controls readable while leaving nearby messages softly visible. Above the
+ * history's own layers (reaction chips, gallery overlays are z-10), below the
+ * reaction picker (z-30) that may open over it. */
 .conversation-chrome {
 	--conversation-chrome-height: 77px;
 	position: absolute;
 	inset: 0 0 auto;
-	z-index: 10;
+	z-index: 20;
 }
 .conversation-pane {
 	--conversation-chrome-height: 77px;
