@@ -395,6 +395,8 @@ export interface MessageDTO {
 	 * also a picture sent without a caption, and the two render nothing alike.
 	 */
 	isSticker: boolean;
+	/** One of `BUILTIN_STICKER_KEYS` when this is a built-in animated sticker; otherwise null. */
+	stickerKey: string | null;
 	isForwarded: boolean;
 	/** Stable ids; display names are resolved from current participants. */
 	mentionedUserIds: string[];
@@ -690,6 +692,8 @@ export interface SendMessageRequest {
 	 * deleting the message never empties the tray.
 	 */
 	stickerId?: string | undefined;
+	/** A built-in animated sticker, by name. The whole message when set. */
+	stickerKey?: string | undefined;
 	/**
 	 * The message this one answers.
 	 *
@@ -963,3 +967,11 @@ export interface ClientToServerEvents {
 	"typing:start": (signal: TypingSignal) => void;
 	"typing:stop": (signal: TypingSignal) => void;
 }
+
+/**
+ * Chatty's built-in animated stickers — the bubble mascot in eight moods. Only
+ * the name crosses the wire; each client draws them. The server accepts no
+ * other value, so a message can never name a sticker nobody can draw.
+ */
+export const BUILTIN_STICKER_KEYS = ["wave", "love", "lol", "wow", "sad", "sleep", "party", "ok"] as const;
+export type BuiltinStickerKey = (typeof BUILTIN_STICKER_KEYS)[number];

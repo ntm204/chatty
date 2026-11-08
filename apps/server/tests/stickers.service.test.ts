@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { findAttachmentPath } from "../src/lib/attachment-storage.js";
 import { NotFoundError } from "../src/lib/errors.js";
 import { prisma } from "../src/lib/prisma.js";
+import { sendMessageSchema } from "../src/modules/messages/messages.schema.js";
 import { sendMessage } from "../src/modules/messages/messages.service.js";
 import { addSticker, listStickers, removeSticker } from "../src/modules/stickers/stickers.service.js";
 import { installFakeIO } from "./fake-io.js";
@@ -101,5 +102,19 @@ describe("sending a sticker", () => {
 		await expect(sendMessage(authorId, conversationId, { content: "", stickerId: saved.id })).rejects.toThrow(
 			NotFoundError,
 		);
+	});
+});
+
+describe("a built-in sticker", () => {
+	it("is stored by name and comes back on the message, with no file behind it", async () => {
+		const { conversationId, authorId } = await makeConversation();
+		const message = await sendMessage(authorId, conversationId, { content: "", stickerKey: "wave" });
+		expect(message.stickerKey).toBe("wave");
+		expect(message.attachments).toHaveLength(0);
+	});
+
+	it("is only one of the names every client can draw", () => {
+		expect(sendMessageSchema.safeParse({ stickerKey: "party" }).success).toBe(true);
+		expect(sendMessageSchema.safeParse({ stickerKey: "<script>" }).success).toBe(false);
 	});
 });

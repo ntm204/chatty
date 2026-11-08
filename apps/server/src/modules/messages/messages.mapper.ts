@@ -70,6 +70,7 @@ export interface MessageRow {
 	editedAt: Date | null;
 	deletedAt: Date | null;
 	isSticker: boolean;
+	stickerKey: string | null;
 	isForwarded: boolean;
 	attachments: AttachmentRow[];
 	reactions: ReactionRow[];
@@ -91,6 +92,7 @@ export const messageSelect = {
 	editedAt: true,
 	deletedAt: true,
 	isSticker: true,
+	stickerKey: true,
 	isForwarded: true,
 	// Ordered by the column the sender's choice was written to, not by
 	// `createdAt`: a message's images are inserted in one transaction and share a
@@ -186,6 +188,7 @@ export function toMessageDTO(row: MessageRow): MessageDTO {
 		// The URLs are built per response rather than stored: each carries a signed
 		// token that expires, so a cached copy would rot.
 		isSticker: row.isSticker,
+		stickerKey: row.stickerKey,
 		isForwarded: row.isForwarded,
 		mentionedUserIds: row.mentions.map((mention) => mention.userId),
 		attachments: row.attachments.map((attachment) => ({

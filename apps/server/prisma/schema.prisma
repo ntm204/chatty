@@ -543,6 +543,9 @@ model Message {
   /// shape is also a picture sent without a caption, and the two render nothing
   /// alike — a sticker is drawn bare and large, a photo sits in a bubble.
   isSticker    Boolean      @default(false)
+  /// One of Chatty's built-in animated stickers, by name (see BUILTIN_STICKER_KEYS
+  /// in shared-types). Drawn by the client; the whole message when set.
+  stickerKey   String?      @db.VarChar(32)
   /// A copy made from another message. The source is deliberately not retained:
   /// forwarded content outlives deletion in the source conversation.
   isForwarded  Boolean      @default(false)

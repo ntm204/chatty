@@ -44,6 +44,8 @@ export interface SendMessageArgs {
 	voice?: Buffer | undefined;
 	/** One of the sender's own stickers. The whole message when it is set. */
 	stickerId?: string | undefined;
+	/** A built-in animated sticker, already checked against the list by the schema. */
+	stickerKey?: string | undefined;
 	/** The message being answered, already validated as a string by the schema. */
 	replyToId?: string | undefined;
 	forwardOfMessageId?: string | undefined;
@@ -116,6 +118,7 @@ export async function sendMessage(
 				id: string;
 				conversationId: string;
 				isSticker: boolean;
+				stickerKey: string | null;
 				attachments: {
 					id: string;
 					kind: "IMAGE" | "FILE" | "AUDIO";
@@ -142,6 +145,7 @@ export async function sendMessage(
 				conversationId: true,
 				content: true,
 				isSticker: true,
+				stickerKey: true,
 				attachments: {
 					orderBy: { position: "asc" },
 					select: {
@@ -397,6 +401,9 @@ export async function sendMessage(
 						content,
 						...(input.replyToId ? { replyToId: input.replyToId } : {}),
 						...(input.stickerId || forwardedSource?.isSticker ? { isSticker: true } : {}),
+						...(input.stickerKey || forwardedSource?.stickerKey
+							? { stickerKey: input.stickerKey ?? forwardedSource?.stickerKey ?? null }
+							: {}),
 						...(input.forwardOfMessageId ? { isForwarded: true } : {}),
 						...(storedAttachments.length > 0
 							? { attachments: { createMany: { data: storedAttachments } } }

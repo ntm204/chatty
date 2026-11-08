@@ -37,21 +37,38 @@ export async function sendMessageController(req: Request, res: Response): Promis
 	// The one rule that spans body and files, so it cannot live in either schema:
 	// a message has to be something. Without it, posting `{}` stores a row with
 	// no text and no image that renders as an empty bubble nobody can delete.
-	if (!content && images.length === 0 && !file && !voice && !input.stickerId && !input.forwardOfMessageId) {
+	if (
+		!content &&
+		images.length === 0 &&
+		!file &&
+		!voice &&
+		!input.stickerId &&
+		!input.stickerKey &&
+		!input.forwardOfMessageId
+	) {
 		throw new ValidationError("A message needs text or an attachment");
 	}
 
 	// A sticker is the whole message. Letting it arrive alongside a caption or
 	// files would mean deciding how a bare, oversized image composes with a
 	// bubble, and there is no answer to that worth having.
-	if (input.stickerId && (content || images.length > 0 || file || voice || input.forwardOfMessageId)) {
+	const isSticker = Boolean(input.stickerId || input.stickerKey);
+	if (
+		isSticker &&
+		(content ||
+			images.length > 0 ||
+			file ||
+			voice ||
+			input.forwardOfMessageId ||
+			(input.stickerId && input.stickerKey))
+	) {
 		throw new ValidationError("A sticker is sent on its own");
 	}
 	if (images.length > 0 && file) throw new ValidationError("Send images or one file, not both");
-	if (voice && (content || images.length > 0 || file || input.stickerId || input.forwardOfMessageId)) {
+	if (voice && (content || images.length > 0 || file || isSticker || input.forwardOfMessageId)) {
 		throw new ValidationError("A voice message is sent on its own");
 	}
-	if (input.forwardOfMessageId && (content || images.length > 0 || file || voice || input.stickerId)) {
+	if (input.forwardOfMessageId && (content || images.length > 0 || file || voice || isSticker)) {
 		throw new ValidationError("A forwarded message is sent on its own");
 	}
 
@@ -61,7 +78,7 @@ export async function sendMessageController(req: Request, res: Response): Promis
 			? "file"
 			: images.length > 0
 				? "image"
-				: input.stickerId
+				: isSticker
 					? "sticker"
 					: input.forwardOfMessageId
 						? "forward"
@@ -75,6 +92,7 @@ export async function sendMessageController(req: Request, res: Response): Promis
 			content,
 			...(input.replyToId ? { replyToId: input.replyToId } : {}),
 			...(input.stickerId ? { stickerId: input.stickerId } : {}),
+			...(input.stickerKey ? { stickerKey: input.stickerKey } : {}),
 			...(input.forwardOfMessageId ? { forwardOfMessageId: input.forwardOfMessageId } : {}),
 			...(input.mentionedUserIds ? { mentionedUserIds: input.mentionedUserIds } : {}),
 			...(input.clientId ? { clientId: input.clientId } : {}),

@@ -1,3 +1,4 @@
+import { BUILTIN_STICKER_KEYS } from "@chatty/shared-types";
 import type { EditMessageRequest, SendMessageRequest, ToggleReactionRequest } from "@chatty/shared-types";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ export const sendMessageSchema = z.object({
 	// service: whether this id is in the caller's tray is not something a body
 	// schema can see, and it is the half that matters.
 	stickerId: z.string().min(1).max(64).optional(),
+	stickerKey: z.enum(BUILTIN_STICKER_KEYS).optional(),
 	forwardOfMessageId: z.string().min(1).max(64).optional(),
 	// A device-generated idempotency key. The service scopes it to the author;
 	// the length bound also caps the unique-index key stored by PostgreSQL.
