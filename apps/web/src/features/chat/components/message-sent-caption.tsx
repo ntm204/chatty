@@ -69,10 +69,10 @@ export function MessageSentCaption({
 						onClick={() => setIsReaderListOpen((current) => !current)}
 						aria-label={`Seen by ${receipt.readerCount}`}
 						aria-expanded={isReaderListOpen}
-						className="-space-x-1.5 px-0 py-0 hover:bg-transparent"
+						className="gap-0.5 px-0 py-0 hover:bg-transparent"
 					>
 						{readers.slice(0, 3).map((reader) => (
-							<Avatar key={reader.id} user={reader} size="2xs" className="ring-1 ring-paper" />
+							<Avatar key={reader.id} user={reader} size="2xs" />
 						))}
 					</Button>
 				) : (

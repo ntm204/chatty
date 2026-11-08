@@ -9,9 +9,12 @@ import { getDirectPeer, getTypingMessage } from "../utils";
 import { ConversationHeader } from "./conversation-header";
 import { ConversationMessageSearch } from "./conversation-message-search";
 import { ConversationVaultPanel } from "./conversation-vault-panel";
+import { FlowingWallpaper } from "./flowing-wallpaper";
 import { ForwardMessagePanel } from "./forward-message-panel";
 import { MessageInput } from "./message-input";
 import { MessageList } from "./message-list";
+import { MessageSelectionBar } from "./message-selection-bar";
+import { useMessageSelection } from "../hooks/use-message-selection";
 import { PinnedMessagesBanner } from "./pinned-messages-banner";
 import { ThreadLoadError } from "./thread-load-error";
 
@@ -80,6 +83,14 @@ export function ChatConversationPane({
 	useEffect(() => {
 		if (peer) void loadBlocked(peer.id);
 	}, [loadBlocked, peer]);
+	const isSelectingMessages = useMessageSelection((state) => state.isSelecting);
+	// A selection belongs to one conversation; leaving it ends the selection.
+	useEffect(() => () => useMessageSelection.getState().clear(), [conversation.id]);
+
+	// The wallpaper flows once per message you send. `clientId` survives the
+	// server's confirmation, so a message does not flow it twice.
+	const lastSent = [...messageListProps.messages].reverse().find((message) => message.author?.id === currentUserId);
+	const flowKey = lastSent ? (lastSent.clientId ?? lastSent.id) : undefined;
 
 	return (
 		<>
@@ -102,6 +113,11 @@ export function ChatConversationPane({
 						isManagingDetails && "max-xl:hidden",
 					)}
 				>
+					<FlowingWallpaper
+						key={conversation.id}
+						theme={conversation.themeColor ?? "default"}
+						flowKey={flowKey}
+					/>
 					<div className="conversation-chrome">
 						<ConversationHeader
 							conversation={conversation}
@@ -174,11 +190,19 @@ export function ChatConversationPane({
 							sent.
 						</p>
 					)}
-					<MessageInput
-						key={`${currentUserId}:${conversation.id}`}
-						{...messageInputProps}
-						isDisabled={isBlocked}
-					/>
+					{/* While selecting, the bar takes the composer's place, as in Telegram. */}
+					{isSelectingMessages ? (
+						<MessageSelectionBar
+							messages={messageListProps.messages}
+							onHideMessage={messageListProps.onHideMessage}
+						/>
+					) : (
+						<MessageInput
+							key={`${currentUserId}:${conversation.id}`}
+							{...messageInputProps}
+							isDisabled={isBlocked}
+						/>
+					)}
 				</section>
 				{isManagingDetails && (
 					<ConversationVaultPanel

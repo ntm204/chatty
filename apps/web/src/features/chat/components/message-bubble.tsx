@@ -1,17 +1,21 @@
+import { ChattySticker } from "@/components/icons";
 import { cn } from "@/utils/cn";
 import { STICKER_DISPLAY_SIZE } from "../constants/attachment";
 import { getConversationThemeClasses } from "../constants/conversation-theme";
 import { INCOMING_BUBBLE_RADIUS, OUTGOING_BUBBLE_RADIUS } from "../constants/message-cluster";
 import { useCompactMessage } from "../hooks/use-compact-message";
+import { useJumboBurst } from "../hooks/use-jumbo-burst";
 import type { ClusterPosition } from "../types/message-cluster";
 import type { ThreadMessage } from "../types/thread-message";
 import { formatMessageTime } from "../utils/format-time";
+import { isBuiltinStickerKey } from "../utils/is-builtin-sticker-key";
 import { MessageGallery } from "./message-gallery";
 import { MessageFileCard } from "./message-file-card";
 import { MessageReplyQuote } from "./message-reply-quote";
 import { MessageText } from "./message-text";
 import { VoicePlayer } from "./voice-player";
 import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
+import type { ReactNode } from "react";
 
 interface MessageBubbleProps {
 	message: ThreadMessage;
@@ -33,6 +37,13 @@ interface MessageBubbleProps {
 	 * id for a forward to name.
 	 */
 	onForward?: () => void;
+	/** Time and ticks drawn inside a text bubble; absent leaves them to the gutter. */
+	meta?: ReactNode;
+	/**
+	 * The reaction chips. Inside a text bubble, under the text; under a photo,
+	 * file, voice note or sticker, which have no bubble of their own to hold them.
+	 */
+	footer?: ReactNode;
 }
 
 /**
@@ -58,6 +69,8 @@ export function MessageBubble({
 	participants,
 	themeColor,
 	onForward,
+	footer,
+	meta,
 }: MessageBubbleProps) {
 	const theme = getConversationThemeClasses(themeColor);
 	const images = message.attachments.filter((attachment) => attachment.kind === "image");
@@ -65,6 +78,8 @@ export function MessageBubble({
 	const voice = message.attachments.find((attachment) => attachment.kind === "audio");
 	const hasImages = images.length > 0;
 	const sticker = message.isSticker ? images[0] : undefined;
+	const isJumbo = jumboCount > 0;
+	const burst = useJumboBurst(message.content, isJumbo, message.createdAt);
 	const bubbleRef = useCompactMessage(
 		message.content,
 		message.attachments.length === 0 &&
@@ -79,16 +94,33 @@ export function MessageBubble({
 	// content that needs no explaining. Drawn at a fixed size rather than its own
 	// — a tray of mixed shapes would otherwise make every sticker a different
 	// size in the thread.
+	if (isBuiltinStickerKey(message.stickerKey)) {
+		return (
+			<div className={cn("flex flex-col text-ink", isMine ? "items-end" : "items-start")}>
+				<ChattySticker
+					sticker={message.stickerKey}
+					className="block"
+					// The same box an uploaded sticker gets.
+					style={{ width: STICKER_DISPLAY_SIZE, height: STICKER_DISPLAY_SIZE }}
+				/>
+				{footer}
+			</div>
+		);
+	}
+
 	if (sticker) {
 		return (
-			<img
-				src={sticker.url}
-				alt="Sticker"
-				loading="lazy"
-				width={STICKER_DISPLAY_SIZE}
-				height={STICKER_DISPLAY_SIZE}
-				className="object-contain"
-			/>
+			<div className={cn("flex flex-col text-ink", isMine ? "items-end" : "items-start")}>
+				<img
+					src={sticker.url}
+					alt="Sticker"
+					loading="lazy"
+					width={STICKER_DISPLAY_SIZE}
+					height={STICKER_DISPLAY_SIZE}
+					className="object-contain"
+				/>
+				{footer}
+			</div>
 		);
 	}
 
@@ -112,6 +144,7 @@ export function MessageBubble({
 					{...(message.deliveryState ? {} : { timeLabel: formatMessageTime(message.createdAt) })}
 					{...(onForward && { onForward })}
 				/>
+				{footer && <div className="px-1.5 text-ink">{footer}</div>}
 			</div>
 		);
 	}
@@ -140,21 +173,39 @@ export function MessageBubble({
 						className="font-content max-w-80 whitespace-pre-wrap text-sm/[1.55] wrap-break-word"
 					/>
 				)}
+				{footer && <div className="px-1.5 text-ink">{footer}</div>}
 			</div>
 		);
 	}
 
 	return (
 		<div
-			ref={bubbleRef}
+			ref={(element) => {
+				bubbleRef.current = element;
+				burst.elementRef.current = element;
+			}}
+			key={burst.popKey}
+			{...(burst.isBurstable && {
+				onClick: burst.replay,
+				role: "button",
+				tabIndex: 0,
+				"aria-label": `Play ${message.content.trim()}`,
+			})}
 			className={cn(
 				"min-w-0 max-w-full text-sm/[1.55]",
 				jumboCount > 0
-					? "bg-transparent px-1 py-0.5"
+					? cn(
+							"bg-transparent px-1 py-0.5",
+							burst.popKey > 0 && "jumbo-pop",
+							burst.isBurstable && "cursor-pointer",
+						)
 					: cn(
 							isMine ? cn(theme.bubble, theme.bubbleInk) : "bg-paper-sunken text-ink",
 							(isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition],
 							"chat-bubble px-3 py-1.5",
+							// The tail hooks the last bubble of a run to its speaker's side.
+							(clusterPosition === "solo" || clusterPosition === "last") && "chat-bubble-tail",
+							isMine ? "chat-bubble-mine" : "chat-bubble-theirs",
 						),
 			)}
 		>
@@ -170,6 +221,8 @@ export function MessageBubble({
 					participants={participants}
 					className={cn(
 						"font-content whitespace-pre-wrap wrap-anywhere text-pretty",
+						// Inline, so the floated time can share its last line.
+						meta && jumboCount === 0 && "inline",
 						// Smaller as the count grows, so three still fit the column a
 						// bubble would have occupied.
 						jumboCount === 1 && "text-[44px] leading-[1.15]",
@@ -178,6 +231,8 @@ export function MessageBubble({
 					)}
 				/>
 			)}
+			{meta}
+			{footer}
 		</div>
 	);
 }

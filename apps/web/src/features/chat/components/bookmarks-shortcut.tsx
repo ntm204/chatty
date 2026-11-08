@@ -23,9 +23,10 @@ export function BookmarksShortcut({ currentUserId, onSelectMessage }: BookmarksS
 				onClick={() => setIsOpen(true)}
 				aria-label="Bookmarked messages"
 				title="Messages bookmarked from your conversations"
-				className="h-10 w-full justify-center gap-2 rounded-control bg-paper-sunken px-2 text-xs text-ink-soft hover:bg-ink/5"
+				role="menuitem"
+				className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13.5px] font-normal text-ink hover:bg-paper-sunken"
 			>
-				<Bookmark className="size-4" />
+				<Bookmark className="size-4 text-ink-faint" />
 				Bookmarks
 			</Button>
 			{isOpen &&

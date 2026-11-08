@@ -1,7 +1,7 @@
-import type { ConversationTheme, ReactionDTO, ReactionEmoji, UserDTO } from "@chatty/shared-types";
+import type { ReactionDTO, ReactionEmoji, UserDTO } from "@chatty/shared-types";
 import { Button } from "@/components/button";
+import { ReactionIcon } from "@/components/icons";
 import { cn } from "@/utils/cn";
-import { getConversationThemeClasses } from "../constants/conversation-theme";
 import { REACTION_CHIP_LIMIT } from "../constants/reactions";
 import { getReactionSummary } from "../utils";
 
@@ -9,61 +9,42 @@ interface MessageReactionsProps {
 	reactions: ReactionDTO[];
 	currentUserId: string;
 	users: UserDTO[];
-	/** Which side the bubble sits on — the pill hangs off its inner corner. */
+	/** Names the group for assistive technology: whose message these are on. */
 	isMine: boolean;
-	/** The conversation's shared accent, replacing the fixed default for a "mine" chip — see ADR 0022. */
-	themeColor: ConversationTheme | null;
 	isDisabled?: boolean;
 	onToggle: (emoji: ReactionEmoji) => void;
-	/** Opens the reactor list. Reached from the overflow count and from the actions menu. */
+	/** Opens the reactor list. Reached from the overflow chip and from the actions menu. */
 	onShowDetails: () => void;
 }
 
 /**
- * The reactions a message wears, straddling its bottom edge.
+ * The reactions a message wears: a row of chips inside the bubble, under the
+ * text — Telegram's arrangement, chosen by the owner over floating pills.
  *
- * **One pill, not one chip per emoji.** Each emoji used to carry its own border,
- * its own `ring-2` cut-out and its own shadow, and the group overlapped them with
- * negative spacing — so three reactions drew three borders, three haloes and
- * three shadows into a 60px strip and read as clutter stuck to the corner of the
- * bubble. Instagram draws the same information as a single small capsule with
- * the emoji sitting inside it, and that is what this is: the chrome is paid for
- * once, by the container, and the emoji inside are bare.
+ * Inside rather than hanging off the edge, so there is nothing to layer: no
+ * ring, shadow or overlap, and nothing that can cover text or run off a short
+ * bubble. Every floating version needed one of those and looked stuck on.
  *
- * **Half on the bubble and half on the page**, which is the arrangement
- * Messenger and Instagram both use and the single biggest thing this component
- * used to get wrong: it hung clear of the bubble by 18px, so it read as something
- * that had fallen off rather than as a sticker put on. `top-full` puts the pill's
- * top edge on the bubble's bottom edge and `-translate-y-1/2` lifts it by half its
- * own height, so the overlap stays exact at any pill height and the row below only
- * has to reserve the half that hangs.
+ * Each chip is the emoji's doodle drawing (`ReactionIcon`) and its count, and
+ * pressing it toggles your own reaction — the same toggle as the reaction bar.
+ * Chips take their colour from `currentColor`, so one set of classes reads on
+ * an incoming bubble, on your own bubble in any conversation theme, and on the
+ * page under a photo or a file. Yours is the one filled in ink.
  *
- * It sits at the bubble's *inner* corner — bottom-right of an incoming message,
- * bottom-left of one you sent. Two reasons, and neither is symmetry: it stays off
- * the window edge on a narrow screen, and it lands nearer the middle of the
- * thread, which is where the eye already is.
- *
- * `ring-2 ring-paper` is still here and still load-bearing, but now there is one
- * of it. An incoming bubble is `bg-paper-raised`, the same fill as this pill, so
- * without a page-coloured ring cut between them the two surfaces merge and the
- * reactions look printed on the message. The ring is what makes it an object
- * resting on top.
- *
- * Past three distinct emoji the rest collapse into one `+N`, which opens the
- * reactor list rather than toggling anything. An open emoji set has no ceiling on
- * how many emoji a group can put on one sentence, and the bubble does.
+ * Past `REACTION_CHIP_LIMIT` distinct emoji the rest collapse into `+N`, which
+ * opens the reactor list rather than toggling anything. So there are at most
+ * four chips, and they never wrap: a second row would sit inside the first
+ * row's touch reach, and four fit in one row even at 320px.
  */
 export function MessageReactions({
 	reactions,
 	currentUserId,
 	users,
 	isMine,
-	themeColor,
 	isDisabled = false,
 	onToggle,
 	onShowDetails,
 }: MessageReactionsProps) {
-	const theme = getConversationThemeClasses(themeColor);
 	const visible = reactions.slice(0, REACTION_CHIP_LIMIT);
 	const hiddenCount = reactions.length - visible.length;
 
@@ -71,11 +52,7 @@ export function MessageReactions({
 		<div
 			role="group"
 			aria-label={isMine ? "Reactions to your message" : "Reactions to received message"}
-			className={cn(
-				"message-reactions absolute top-full z-10 flex h-5 -translate-y-1/2 items-center gap-0.5 px-1",
-				"rounded-full border border-rule bg-paper-raised ring-2 ring-paper shadow-reaction",
-				isMine ? "left-2.5" : "right-2.5",
-			)}
+			className="message-reactions mt-1.5 -mx-1.5 flex gap-1"
 		>
 			{visible.map((reaction) => {
 				const isReacted = reaction.userIds.includes(currentUserId);
@@ -89,22 +66,18 @@ export function MessageReactions({
 						disabled={isDisabled}
 						aria-pressed={isReacted}
 						aria-label={`${reaction.emoji}, ${count}`}
-						aria-description={getReactionSummary(reaction, users, currentUserId)}
+						title={getReactionSummary(reaction, users, currentUserId)}
 						className={cn(
-							"h-4 rounded-full py-0 transition",
-							count > 1 ? "gap-0.5 px-1" : "w-4 p-0",
-							// Yours is a filled disc rather than a tinted chip. The palette
-							// spends its one colour on unread counts and things you cannot
-							// undo, and a reaction is neither — so "mine" is said with the
-							// ink block the app already uses for a message you sent, at the
-							// smallest size that still reads as deliberate.
-							isReacted ? theme.reacted : "hover:bg-transparent",
+							"reaction-chip h-6 gap-1 rounded-full py-0 pr-2 pl-0.5",
+							// Yours is filled in ink; the rest are a faint wash of whatever
+							// colour the surface they sit on writes in.
+							isReacted
+								? "bg-ink text-paper-raised hover:bg-ink"
+								: "bg-current/8 text-current hover:bg-current/14",
 						)}
 					>
-						<span aria-hidden="true" className="text-[12px] leading-none">
-							{reaction.emoji}
-						</span>
-						{count > 1 && <span className="meta">{count}</span>}
+						<ReactionIcon emoji={reaction.emoji} className="reaction-chip-icon size-5 text-[15px]" />
+						<span className="meta">{count}</span>
 					</Button>
 				);
 			})}
@@ -114,7 +87,7 @@ export function MessageReactions({
 					variant="ghost"
 					onClick={onShowDetails}
 					aria-label={`${hiddenCount} more reactions. Show everyone who reacted`}
-					className="h-4 rounded-full px-1 py-0 text-ink-soft transition hover:bg-transparent hover:text-ink"
+					className="reaction-chip h-6 rounded-full bg-current/8 px-2 py-0 text-current hover:bg-current/14"
 				>
 					<span className="meta">+{hiddenCount}</span>
 				</Button>

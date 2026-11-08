@@ -1,21 +1,20 @@
-/* Self-hosted fonts keep the CSP and offline behavior intact. General Sans
- * and Clash Display match the reference; Geist is the Vietnamese fallback.
+/* Interface text uses the platform's own face (see --font-sans); the only
+ * self-hosted font is General Sans for the wordmark, which keeps the CSP and
+ * offline behaviour intact.
  */
-@import "@fontsource/geist/400.css";
-@import "@fontsource/geist/500.css";
-@import "@fontsource/geist/600.css";
-@import "@fontsource/geist/700.css";
-@import "@fontsource/geist-mono/400.css";
-@import "@fontsource/geist-mono/500.css";
 @import "./fonts.css";
 @import "tailwindcss";
 @import "./surfaces.css";
 @import "./conversation-themes.css";
+@import "./palettes.css";
+@import "./stickers.css";
 @import "./welcome-intro.css";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Reference palette: navy #06038d, yellow #fbc80b and violet #5750fe.
+/* Reference palette: navy #06038d, yellow #fbc80b and violet #5750fe, set in
+ * "ink & pastel": warm paper surfaces and an iris-pastel bubble for what you
+ * sent, in the same pastel-and-ink language as the doodle reactions.
  * Semantic pairs keep user content and controls readable in both themes.
  */
 @theme {
@@ -25,26 +24,31 @@
 	--color-brand-violet: #5750fe;
 	--color-brand-lavender: #e6e6f4;
 	--color-brand-on-navy: #ffffff;
+	/* The call to action. Yellow on navy here; each palette in palettes.css
+	   repaints it, which is why nothing uses brand-yellow for a button. */
+	--color-accent: #fbc80b;
+	--color-accent-hover: #e4b60a;
+	--color-accent-ink: #06038d;
 	--color-heading: #06038d;
 	--color-halo-yellow: #fbc80b;
 	--color-halo-purple: #8e8afe;
-	--color-selection: #e6e6f4;
+	--color-selection: #ece6f8;
 	--color-selection-ink: #06038d;
 	--color-message-locator: #5750fe;
-	--color-paper: #f7f7fc;
-	--color-paper-raised: #ffffff;
-	--color-paper-sunken: #eeeef8;
+	--color-paper: #faf7f0;
+	--color-paper-raised: #fffdf8;
+	--color-paper-sunken: #f2eee5;
 	--color-ink: #171743;
-	--color-ink-soft: #50506d;
-	--color-ink-faint: #686880;
-	--color-rule: #dcdceb;
-	--color-rule-soft: #ececf5;
+	--color-ink-soft: #55536b;
+	--color-ink-faint: #6c6982;
+	--color-rule: #e3dccd;
+	--color-rule-soft: #efe9dd;
 	--color-signal: #b73146;
 	--color-signal-hover: #98223a;
 	--color-signal-soft: #fcecf0;
 	--color-live: #227047;
-	--color-block: #06038d;
-	--color-block-ink: #ffffff;
+	--color-block: #d9cff5;
+	--color-block-ink: #171743;
 	--color-scrim: #0c0b28;
 	--color-on-media: #ffffff;
 	--color-tint-azure: #badff6;
@@ -63,17 +67,44 @@
 	--color-tint-iris-ink: #534181;
 	--color-tint-fern: #d9e79b;
 	--color-tint-fern-ink: #4f601f;
-	--color-shell: #eeeef8;
-	--color-swatch-light: #ffffff;
-	--color-swatch-light-ink: #06038d;
-	--color-swatch-dark: #16162e;
-	--color-swatch-dark-ink: #d7d5ff;
-	--font-sans: "General Sans", "Geist", ui-sans-serif, system-ui, sans-serif;
-	--font-mono: "Geist Mono", ui-monospace, monospace;
-	/* What people write — messages, names, drafts. General Sans has no Vietnamese
-	   ranges (ễ, ờ, ứ…), so those glyphs fell back to Geist mid-word; Geist covers them. */
-	--font-content: "Geist", ui-sans-serif, system-ui, sans-serif;
-	--font-display: "Clash Display", "General Sans", "Geist", sans-serif;
+	--color-shell: #f2efe8;
+	/* The doodle reaction set. Fixed in both themes: they are stickers, drawn
+	   in ink on pastel, and a dark-mode remap would lose the ink line. */
+	--color-sticker-ink: #171743;
+	--color-sticker-paper: #ffffff;
+	--color-sticker-plum: #f3c3d8;
+	--color-sticker-amber: #f8d77c;
+	--color-sticker-iris: #d1c5ef;
+	--color-sticker-azure: #badff6;
+	--color-sticker-clay: #f5bba0;
+	--color-sticker-moss: #c9deb0;
+	--color-sticker-heart: #ef5b7a;
+	--color-sticker-tear: #5aa9e6;
+	--color-sticker-steam: #e25d3b;
+	--color-sticker-thumb: #fbc80b;
+	/* Someone with no photo: Messenger's grey silhouette. */
+	--color-avatar-blank: #dcd6ca;
+	--color-avatar-blank-figure: #fffdf8;
+	/* The phone in the theme preview: a device, so the same in both themes. */
+	--color-device-bezel: #121120;
+	/* The traffic lights on the desktop theme preview's window. */
+	--color-window-close: #ff5f57;
+	--color-window-minimise: #febc2e;
+	--color-window-zoom: #28c840;
+	/* Telegram's choice: the platform's own interface face — SF Pro on Apple,
+	   Segoe UI on Windows, Roboto on Android. Rounded, built for small sizes,
+	   full Vietnamese, and nothing to download. Numbers in machine-made text
+	   (times, counts, handles) use its tabular figures instead of a mono face. */
+	--font-sans:
+		-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+		sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+	--font-content: var(--font-sans);
+	--font-display:
+		-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+		sans-serif;
+	/* Only the wordmark keeps the brand face. */
+	--font-brand: "General Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 	--radius-badge: 5px;
 	--radius-control: 12px;
 	--radius-bubble: 12px;
@@ -95,20 +126,20 @@
 	--color-selection-ink: #e6e4ff;
 	--color-message-locator: #aaa4ff;
 	color-scheme: dark;
-	--color-paper: #16162e;
-	--color-paper-raised: #202039;
-	--color-paper-sunken: #2b2b46;
+	--color-paper: #151424;
+	--color-paper-raised: #1b1a2c;
+	--color-paper-sunken: #29273d;
 	--color-ink: #f2f1ff;
 	--color-ink-soft: #c4c3de;
 	--color-ink-faint: #a6a5c0;
-	--color-rule: #454460;
-	--color-rule-soft: #33334e;
+	--color-rule: #3d3a55;
+	--color-rule-soft: #2c2a40;
 	--color-signal: #ff9db3;
 	--color-signal-hover: #ffc0ce;
 	--color-signal-soft: #4c2b40;
 	--color-live: #9ed8b4;
-	--color-block: #5750c8;
-	--color-block-ink: #ffffff;
+	--color-block: #4b4180;
+	--color-block-ink: #f3f1ff;
 	--color-scrim: #050513;
 	--color-tint-azure: #304963;
 	--color-tint-azure-ink: #c3e4fa;
@@ -126,7 +157,9 @@
 	--color-tint-iris-ink: #ddd0ff;
 	--color-tint-fern: #424928;
 	--color-tint-fern-ink: #d8e69f;
-	--color-shell: #101023;
+	--color-shell: #100f1c;
+	--color-avatar-blank: #3a3850;
+	--color-avatar-blank-figure: #79769a;
 	--shadow-lift: 0 8px 32px rgb(0 0 0 / 0.35);
 	--shadow-reaction: 0 2px 6px rgb(0 0 0 / 0.3);
 	--shadow-modal: 0 24px 80px rgb(0 0 0 / 0.45);
@@ -164,11 +197,11 @@
 }
 
 @utility eyebrow {
-	font-family: var(--font-mono);
-	font-size: 10px;
-	font-weight: 500;
-	letter-spacing: 0.1em;
-	text-transform: uppercase;
+	font-family: var(--font-sans);
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: 0;
+	text-transform: none;
 	line-height: 1.4;
 }
 
@@ -183,8 +216,8 @@
 }
 
 @utility meta {
-	font-family: var(--font-mono);
-	font-size: 10.5px;
+	font-family: var(--font-sans);
+	font-size: 11.5px;
 	letter-spacing: 0;
 	font-variant-numeric: tabular-nums;
 	line-height: 1.4;

@@ -22,3 +22,28 @@ export interface ThemeOption {
 	description: string;
 	icon: LucideIcon;
 }
+
+/**
+ * Which colour family the app is painted in, independent of light or dark.
+ * Stamped on `<html>` as `data-palette`; "ink" is the base palette in
+ * `globals.css` and needs no overrides.
+ */
+export type PaletteId = "ink" | "clay" | "ocean" | "forest" | "mono";
+
+/** The handful of colours a palette preview draws: a page, two bubbles and the call to action. */
+export interface PalettePreviewColors {
+	page: string;
+	panel: string;
+	incoming: string;
+	mine: string;
+	ink: string;
+	accent: string;
+}
+
+/** One card of the Appearance palette picker. */
+export interface PaletteOption {
+	id: PaletteId;
+	label: string;
+	description: string;
+	preview: Record<ResolvedTheme, PalettePreviewColors>;
+}

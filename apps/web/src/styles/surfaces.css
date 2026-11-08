@@ -6,7 +6,7 @@
 	align-items: center;
 	gap: 9px;
 	color: var(--color-heading);
-	font-family: var(--font-sans);
+	font-family: var(--font-brand);
 	font-weight: 700;
 	font-size: 32px;
 	line-height: 1;
@@ -199,7 +199,7 @@
 	height: 4px;
 	border-radius: 4px;
 	margin-top: 29px;
-	background: var(--color-brand-yellow);
+	background: var(--color-accent);
 }
 /* Only the form can scroll when a keyboard, zoom or validation leaves too little
    room. Normal sign-in/registration fits; document and welcome never scroll. */
@@ -294,14 +294,19 @@
 	outline-offset: 3px;
 }
 .chatty-button[data-variant="primary"]:hover:not(:disabled) {
-	box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand-yellow) 30%, transparent);
+	box-shadow: 0 4px 12px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 .text-field:focus {
 	border-color: var(--color-heading);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 10%, transparent);
 }
-.chatty-avatar > :is(img, span) {
-	border: 2px solid var(--color-paper-raised);
+/* A ring of the surface colour cuts the dot out of the photo behind it. */
+.avatar-online-dot {
+	width: 28%;
+	height: 28%;
+	min-width: 9px;
+	min-height: 9px;
+	box-shadow: 0 0 0 2px var(--color-paper-raised);
 }
 .chat-shell {
 	background: var(--color-shell);
@@ -318,41 +323,25 @@
 .sidebar-brand {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: 10px;
-	min-height: 88px;
-	padding: 22px 22px 17px;
+	min-height: 64px;
+	padding: 16px 16px 12px 20px;
 }
 .sidebar-brand .brand {
-	font-size: 31px;
+	font-size: 24px;
 }
 .sidebar-brand .brand-symbol {
-	width: 34px;
-	height: 28px;
+	width: 28px;
+	height: 23px;
 }
 .sidebar-brand-label {
-	padding: 7px 12px;
-	color: var(--color-brand-navy);
-	background: var(--color-brand-yellow);
+	padding: 6px 12px;
+	color: var(--color-accent-ink);
+	background: var(--color-accent);
 	border-radius: 20px;
 	font-size: 12px;
 	font-weight: 600;
 	white-space: nowrap;
-}
-.sidebar-heading {
-	height: 65px;
-	padding-inline: 22px;
-}
-.sidebar-heading h1 {
-	font-family: var(--font-display);
-	font-size: 27px;
-	font-weight: 700;
-	color: var(--color-heading);
-	letter-spacing: 0.01em;
-}
-.sidebar-heading > button {
-	background: var(--color-selection);
-	color: var(--color-selection-ink);
 }
 .people-search {
 	border-radius: 28px;
@@ -363,31 +352,18 @@
 	border-color: var(--color-heading);
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 9%, transparent);
 }
-.sidebar-list-label {
-	padding: 8px 22px 12px;
-	color: var(--color-ink-faint);
-}
-.sidebar-list-label .eyebrow {
-	font-family: var(--font-sans);
-	font-size: 11px;
-	font-weight: 500;
-	text-transform: none;
-	letter-spacing: 0;
-}
 .conversation-row {
-	min-height: 77px;
-	border-radius: 15px;
+	min-height: 64px;
+	border-radius: 12px;
 }
 .conversation-row:hover {
 	background: var(--color-paper);
 }
+/* The open conversation is marked by its fill alone (and `aria-current`): an
+ * edge bar beside a rounded row read as a stray line. */
 .conversation-row[aria-current="page"],
 .conversation-row[aria-current="page"]:hover {
 	background: var(--color-selection);
-}
-.conversation-row-marker {
-	background: var(--color-heading);
-	border-radius: 5px;
 }
 .sidebar-account {
 	margin: 8px;
@@ -561,17 +537,6 @@
 	font-size: 25px;
 	color: var(--color-heading);
 	letter-spacing: 0.01em;
-}
-.appearance-settings button[role="radio"] {
-	min-height: 82px;
-	border-radius: 16px;
-}
-.appearance-settings button[aria-checked="true"] {
-	border-color: var(--color-heading);
-	background: var(--color-selection);
-}
-.appearance-settings button[aria-checked="true"] > svg {
-	color: var(--color-heading);
 }
 
 @media (max-width: 1023px) {
@@ -801,8 +766,8 @@
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-signal) 14%, transparent);
 }
 .sidebar-brand-label:hover {
-	background: var(--color-brand-yellow-hover);
-	color: var(--color-brand-navy);
+	background: var(--color-accent-hover);
+	color: var(--color-accent-ink);
 }
 @media (prefers-reduced-motion: no-preference) {
 	.chatty-button[data-variant="primary"] {
@@ -857,7 +822,7 @@
 	font-weight: 500;
 }
 .welcome-island-toggle:focus-visible {
-	outline: 2px solid var(--color-brand-yellow);
+	outline: 2px solid var(--color-accent);
 	outline-offset: -5px;
 	border-radius: 28px;
 }
@@ -947,34 +912,37 @@
 	}
 }
 
-/* Independent touch targets need layout space: expanding invisible hitboxes
- * around the compact desktop reaction chips would make adjacent actions overlap.
+/* Independent touch targets need layout space. The message actions spread
+ * out; a reaction chip grows to 28px and its hit area reaches 44px tall,
+ * never sideways, so neighbouring chips keep separate targets. The reach is
+ * mostly downward: Chromium snaps a tap to the nearest target, and reaching
+ * up toward the text pulled taps on a short "Hi" onto its chip.
  */
 @media (pointer: coarse) {
 	.message-actions {
 		gap: 2px;
 	}
 	.message-actions > button,
-	.message-actions [role="menu"] > button,
-	.message-reactions > button {
+	.message-actions [role="menu"] > button {
 		min-width: 44px;
 		min-height: 44px;
 		flex-shrink: 0;
 	}
-	.message-reactions {
+	.reaction-chip {
 		position: relative;
-		top: auto;
-		left: auto;
-		right: auto;
-		translate: none;
-		width: max-content;
-		max-width: 100%;
-		height: auto;
-		flex-wrap: wrap;
-		gap: 2px;
-		margin-top: 4px;
-		padding: 2px;
-		border-radius: 12px;
+		/* Above the "Sent"/"Seen" caption the reach extends over. */
+		z-index: 1;
+		height: 28px;
+		min-width: 44px;
+	}
+	.reaction-chip::after {
+		content: "";
+		position: absolute;
+		inset: -2px 0 -14px;
+	}
+	.reaction-chip-icon {
+		width: 22px;
+		height: 22px;
 	}
 	.reaction-bar {
 		width: min(336px, calc(100vw - 32px));

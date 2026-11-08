@@ -43,6 +43,7 @@ beforeEach(() => {
 function renderDirectActions() {
 	render(
 		<ConversationActions
+			onPreview={vi.fn()}
 			conversation={makeConversation({
 				participants: [makeParticipant("minh", "Minh"), makeParticipant("an", "An")],
 			})}
@@ -53,7 +54,7 @@ function renderDirectActions() {
 
 describe("ConversationActions", () => {
 	it("keeps row actions behind one compact trigger", async () => {
-		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" />);
+		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" onPreview={vi.fn()} />);
 
 		expect(screen.getByRole("button", { name: "Conversation actions" })).toBeInTheDocument();
 		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -81,7 +82,7 @@ describe("ConversationActions", () => {
 
 	it("uses an in-app mute submenu instead of a native dropdown", async () => {
 		const user = userEvent.setup();
-		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" />);
+		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" onPreview={vi.fn()} />);
 
 		await user.click(screen.getByRole("button", { name: "Conversation actions" }));
 		await user.click(screen.getByRole("menuitem", { name: "Mute" }));
@@ -103,6 +104,7 @@ describe("ConversationActions", () => {
 	it("shows the inverse actions for an organised conversation", async () => {
 		render(
 			<ConversationActions
+				onPreview={vi.fn()}
 				conversation={makeConversation({
 					isPinned: true,
 					isArchived: true,
@@ -192,6 +194,7 @@ describe("ConversationActions", () => {
 	it("offers neither restrict nor block on group conversations", async () => {
 		render(
 			<ConversationActions
+				onPreview={vi.fn()}
 				conversation={makeConversation({
 					isGroup: true,
 					participants: [makeParticipant("minh", "Minh"), makeParticipant("an", "An")],
@@ -215,7 +218,7 @@ describe("ConversationActions", () => {
 			}),
 		);
 		const user = userEvent.setup();
-		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" />);
+		render(<ConversationActions conversation={makeConversation()} currentUserId="minh" onPreview={vi.fn()} />);
 		await user.click(screen.getByRole("button", { name: "Conversation actions" }));
 		await user.click(screen.getByRole("menuitem", { name: "Pin conversation" }));
 		await user.keyboard("{Escape}");
@@ -237,8 +240,10 @@ describe("ConversationActions", () => {
 		renderDirectActions();
 		const trigger = screen.getByRole("button", { name: "Conversation actions" });
 		await user.click(trigger);
+		// Preview is the menu's first item, so it takes the opening focus.
+		const preview = screen.getByRole("menuitem", { name: "Preview" });
+		await waitFor(() => expect(preview).toHaveFocus());
 		const pin = screen.getByRole("menuitem", { name: "Pin conversation" });
-		await waitFor(() => expect(pin).toHaveFocus());
 		await user.click(pin);
 		// jsdom keeps disabled focus and ignores blur; reproduce Chromium's body fallback.
 		(pin as HTMLButtonElement).disabled = false;
@@ -246,7 +251,8 @@ describe("ConversationActions", () => {
 		(pin as HTMLButtonElement).disabled = true;
 		expect(document.body).toHaveFocus();
 		await act(async () => rejectRequest(new Error("You can pin up to 5 conversations")));
-		expect(pin).toHaveFocus();
+		// Abandoned focus returns to the menu's first item.
+		expect(preview).toHaveFocus();
 		await user.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 		expect(trigger).toHaveFocus();
@@ -263,7 +269,7 @@ describe("ConversationActions", () => {
 		const conversation = makeConversation();
 		render(
 			<>
-				<ConversationActions conversation={conversation} currentUserId="minh" />
+				<ConversationActions conversation={conversation} currentUserId="minh" onPreview={vi.fn()} />
 				<ConversationQuickActions conversation={conversation} onOpenSearch={() => undefined} />
 			</>,
 		);

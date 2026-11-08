@@ -7,17 +7,16 @@ import { URL, URLSearchParams } from "node:url";
 const { Blob, FormData, Headers, fetch } = globalThis;
 
 const API_URL = new URL(process.env.CHATTY_API_URL ?? "http://127.0.0.1:4000");
-const DEMO_PASSWORD = "ChattyDemo123";
+// The accounts `npm run db:seed` creates; this script only adds history to them.
+const DEMO_PASSWORD = "1";
 const DIRECT_MESSAGE_COUNT = 125;
 const GROUP_MESSAGE_COUNT = 175;
 const GROUP_NAME = "Chatty long-run lab";
 
 const DEMO_ACCOUNTS = [
-	{ key: "lan", email: "lan.demo@chatty.test", handle: "lan_demo", displayName: "Lan" },
-	{ key: "minh", email: "minh.demo@chatty.test", handle: "minh_demo", displayName: "Minh" },
-	{ key: "mai", email: "mai.demo@chatty.test", handle: "mai_demo", displayName: "Mai" },
-	{ key: "bao", email: "bao.demo@chatty.test", handle: "bao_demo", displayName: "Bảo" },
-	{ key: "admin", email: "admin.demo@chatty.test", handle: "admin_demo", displayName: "Admin" },
+	{ key: "one", email: "1@test.com" },
+	{ key: "two", email: "2@test.com" },
+	{ key: "three", email: "3@test.com" },
 ];
 
 const DIRECT_LINES = [
@@ -78,18 +77,11 @@ async function ensureAccount(account) {
 		json: { email: account.email, password: DEMO_PASSWORD },
 		allowStatuses: [401],
 	});
-	if (login.status === 200) return { ...account, ...login.payload.user, token: login.payload.token };
-
-	const registration = await request("/auth/register", {
-		method: "POST",
-		json: { ...account, password: DEMO_PASSWORD },
-		allowStatuses: [409],
-	});
-	if (registration.status === 409) {
-		throw new Error(`The demo identity ${account.email} already exists with different credentials.`);
+	if (login.status !== 200) {
+		throw new Error(`Cannot sign in as ${account.email}. Run \`npm run db:seed --workspace apps/server\` first.`);
 	}
 
-	return { ...account, ...registration.payload.user, token: registration.payload.token };
+	return { ...account, ...login.payload.user, token: login.payload.token };
 }
 
 function sameParticipants(conversation, userIds) {
@@ -100,9 +92,9 @@ function sameParticipants(conversation, userIds) {
 }
 
 async function ensureConversations(accounts) {
-	const owner = accounts.lan;
+	const owner = accounts.one;
 	const page = await request("/conversations?limit=100", { token: owner.token });
-	const directUserIds = [accounts.lan.id, accounts.minh.id];
+	const directUserIds = [accounts.one.id, accounts.two.id];
 	const groupUserIds = Object.values(accounts).map((account) => account.id);
 
 	let direct = page.payload.items.find(
@@ -113,7 +105,7 @@ async function ensureConversations(accounts) {
 			await request("/conversations", {
 				method: "POST",
 				token: owner.token,
-				json: { participantIds: [accounts.minh.id] },
+				json: { participantIds: [accounts.two.id] },
 			})
 		).payload;
 	}
@@ -133,7 +125,7 @@ async function ensureConversations(accounts) {
 				token: owner.token,
 				json: {
 					name: GROUP_NAME,
-					participantIds: [accounts.minh.id, accounts.mai.id, accounts.bao.id],
+					participantIds: [accounts.two.id, accounts.three.id],
 				},
 			})
 		).payload;
@@ -149,9 +141,8 @@ async function ensureConversations(accounts) {
 		).payload;
 	}
 
-	// Keep Mai's original role for existing demo users and give the explicitly
-	// named account the same permissions, so the seed can evolve in place.
-	for (const account of [accounts.mai, accounts.admin]) {
+	// A second admin, so admin-only controls can be tried from two accounts.
+	for (const account of [accounts.three]) {
 		const participant = group.participants.find((candidate) => candidate.id === account.id);
 		if (participant?.role === "admin") continue;
 		group = (
@@ -261,11 +252,11 @@ async function sendMultipartMessage(account, conversationId, clientId, fields) {
 }
 
 async function seedDirectMedia(conversation, accounts, replyAnchor) {
-	const imageMessage = await sendMultipartMessage(accounts.lan, conversation.id, "demo-direct-image", {
+	const imageMessage = await sendMultipartMessage(accounts.one, conversation.id, "demo-direct-image", {
 		content: "Ảnh kiểm tra trong cuộc trò chuyện trực tiếp.",
 		images: [createDemoImage("DIRECT IMAGE", "#f3efe3", "#e9684a")],
 	});
-	const fileMessage = await sendMultipartMessage(accounts.minh, conversation.id, "demo-direct-file", {
+	const fileMessage = await sendMultipartMessage(accounts.two, conversation.id, "demo-direct-file", {
 		file: {
 			name: "ghi-chú-kiểm-thử.txt",
 			blob: new Blob(["Chatty demo file\nDirect conversation\nDownload verified through the API.\n"], {
@@ -273,21 +264,21 @@ async function seedDirectMedia(conversation, accounts, replyAnchor) {
 			}),
 		},
 	});
-	await sendJsonMessage(accounts.lan, conversation.id, "demo-direct-reply", {
+	await sendJsonMessage(accounts.one, conversation.id, "demo-direct-reply", {
 		content: "Mình trả lời lại một tin ở trang lịch sử cũ để kiểm tra reply context.",
 		replyToId: replyAnchor.id,
 	});
-	await sendJsonMessage(accounts.minh, conversation.id, "demo-direct-forward", {
+	await sendJsonMessage(accounts.two, conversation.id, "demo-direct-forward", {
 		forwardOfMessageId: imageMessage.id,
 	});
 	await request(`/conversations/${conversation.id}/messages/${fileMessage.id}/star`, {
 		method: "PUT",
-		token: accounts.lan.token,
+		token: accounts.one.token,
 	});
 }
 
 async function seedGroupMedia(conversation, accounts, replyAnchor) {
-	await sendMultipartMessage(accounts.mai, conversation.id, "demo-group-gallery", {
+	await sendMultipartMessage(accounts.three, conversation.id, "demo-group-gallery", {
 		content: "Bộ ba ảnh để kiểm tra gallery, thumbnail và lightbox.",
 		images: [
 			createDemoImage("GALLERY 01", "#f4efe3", "#dc6247"),
@@ -295,10 +286,10 @@ async function seedGroupMedia(conversation, accounts, replyAnchor) {
 			createDemoImage("GALLERY 03", "#ebe8f2", "#705c91"),
 		],
 	});
-	await sendMultipartMessage(accounts.bao, conversation.id, "demo-group-voice", {
+	await sendMultipartMessage(accounts.three, conversation.id, "demo-group-voice", {
 		voice: createVoiceSample(),
 	});
-	const fileMessage = await sendMultipartMessage(accounts.lan, conversation.id, "demo-group-file", {
+	const fileMessage = await sendMultipartMessage(accounts.one, conversation.id, "demo-group-file", {
 		file: {
 			name: "chatty-demo-checklist.txt",
 			blob: new Blob(
@@ -310,21 +301,21 @@ async function seedGroupMedia(conversation, accounts, replyAnchor) {
 			),
 		},
 	});
-	const replyMessage = await sendJsonMessage(accounts.lan, conversation.id, "demo-group-reply", {
+	const replyMessage = await sendJsonMessage(accounts.one, conversation.id, "demo-group-reply", {
 		content: "@Mai mình đã ghim phần này để mọi người kiểm tra nhanh.",
 		replyToId: replyAnchor.id,
-		mentionedUserIds: [accounts.mai.id],
+		mentionedUserIds: [accounts.three.id],
 	});
-	await sendJsonMessage(accounts.minh, conversation.id, "demo-group-link", {
+	await sendJsonMessage(accounts.two, conversation.id, "demo-group-link", {
 		content: "Link kiểm tra metadata mà server không tự truy cập: https://example.com/chatty-demo",
 	});
 	await request(`/conversations/${conversation.id}/messages/${fileMessage.id}/star`, {
 		method: "PUT",
-		token: accounts.mai.token,
+		token: accounts.three.token,
 	});
 	await request(`/conversations/${conversation.id}/messages/${replyMessage.id}/pin`, {
 		method: "PUT",
-		token: accounts.lan.token,
+		token: accounts.one.token,
 	});
 }
 
@@ -361,14 +352,14 @@ async function main() {
 	const [directAnchor, groupAnchor] = await Promise.all([
 		seedTextSeries(
 			conversations.direct.id,
-			[accounts.lan, accounts.minh],
+			[accounts.one, accounts.two],
 			DIRECT_MESSAGE_COUNT,
 			"demo-direct",
 			DIRECT_LINES,
 		),
 		seedTextSeries(
 			conversations.group.id,
-			[accounts.lan, accounts.minh, accounts.mai, accounts.bao],
+			[accounts.one, accounts.two, accounts.three],
 			GROUP_MESSAGE_COUNT,
 			"demo-group",
 			GROUP_LINES,
@@ -381,8 +372,8 @@ async function main() {
 	]);
 
 	const [directSummary, groupSummary] = await Promise.all([
-		inspectConversation(accounts.lan, conversations.direct.id),
-		inspectConversation(accounts.lan, conversations.group.id),
+		inspectConversation(accounts.one, conversations.direct.id),
+		inspectConversation(accounts.one, conversations.group.id),
 	]);
 	const requiredKinds = ["audio", "file", "image"];
 	const observedKinds = new Set([...directSummary.attachmentKinds, ...groupSummary.attachmentKinds]);
@@ -395,7 +386,7 @@ async function main() {
 
 	process.stdout.write("\nDemo accounts (same password for all):\n");
 	for (const account of authenticated) {
-		const roleLabel = account.key === "admin" ? "  (admin in Chatty long-run lab)" : "";
+		const roleLabel = account.key === "three" ? "  (admin in Chatty long-run lab)" : "";
 		process.stdout.write(`  ${account.email}  @${account.handle}${roleLabel}\n`);
 	}
 	process.stdout.write(`  password: ${DEMO_PASSWORD}\n\n`);

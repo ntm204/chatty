@@ -1,6 +1,6 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConversationActions } from "@/features/chat/components/conversation-actions";
+import { ConversationList } from "@/features/chat/components/conversation-list";
 import { ConversationQuickActions } from "@/features/chat/components/conversation-quick-actions";
 import { useConversationMuted } from "@/features/chat/hooks/use-conversation-muted";
 import { makeConversation } from "./factories";
@@ -17,7 +17,15 @@ describe("mute deadline", () => {
 		const conversation = makeConversation({ mutedUntil: "2026-09-17T08:00:01Z" });
 		render(
 			<>
-				<ConversationActions conversation={conversation} currentUserId="minh" />
+				<ConversationList
+					conversations={[conversation]}
+					currentUserId="minh"
+					selectedConversationId={null}
+					onlineUserIds={new Set()}
+					onSelect={vi.fn()}
+					typingByConversation={{}}
+					paging={{ hasMore: false, isLoadingMore: false, loadMore: vi.fn() }}
+				/>
 				<ConversationQuickActions conversation={conversation} onOpenSearch={() => undefined} />
 			</>,
 		);

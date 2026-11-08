@@ -479,8 +479,11 @@ export const api = {
 	 * shared signature would invite exactly that call.
 	 */
 	sendSticker(conversationId: string, stickerId: string, replyToId?: string, clientId?: string): Promise<MessageDTO> {
+		// Built-in stickers ride the same path under a "builtin:" id and are sent by name.
+		const builtin = stickerId.startsWith("builtin:") ? stickerId.slice("builtin:".length) : null;
+
 		return post<MessageDTO>(`/conversations/${conversationId}/messages`, {
-			stickerId,
+			...(builtin ? { stickerKey: builtin } : { stickerId }),
 			...(clientId ? { clientId } : {}),
 			...(replyToId ? { replyToId } : {}),
 		});

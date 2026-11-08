@@ -30,7 +30,7 @@ which checks to run, where information goes — lives only in [AGENTS.md](AGENTS
 - React version: `18` <!-- turns off the React.FormEvent rule; revisit on upgrade to 19 -->
 - Styling helper: `cn()` <!-- @/utils/cn — Tailwind CSS v4 + clsx + tailwind-merge -->
 - Colours: `design tokens only` <!-- @theme in src/styles/globals.css, plus a [data-theme="dark"] block redefining the same names; a numbered Tailwind swatch is a bug, audit 29 catches it -->
-- Fonts: `General Sans / Clash Display / Geist / Geist Mono` <!-- Fontshare downloaded during predev/prebuild; Geist via @fontsource; all self-hosted -->
+- Fonts: `system UI (SF Pro / Segoe UI / Roboto) + General Sans wordmark` <!-- interface in the platform face, as Telegram does; General Sans downloaded during predev/prebuild for the logo only -->
 - Button: `Button from @/components/button` <!-- build it before the first button is needed -->
 - Icons: `lucide-react`
 - Images: `raw <img> allowed` <!-- no Next.js image component in a Vite app -->

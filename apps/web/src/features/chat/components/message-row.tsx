@@ -1,6 +1,6 @@
 import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
 import { Ban } from "lucide-react";
-import { memo, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/utils/cn";
 import { DELETED_AUTHOR_NAME, DELETED_MESSAGE_TEXT } from "../constants/message";
@@ -9,10 +9,17 @@ import type { MessageRowActions } from "../types/message-row-actions";
 import type { ThreadMessage } from "../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
 import { countJumboEmoji, findMyReaction, resolveDisplayName } from "../utils";
+import { useMessageGestures } from "../hooks/use-message-gestures";
+import { useRowSelection } from "../hooks/use-message-selection";
 import { useMessageRowMutations } from "../hooks/use-message-row-mutations";
+import { DOUBLE_TAP_REACTION } from "../constants/message-gestures";
 import { MessageActionFeedback } from "./message-action-feedback";
 import { MessageActions } from "./message-actions";
+import { BubbleMeta } from "./bubble-meta";
 import { MessageBubble } from "./message-bubble";
+import { MessagePinBadge } from "./message-pin-badge";
+import { MessageSelectCheck } from "./message-select-check";
+import { SwipeReplyHint } from "./swipe-reply-hint";
 import { MessageEditor } from "./message-editor";
 import { MessageMeta } from "./message-meta";
 import { MessageSentCaption } from "./message-sent-caption";
@@ -39,6 +46,8 @@ interface MessageRowProps extends MessageRowActions {
 	participants: ParticipantDTO[];
 	themeColor: ConversationTheme | null;
 	isPinned: boolean;
+	/** Yours, and read by somebody: the bubble shows two ticks. */
+	isRead?: boolean;
 }
 
 /**
@@ -63,6 +72,7 @@ export const MessageRow = memo(function MessageRow({
 	participants,
 	themeColor,
 	isPinned,
+	isRead = false,
 	...actions
 }: MessageRowProps) {
 	// Bind only after React's shallow comparison has admitted this row's update.
@@ -89,46 +99,35 @@ export const MessageRow = memo(function MessageRow({
 	const author = message.author;
 	const isDeleted = Boolean(message.deletedAt);
 	const isEdited = Boolean(message.editedAt) && !isDeleted;
-	// Set only on a message this tab is still sending. Nothing may act on one:
-	// the server has no id for it yet, so an edit, a delete or a reaction would
-	// have nothing to name.
+	// Only on a message still sending: with no server id yet, nothing may act on it.
 	const deliveryState = message.deliveryState;
-	// A tombstone has no content and no image left to change, so the author's
-	// two actions have nothing to act on — the row stays only to hold its place.
+	// A tombstone has nothing left for the author to change.
 	const canModify = isMine && !isDeleted && !deliveryState;
-	// A picture states its own time, in a chip on the image. Only a picture: a
-	// file card and a voice player are rows of ink on paper like any other
-	// bubble, and the gutter is level with them.
+	// A picture states its own time on the image; files and voice notes do not.
 	const hasTimeOnMedia =
 		!isDeleted &&
 		!isEditing &&
 		!deliveryState &&
 		message.attachments.some((attachment) => attachment.kind === "image");
 	const hasImages = message.attachments.length > 0;
-	// A message that is nothing but a few emoji is drawn large and bare, the way
-	// every messenger worth using does it: at bubble size an emoji is a typo, and
-	// the bubble is chrome around content that does not need explaining. Only when
-	// it stands alone — a reply, a caption or a quote makes it part of something.
+	// A plain text bubble carries its own time and ticks, as Telegram's do.
+	const hasTimeInBubble = !isDeleted && !isEditing && !deliveryState && !hasImages;
+	// A few emoji standing alone are drawn large and bare; a reply, caption or
+	// quote makes them part of something else.
 	const jumboCount = !isDeleted && !hasImages && !message.replyTo ? countJumboEmoji(message.content) : 0;
-	// The chips straddle the bubble's bottom edge: half of a 22px chip is on the
-	// bubble and half is below it, so the row has to reserve those 11px plus room
-	// for the shadow to clear the next bubble rather than land on it.
+	const hasBubbleMeta = hasTimeInBubble && jumboCount === 0;
 	const hasReactions = message.reactions.length > 0;
 	// One per person, so this is an emoji and not a list — see `MessageReaction`.
 	const myReaction = findMyReaction(message.reactions, currentUserId);
 
-	function revealTouchActions(event: ReactPointerEvent<HTMLDivElement>) {
-		if (event.pointerType === "mouse") return;
-		// A viewer portal still bubbles through React, but must keep focus in its dialog.
-		if (!event.currentTarget.contains(event.target as Node)) return;
-		if (window.getSelection()?.toString()) return;
-		if ((event.target as HTMLElement).closest("a, button, input, textarea, [role='button']")) return;
-
-		// A phone has no hover. Focusing the row on a plain tap reveals only this
-		// message's overflow action; focusing the composer or another message hides
-		// it again. `-1` keeps hundreds of rows out of the keyboard tab order.
-		event.currentTarget.focus({ preventScroll: true });
-	}
+	const { isSelecting, isSelected, onClickCapture, start: startSelection } = useRowSelection(message.id);
+	const gestures = useMessageGestures({
+		onReply: !isDeleted && !deliveryState && !isEditing ? onReply : undefined,
+		onDoubleTap:
+			!isDeleted && !deliveryState && !isEditing ? () => onToggleReaction(DOUBLE_TAP_REACTION) : undefined,
+	});
+	// Captured once: a row that mounts while still sending is one you just sent.
+	const [isJustSent, setIsJustSent] = useState(() => Boolean(message.deliveryState));
 
 	return (
 		<div
@@ -140,66 +139,57 @@ export const MessageRow = memo(function MessageRow({
 				// between every message in the same person's burst.
 				isFirstOfRun ? "mt-3 first:mt-0" : "mt-0.5",
 				isMine ? "items-end" : "items-start",
-				// Held back from full ink until the server has it. The words are the
-				// point, so they stay legible — this says "not settled yet", not
-				// "unreadable". A failed draft goes back to full strength: it is the
-				// gutter's "Not sent" that carries the state, and a faded message
-				// with a decision attached to it reads as already dismissed.
+				// Held back from full ink until the server has it; a failed draft
+				// returns to full strength, its gutter's "Not sent" carrying the state.
 				deliveryState === "pending" && "opacity-60",
+				isJustSent && "message-just-sent",
 			)}
 		>
-			{/* Outside the hover row and indented past the avatar, so the name sits
-			    over the bubble rather than over the face. Groups only: in a 1-1 the
-			    header already names the one person it could possibly be. */}
+			{/* Groups only, indented past the avatar so the name sits over the bubble. */}
 			{!isMine && isFirstOfRun && isGroup && (
 				<span className="note font-content font-medium mb-1 ml-12 text-ink-soft sm:ml-13">
-					{/* A USER message with no author is one whose writer deleted their
-					    account — still theirs to have said, no longer theirs to be
-					    named for. */}
 					{author ? resolveDisplayName(participants, author) : DELETED_AUTHOR_NAME}
 				</span>
 			)}
 
-			{/* `group` so the hover that reveals the actions and the time is the whole
-			    row rather than the controls themselves, which are invisible until it
-			    happens and so cannot be hovered first. */}
+			{/* `group`: hovering anywhere on the row reveals its (invisible) actions. */}
 			<div
 				data-message-interaction-row
 				tabIndex={-1}
-				onPointerUp={revealTouchActions}
+				{...gestures.handlers}
+				data-selected={isSelected || undefined}
+				onClickCapture={onClickCapture}
 				className={cn(
 					"group relative flex max-w-full items-center gap-2 outline-none sm:gap-3",
 					isMine && "flex-row-reverse",
-					// Only the half of the reaction pill that hangs below the bubble needs
-					// reserving — 10px of a 20px pill, plus 6px so the next message does
-					// not touch it. It moved with the pill when that shrank from 22px.
-					hasReactions && "mb-4",
-					!hasReactions && isEdited && "max-sm:mb-4",
+					isEdited && "max-sm:mb-4",
 				)}
 			>
-				{/* The spacer keeps a run's later bubbles aligned with its first one;
-				    without it they slide under the avatar. `self-end` rather than
-				    centred, because a face floating halfway up a tall photograph
-				    belongs to nothing. */}
+				{isSelecting && <MessageSelectCheck isSelected={isSelected} />}
 				{!isMine &&
 					(isFirstOfRun && author ? (
 						<Avatar user={author} size="sm" className="self-end" />
 					) : (
+						// Keeps a run's later bubbles aligned with its first one.
 						<span className="size-8 shrink-0" />
 					))}
 
-				{/* Capped in absolute terms as well as proportionally: on a wide window
-				    70% is a line of text long enough that the eye loses its place
-				    returning to the left edge. On the bubble rather than on the row,
-				    so the gutter beside it is not paid for out of the text's width. */}
+				{/* Capped absolutely as well as proportionally: a full-width line is hard to read back. */}
 				<div
 					data-message-surface
+					// Played once: dropped when it ends, so nothing can replay it later.
+					onAnimationEnd={(event) => {
+						if (event.animationName === "message-send") setIsJustSent(false);
+					}}
+					style={gestures.offset ? { transform: `translateX(${-gestures.offset}px)` } : undefined}
 					className={cn(
 						"relative min-w-0 max-w-[76vw]",
 						hasImages || isEditing ? "sm:max-w-[min(62vw,34rem)]" : "sm:max-w-[min(62vw,28rem)]",
 					)}
 				>
 					<span aria-hidden="true" className="message-location-marker" />
+					{gestures.offset > 0 && <SwipeReplyHint progress={gestures.progress} />}
+					{isPinned && !isDeleted && <MessagePinBadge isMine={isMine} />}
 					{isDeleted ? (
 						<div
 							className={cn(
@@ -225,28 +215,34 @@ export const MessageRow = memo(function MessageRow({
 							onJumpToReplyOriginal={onJumpToReplyOriginal}
 							participants={participants}
 							themeColor={themeColor}
-							// The same condition the row's own menu is drawn under: a
-							// tombstone has nothing left to forward, and a message this
-							// tab is still sending has no id to forward.
+							{...(hasBubbleMeta && {
+								meta: (
+									<BubbleMeta
+										createdAt={message.createdAt}
+										tick={isMine ? (isRead ? "read" : "sent") : null}
+									/>
+								),
+							})}
+							// Nothing to forward on a tombstone or a message still sending.
 							{...(!isDeleted && !deliveryState && { onForward })}
-						/>
-					)}
-
-					{hasReactions && (
-						<MessageReactions
-							reactions={message.reactions}
-							currentUserId={currentUserId}
-							users={participants}
-							isMine={isMine}
-							themeColor={themeColor}
-							onToggle={onToggleReaction}
-							isDisabled={isPending}
-							onShowDetails={onShowReactions}
+							footer={
+								hasReactions && (
+									<MessageReactions
+										reactions={message.reactions}
+										currentUserId={currentUserId}
+										users={participants}
+										isMine={isMine}
+										onToggle={onToggleReaction}
+										isDisabled={isPending}
+										onShowDetails={onShowReactions}
+									/>
+								)
+							}
 						/>
 					)}
 				</div>
 
-				{!isEditing && !deliveryState && (
+				{!isEditing && !deliveryState && !isSelecting && (
 					<MessageActions
 						isPending={isPending}
 						{...(canModify && { onEdit: onStartEdit, onDeleteForEveryone })}
@@ -254,6 +250,7 @@ export const MessageRow = memo(function MessageRow({
 						// Both omitted on a tombstone: there is nothing left to answer or to
 						// mark, and the server refuses either write anyway.
 						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin, onBookmark })}
+						onSelect={startSelection}
 						{...(hasReactions && { onShowReactions })}
 						isPinned={isPinned}
 						isBookmarked={Boolean(message.isBookmarked)}
@@ -265,7 +262,7 @@ export const MessageRow = memo(function MessageRow({
 
 				<MessageMeta
 					createdAt={message.createdAt}
-					hasTimeOnMedia={hasTimeOnMedia}
+					hasTimeOnMedia={hasTimeOnMedia || hasBubbleMeta}
 					isMine={isMine}
 					isEdited={isEdited}
 					receipt={receipt}

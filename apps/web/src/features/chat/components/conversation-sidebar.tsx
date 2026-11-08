@@ -1,6 +1,6 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { Archive, ArrowLeft, Keyboard, LogOut, Settings } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -9,9 +9,12 @@ import type { ConversationPaging } from "../types/conversation-paging";
 import { PanelResizeHandle } from "./panel-resize-handle";
 import { ConversationList } from "./conversation-list";
 import { NewConversationPanel } from "./new-conversation-panel";
-import { BookmarksShortcut } from "./bookmarks-shortcut";
-import { SavedMessagesShortcut } from "./saved-messages-shortcut";
+import { SidebarMenu } from "./sidebar-menu";
 import { isSavedConversation } from "../utils/is-saved-conversation";
+import { useState } from "react";
+import type { ChatFolder } from "../types/chat-folder";
+import { isInFolder } from "../utils";
+import { ChatFolderTabs } from "./chat-folder-tabs";
 
 interface ConversationSidebarProps {
 	currentUser: CurrentUserDTO;
@@ -56,6 +59,8 @@ export function ConversationSidebar({
 	paging,
 	className,
 }: ConversationSidebarProps) {
+	const [folder, setFolder] = useState<ChatFolder>("all");
+
 	return (
 		<aside
 			id="conversation-sidebar"
@@ -73,46 +78,62 @@ export function ConversationSidebar({
 				maxWidth={400}
 				className="hidden lg:block"
 			/>
+			{/* One row, as in Telegram: the mark, then the two actions. The list is
+			    the page's subject, so its heading is for assistive technology only;
+			    a 70px "Chats" title under the logo said the same thing twice. */}
 			<div className="sidebar-brand">
 				<Brand />
-				<Button
-					variant="ghost"
-					className="sidebar-brand-label"
-					onClick={() => document.getElementById("global-conversation-search")?.focus()}
-				>
-					New chat
-				</Button>
-			</div>
-			<div className="sidebar-heading flex h-[70px] shrink-0 items-center justify-between px-4">
-				<h1 className="text-[25px] font-bold leading-none tracking-[-0.035em] text-ink">Chats</h1>
-				<Button
-					variant="ghost"
-					onClick={onToggleArchived}
-					aria-label={isShowingArchived ? "Back to conversations" : "Archived"}
-					title={isShowingArchived ? "Back to conversations" : "Archived conversations"}
-					className="size-9 rounded-full bg-paper-sunken p-0 text-ink-soft hover:text-ink"
-				>
-					{isShowingArchived ? <ArrowLeft className="size-4" /> : <Archive className="size-4" />}
-				</Button>
+				<h1 className="sr-only">{isShowingArchived ? "Archived chats" : "Chats"}</h1>
+				<span className="ml-auto flex items-center gap-1.5">
+					<SidebarMenu
+						currentUserId={currentUser.id}
+						onOpenNotes={onConversationStarted}
+						onOpenBookmarkedMessage={onOpenBookmarkedMessage}
+						onShowArchived={() => {
+							if (!isShowingArchived) onToggleArchived();
+						}}
+						onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+					/>
+					<Button
+						variant="ghost"
+						className="sidebar-brand-label"
+						onClick={() => document.getElementById("global-conversation-search")?.focus()}
+					>
+						New chat
+					</Button>
+				</span>
 			</div>
 
 			<NewConversationPanel
 				onConversationStarted={onConversationStarted}
 				onOpenMessageSearch={onOpenMessageSearch}
 			/>
-			<div className="grid grid-cols-2 gap-2 px-4 pb-2">
-				<SavedMessagesShortcut userId={currentUser.id} onOpen={onConversationStarted} />
-				<BookmarksShortcut currentUserId={currentUser.id} onSelectMessage={onOpenBookmarkedMessage} />
-			</div>
 
-			<div className="sidebar-list-label">
-				<span className="eyebrow">{isShowingArchived ? "Archived conversations" : "Your conversations"}</span>
-			</div>
+			{!isShowingArchived && (
+				<ChatFolderTabs
+					folder={folder}
+					unreadCount={conversations.filter((conversation) => conversation.unreadCount > 0).length}
+					onChange={setFolder}
+				/>
+			)}
+			{isShowingArchived && (
+				<Button
+					variant="ghost"
+					onClick={onToggleArchived}
+					aria-label="Back to conversations"
+					className="mx-2 h-9 shrink-0 justify-start gap-2 rounded-lg px-2.5 text-[13.5px] font-semibold text-ink hover:bg-paper-sunken"
+				>
+					<ArrowLeft className="size-4" />
+					Archived chats
+				</Button>
+			)}
 
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<ConversationList
 					conversations={conversations.filter(
-						(conversation) => !isSavedConversation(conversation, currentUser.id),
+						(conversation) =>
+							!isSavedConversation(conversation, currentUser.id) &&
+							(isShowingArchived || isInFolder(conversation, folder)),
 					)}
 					currentUserId={currentUser.id}
 					selectedConversationId={selectedConversationId}
@@ -120,43 +141,36 @@ export function ConversationSidebar({
 					onSelect={onSelect}
 					typingByConversation={typingByConversation}
 					paging={paging}
+					{...(!isShowingArchived &&
+						folder !== "all" && {
+							emptyMessage:
+								folder === "unread"
+									? "You're all caught up."
+									: `No ${folder === "groups" ? "groups" : "direct chats"} yet.`,
+						})}
 				/>
 			</div>
 
 			{/* Pinned to the bottom, where an account lives in every application
 			    shell people already use. It sat in the header before, which put the
 			    thing you touch least at the top of the thing you scan most. */}
-			<div className="sidebar-account flex shrink-0 items-center gap-3 border-t border-rule-soft px-4 py-3">
-				<Avatar user={currentUser} size="md" />
-
-				<div className="min-w-0 flex-1">
-					<p className="font-content truncate text-[13px] font-semibold leading-tight">
-						{currentUser.displayName}
-					</p>
-					<p className="meta truncate text-ink-faint">@{currentUser.handle}</p>
-				</div>
-
-				{onShowKeyboardShortcuts && (
-					<Button
-						variant="ghost"
-						onClick={onShowKeyboardShortcuts}
-						aria-label="Keyboard shortcuts"
-						title="Keyboard shortcuts (?)"
-						className="size-8 shrink-0 p-0"
-					>
-						<Keyboard className="size-4" />
-					</Button>
-				)}
+			<div className="sidebar-account flex shrink-0 items-center gap-1 border-t border-rule-soft py-2 pr-2 pl-1.5">
+				{/* The whole profile opens the settings, as in every messenger. */}
 				<Link
 					to="/profile"
 					// Keeps the open thread behind the dialog and lets closing return to it.
 					state={{ conversationId: selectedConversationId }}
 					aria-label="Account settings"
-					className="flex size-8 shrink-0 items-center justify-center rounded-control text-ink-soft transition hover:bg-ink/5 hover:text-ink"
+					className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1 transition hover:bg-ink/5"
 				>
-					<Settings className="size-4" />
+					<Avatar user={currentUser} size="md" />
+					<span className="min-w-0 flex-1">
+						<span className="font-content block truncate text-[13.5px] leading-tight font-semibold text-ink">
+							{currentUser.displayName}
+						</span>
+						<span className="meta block truncate text-ink-faint">@{currentUser.handle}</span>
+					</span>
 				</Link>
-
 				<Button variant="ghost" onClick={onSignOut} aria-label="Sign out" className="size-8 shrink-0 p-0">
 					<LogOut className="size-4" />
 				</Button>

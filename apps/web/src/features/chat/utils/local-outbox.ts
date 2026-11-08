@@ -67,6 +67,7 @@ export function restoreLocalOutboxMessage(record: LocalOutboxMessage): {
 			content: record.content,
 			attachments,
 			isSticker: false,
+			stickerKey: null,
 			isForwarded: false,
 			mentionedUserIds: record.mentionedUserIds,
 			createdAt: record.createdAt,

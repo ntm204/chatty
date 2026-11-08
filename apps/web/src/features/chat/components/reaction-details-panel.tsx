@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useId, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
+import { ReactionIcon } from "@/components/icons";
 import { useDialog } from "@/hooks/use-dialog";
 import { cn } from "@/utils/cn";
 import { groupReactors } from "../utils";
@@ -137,9 +138,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 										: "text-ink-soft",
 								)}
 							>
-								<span aria-hidden="true" className="text-[15px] leading-none">
-									{group.emoji}
-								</span>
+								<ReactionIcon emoji={group.emoji} className="size-5 text-[15px]" />
 								<span className="meta">{group.total}</span>
 							</Button>
 						))}
@@ -157,9 +156,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 									</p>
 									<p className="meta truncate text-ink-faint">@{user.handle}</p>
 								</div>
-								<span aria-hidden="true" className="text-[17px] leading-none">
-									{group.emoji}
-								</span>
+								<ReactionIcon emoji={group.emoji} className="size-6 text-[17px]" />
 							</li>
 						)),
 					)}

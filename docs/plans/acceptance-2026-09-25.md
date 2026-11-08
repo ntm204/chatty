@@ -196,6 +196,66 @@ bị chặn đúng thiết kế. Đã sửa hook (ghi vị trí cả khi đang t
 code cũ). `npm run verify` đạt (166/166 liên quan), `vault-live-pages` 4/4. Tag không dời; phát hành `v0.2.1`,
 workflow release chạy lại toàn bộ gate và E2E trước khi publish.
 
+### Reaction, bảng màu và avatar theo phản hồi giao diện — 2026-11-07/08
+
+Chủ dự án báo reaction lệch ở mobile, dư viền, avatar có nền/khung vuông và chữ lệch tâm. Đã thử
+nhiều phương án (viên nổi, giọt nước…) trên app thật và 6 mẫu dựng (Messenger, iMessage, WhatsApp,
+Telegram, Instagram, Slack); chủ dự án chọn **D — chip trong bong bóng**, bộ icon vẽ tay theo phong
+cách "Bubbles" (tự vẽ, không dùng file Icons8 vì repo MIT), bảng màu **A — mực & pastel** và avatar
+trống kiểu Facebook. Chip: emoji vẽ tay + số, bấm để bật/tắt, của mình tô mực; tối đa 3 + `+N`, một
+hàng. Touch: chip 28px, vùng chạm 44px chủ yếu kéo xuống (Chromium kéo cú chạm "Hi" sang chip khi vùng
+chạm lấn lên chữ) và không xuống hàng (hàng thứ hai nằm trong vùng chạm hàng trên — test bắt được ở
+320px). Bỏ `getInitials`/`getAvatarColor`.
+Kiểm tra: `npm run verify` xanh; web 655 test xanh; e2e touch-targets, reactions-and-replies,
+completion-states, message-action-recovery, keyboard-accessibility, menu-viewport, mobile-experience,
+compact-receipts, chat-theme, appearance, profile-recovery, sidebar-organisation xanh (Chromium).
+keyboard-accessibility từng trượt 1 lần (dialog Forward không mở) trước đợt này, chạy lại đều xanh —
+chưa rõ nguyên nhân. Ảnh README (`docs/images/hero.webp`) chụp lại theo giao diện mới. Bỏ thanh dọc đánh dấu dòng chat đang chọn và mục Settings đang
+chọn (giữ màu nền + `aria-current`); verify, sidebar-organisation, account, keyboard-accessibility,
+appearance xanh. Thêm bộ màu (ink, clay, ocean, forest, graphite) và trang Appearance
+kiểu Claude (thẻ xem trước chế độ + bộ màu); `data-palette` gán trước lần vẽ đầu. Không xem được nội
+dung video tham khảo (chỉ tiêu đề). verify, appearance, account, entry-layout, chat-theme xanh. Nền chat chảy kiểu Telegram
+(tự viết: 4 màu trên vòng 8 điểm, xoắn khi chuyển, một bước mỗi tin gửi; đêm: gradient chỉ lộ qua
+hoa văn) và bộ chọn theme có thumbnail. Lỗi tìm thấy khi chạy: khung rAF đầu có thể sớm hơn mốc bắt
+đầu → chỉ số vòng âm → crash; đã kẹp tiến độ và quấn chỉ số, có unit test. Seed chỉ còn 1/2/3@test.com
+(mật khẩu `1`); bản dev cho đăng nhập `1`. verify, chat-theme, sending, reactions-and-replies,
+mobile-experience, scroll-history, reading-position, attachments-and-vault, touch-targets, smoke xanh. Xem trước theme trên
+điện thoại / máy tính: hội thoại mẫu tự gửi tin để thấy nền chảy; cửa sổ desktop vẽ 544×340 rồi thu
+nhỏ cả khối cho vừa (lỗi bắt được: ResizeObserver gắn bằng ref object không đo lại khi đổi từ Phone
+sang Desktop — đổi sang callback ref; góc màn hình lòi do lớp blur — `clip-path`). Font hệ thống kiểu Telegram (bỏ mono cho
+handle/giờ/số; gỡ 3 gói font không dùng), sidebar gọn (một hàng đầu, chip Notes/Bookmarks, dòng có giờ
+cạnh tên), xem trước tin kiểu nhấn giữ: chạm giữ 420ms trên touch, chuột phải trên desktop, Menu /
+Shift+F10 từ bàn phím — e2e mới `message-peek.spec.ts`. Lỗi test bắt được: bấm phải khi tin còn đang
+gửi thì không có thao tác (đúng thiết kế) — test chờ "Sent/Seen". verify; message-peek, touch-targets,
+mobile-experience, sidebar-organisation, design-polish, keyboard-accessibility, menu-viewport,
+reactions-and-replies, interaction-baseline, compact-thread, entry-layout, chat-theme xanh. Theo phản hồi, bỏ
+"nổi tin nhắn" (chuột phải/nhấn giữ trên tin) và thay bằng **xem trước cuộc chat không đánh dấu đã
+xem**: chỉ `GET` lịch sử, không `POST /read`. Touch: giữ dòng chat 420ms → sheet; desktop: nút 👁 rõ
+ràng trên dòng + mục "Preview" trong menu → panel cạnh sidebar. E2E mới `conversation-preview.spec.ts`
+chứng minh người gửi vẫn thấy "Sent" khi xem trước và chuyển "Seen" khi mở chat. verify; e2e
+conversation-preview, sidebar-organisation, design-polish, keyboard-accessibility, menu-viewport,
+mobile-experience, notification-policy, touch-targets xanh.
+
+### Đợt 1–6 theo phân tích Telegram — 2026-11-09
+
+Avatar: người chưa có ảnh = bóng người xám (Messenger), nhóm = icon nhóm trên gradient theo id.
+Xem trước chat: bỏ nút mắt; desktop mở bằng chuột phải hoặc "Preview" trong menu "…". Ghim: thanh có
+vạch đếm + chuyển vòng, huy hiệu 📌 trên bong bóng, icon 🔇/📌 trên dòng chat, bong bóng nháy khi
+nhảy tới. Bong bóng: đuôi, giờ + ✓/✓✓ trong bong bóng, hiệu ứng gửi, vuốt trái để trả lời, nhấp đúp
+❤️. Chấm online, nhãn ngày dính khi cuộn, thư mục chat, chọn nhiều tin (copy / xoá phía mình), sticker
+động dựng sẵn (migration `20261109090000_builtin_sticker_key`), emoji 🎉❤️👍 nổ toàn màn hình.
+Hiệu năng: bỏ lớp mờ khi `prefers-reduced-transparency`, nền chảy không chạy khi tab ẩn.
+**Đã thử và bỏ** `content-visibility: auto` cho tin: `reply-reading-position` lệch neo đọc vì chiều
+cao ước lượng — giữ chính xác vị trí đọc quan trọng hơn.
+Lỗi bắt được khi chạy: đuôi bong bóng làm tràn ngang (chừa lề 7px); hook thu gọn chưa tính giờ trong
+bong bóng; hiệu ứng gửi chạy lại (tự gỡ khi xong); thanh chọn che tin cuối (thay chỗ ô nhập);
+test khay sticker chờ cả hiệu ứng lặp vô hạn (chỉ chờ hiệu ứng hữu hạn).
+Kiểm tra: `verify:full` xanh (server 513, web 662); e2e mới `chat-extras.spec.ts`; e2e
+compact-thread, compact-receipts, sending, touch-targets, mobile-experience, reactions-and-replies,
+pinned-messages, conversation-preview, sidebar-organisation, sticker-tray-recovery, design-polish,
+scroll-history, reading-position, reply-reading-position, conversation-paging và smoke xanh. Chưa
+chạy full `test:e2e`.
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

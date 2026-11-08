@@ -1,0 +1,185 @@
+/* Colour families beyond the base "ink & pastel" set in globals.css, chosen in
+ * Settings → Appearance and stamped on <html> as `data-palette` by
+ * public/theme.js and hooks/use-theme.ts.
+ *
+ * Each palette is two blocks that set the same properties: the light block at
+ * one attribute's specificity, the dark block at two. The base dark block in
+ * globals.css sits between them, so a palette's light values never leak into
+ * dark mode. The preview colours in constants/theme.ts repeat a few of these.
+ */
+
+/* Clay — cream paper and terracotta, after Claude's own app. */
+[data-palette="clay"] {
+	--color-scrim: #141413;
+	--color-shell: #f0eee6;
+	--color-paper: #f5f4ee;
+	--color-paper-raised: #faf9f5;
+	--color-paper-sunken: #f0eee6;
+	--color-ink: #141413;
+	--color-ink-soft: #4d4c48;
+	--color-ink-faint: #6b6a64;
+	--color-rule: #e3dfd4;
+	--color-rule-soft: #ece9e0;
+	--color-block: #f1dccd;
+	--color-block-ink: #141413;
+	--color-heading: #141413;
+	--color-selection: #efe4d9;
+	--color-selection-ink: #141413;
+	--color-message-locator: #d97757;
+	--color-accent: #d97757;
+	--color-accent-hover: #c4643f;
+	--color-accent-ink: #ffffff;
+}
+[data-palette="clay"][data-theme="dark"] {
+	--color-scrim: #141413;
+	--color-shell: #1f1e1d;
+	--color-paper: #222120;
+	--color-paper-raised: #262624;
+	--color-paper-sunken: #3a3936;
+	--color-ink: #faf9f5;
+	--color-ink-soft: #c9c6bc;
+	--color-ink-faint: #a29f96;
+	--color-rule: #45433f;
+	--color-rule-soft: #33322f;
+	--color-block: #57392c;
+	--color-block-ink: #faf9f5;
+	--color-heading: #faf9f5;
+	--color-selection: #3f3330;
+	--color-selection-ink: #faf9f5;
+	--color-message-locator: #e9a183;
+	--color-accent: #d97757;
+	--color-accent-hover: #e48a6c;
+	--color-accent-ink: #ffffff;
+}
+
+/* Ocean — clear blues. */
+[data-palette="ocean"] {
+	--color-scrim: #06121f;
+	--color-shell: #eef3f8;
+	--color-paper: #f6f9fc;
+	--color-paper-raised: #ffffff;
+	--color-paper-sunken: #e9f0f7;
+	--color-ink: #10243b;
+	--color-ink-soft: #3d5168;
+	--color-ink-faint: #5b6c80;
+	--color-rule: #d6e0eb;
+	--color-rule-soft: #e6edf5;
+	--color-block: #cfe4f7;
+	--color-block-ink: #10243b;
+	--color-heading: #0b3a66;
+	--color-selection: #e2eefa;
+	--color-selection-ink: #0b3a66;
+	--color-message-locator: #2f80ed;
+	--color-accent: #2f80ed;
+	--color-accent-hover: #1f6fdb;
+	--color-accent-ink: #ffffff;
+}
+[data-palette="ocean"][data-theme="dark"] {
+	--color-scrim: #06121f;
+	--color-shell: #0b1220;
+	--color-paper: #0f1829;
+	--color-paper-raised: #131d30;
+	--color-paper-sunken: #1c2940;
+	--color-ink: #eaf2ff;
+	--color-ink-soft: #b9c9de;
+	--color-ink-faint: #8fa2bb;
+	--color-rule: #2a3a54;
+	--color-rule-soft: #1d2a40;
+	--color-block: #1f4a7a;
+	--color-block-ink: #eaf2ff;
+	--color-heading: #cfe3ff;
+	--color-selection: #1e3354;
+	--color-selection-ink: #eaf2ff;
+	--color-message-locator: #7db4ff;
+	--color-accent: #4c9aff;
+	--color-accent-hover: #6aabff;
+	--color-accent-ink: #06121f;
+}
+
+/* Forest — moss, fern and sage. */
+[data-palette="forest"] {
+	--color-scrim: #0c1a0d;
+	--color-shell: #eef2ea;
+	--color-paper: #f5f8f1;
+	--color-paper-raised: #fdfefb;
+	--color-paper-sunken: #e9efe2;
+	--color-ink: #1d2a1b;
+	--color-ink-soft: #46553f;
+	--color-ink-faint: #627059;
+	--color-rule: #d8e0cd;
+	--color-rule-soft: #e6ecde;
+	--color-block: #d6e7c7;
+	--color-block-ink: #1d2a1b;
+	--color-heading: #2f5130;
+	--color-selection: #e3edd9;
+	--color-selection-ink: #2f5130;
+	--color-message-locator: #3f7d4a;
+	--color-accent: #3f7d4a;
+	--color-accent-hover: #346a3e;
+	--color-accent-ink: #ffffff;
+}
+[data-palette="forest"][data-theme="dark"] {
+	--color-scrim: #0c1a0d;
+	--color-shell: #0f150f;
+	--color-paper: #121912;
+	--color-paper-raised: #18221a;
+	--color-paper-sunken: #223024;
+	--color-ink: #eef5ea;
+	--color-ink-soft: #c2d0bc;
+	--color-ink-faint: #98a891;
+	--color-rule: #2e3d2f;
+	--color-rule-soft: #212d22;
+	--color-block: #2f4a30;
+	--color-block-ink: #eef5ea;
+	--color-heading: #cfe6c8;
+	--color-selection: #263a28;
+	--color-selection-ink: #eef5ea;
+	--color-message-locator: #8fd394;
+	--color-accent: #6fbf73;
+	--color-accent-hover: #84cc88;
+	--color-accent-ink: #0c1a0d;
+}
+
+/* Graphite — no hue at all, only contrast. */
+[data-palette="mono"] {
+	--color-scrim: #000000;
+	--color-shell: #f1f1f1;
+	--color-paper: #f7f7f7;
+	--color-paper-raised: #ffffff;
+	--color-paper-sunken: #ededed;
+	--color-ink: #111111;
+	--color-ink-soft: #444444;
+	--color-ink-faint: #666666;
+	--color-rule: #dddddd;
+	--color-rule-soft: #eaeaea;
+	--color-block: #e2e2e2;
+	--color-block-ink: #111111;
+	--color-heading: #111111;
+	--color-selection: #ebebeb;
+	--color-selection-ink: #111111;
+	--color-message-locator: #111111;
+	--color-accent: #111111;
+	--color-accent-hover: #333333;
+	--color-accent-ink: #ffffff;
+}
+[data-palette="mono"][data-theme="dark"] {
+	--color-scrim: #000000;
+	--color-shell: #0c0c0c;
+	--color-paper: #121212;
+	--color-paper-raised: #1a1a1a;
+	--color-paper-sunken: #262626;
+	--color-ink: #f2f2f2;
+	--color-ink-soft: #c4c4c4;
+	--color-ink-faint: #9a9a9a;
+	--color-rule: #333333;
+	--color-rule-soft: #242424;
+	--color-block: #3a3a3a;
+	--color-block-ink: #f2f2f2;
+	--color-heading: #f2f2f2;
+	--color-selection: #2a2a2a;
+	--color-selection-ink: #f2f2f2;
+	--color-message-locator: #f2f2f2;
+	--color-accent: #f2f2f2;
+	--color-accent-hover: #ffffff;
+	--color-accent-ink: #111111;
+}

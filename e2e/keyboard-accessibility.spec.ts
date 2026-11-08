@@ -101,11 +101,14 @@ test("keyboard reaches sidebar, reply, reaction, search, forward and help withou
 	await expect(help.getByRole("button", { name: "Close shortcuts" })).toBeFocused();
 	await page.keyboard.press("Escape");
 	await expect(help).toHaveCount(0);
-	await tabTo(page, page.getByRole("button", { name: "Keyboard shortcuts", exact: true }));
+	// The sidebar's "More" menu also opens them, from the keyboard.
+	await tabTo(page, page.getByRole("button", { name: "More", exact: true }));
+	await page.keyboard.press("Enter");
+	await page.getByRole("menuitem", { name: "Keyboard shortcuts", exact: true }).focus();
 	await page.keyboard.press("Enter");
 	await expect(help).toBeVisible();
 	await page.keyboard.press("Escape");
-	await expect(page.getByRole("button", { name: "Keyboard shortcuts", exact: true })).toBeFocused();
+	await expect(help).toHaveCount(0);
 
 	await tabTo(page, composer);
 	await sendMessage(peerPage, "Only announce this incoming message");

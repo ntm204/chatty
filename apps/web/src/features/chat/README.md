@@ -9,12 +9,12 @@ The full shape a feature may grow into (`pages/`, `components/`, `hooks/`, `util
 `pages/chat-page.tsx` is the route component and owns all the state: the conversation list, the
 selected conversation, and the loaded messages. Everything below it is presentational or a hook.
 
-| Folder        | Contents                                                                                                                                                                          |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `components/` | conversation list and its avatar, the message list, the input, the header, the new-conversation panel, the group members panel, the current user's avatar control                  |
+| Folder        | Contents                                                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/` | conversation list and its avatar, the message list, the input, the header, the new-conversation panel, the group members panel, the current user's avatar control                   |
 | `hooks/`      | one hook per realtime concern — `use-socket-event`, `use-presence`, `use-typing-notifier`, `use-typing-participants`, `use-mark-read`, `use-message-scroll`, plus `use-user-search` |
 | `utils/`      | pure functions the components call — titles, the direct peer, time formatting, read receipts, the typing sentence                                                                   |
-| `constants/`  | page size, typing timings, the unread-badge cap                                                                                                                                      |
+| `constants/`  | page size, typing timings, the unread-badge cap                                                                                                                                     |
 
 `hooks/` and `utils/` each ship an `index.ts`; import through it from outside the folder.
 

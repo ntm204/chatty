@@ -1,5 +1,5 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { BellOff, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/api/client";
@@ -20,9 +20,11 @@ interface ConversationActionsProps {
 	conversation: ConversationDTO;
 	/** Needed only to find the other person in a direct conversation. */
 	currentUserId: string;
+	/** Opens the read-without-marking preview, from the menu's Preview item. */
+	onPreview: (row: HTMLElement) => void;
 }
 
-export function ConversationActions({ conversation, currentUserId }: ConversationActionsProps) {
+export function ConversationActions({ conversation, currentUserId, onPreview }: ConversationActionsProps) {
 	// Blocking and restricting apply to a person, so they are offered on direct rows only.
 	const peer = conversation.isGroup ? null : getDirectPeer(conversation, currentUserId);
 	const isBlocked = useBlockedUsers((state) => Boolean(peer && state.blockedIds.has(peer.id)));
@@ -170,7 +172,6 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 			>
 				<MoreHorizontal className="size-4" />
 			</Button>
-			{isMuted && <BellOff role="img" aria-label="Muted" className="size-3.5 shrink-0 text-ink-faint" />}
 			{error && !isOpen && !isConfirmingBlock && (
 				<ConversationActionError
 					error={error}
@@ -199,6 +200,11 @@ export function ConversationActions({ conversation, currentUserId }: Conversatio
 							/>
 						) : (
 							<ConversationActionsMenu
+								onPreview={() => {
+									setIsOpen(false);
+									const row = rootRef.current?.closest("li");
+									if (row) onPreview(row);
+								}}
 								isPinned={conversation.isPinned}
 								isArchived={conversation.isArchived}
 								isMuted={isMuted}

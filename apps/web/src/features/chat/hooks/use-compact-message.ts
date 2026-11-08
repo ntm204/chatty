@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 
 export function useCompactMessage(content: string, isEnabled: boolean) {
-	const bubbleRef = useRef<HTMLDivElement>(null);
+	const bubbleRef = useRef<HTMLDivElement | null>(null);
 
 	useLayoutEffect(() => {
 		const element = bubbleRef.current;
@@ -91,12 +91,19 @@ export function useCompactMessage(content: string, isEnabled: boolean) {
 				return !hasExtraHeight && !hasOverflow;
 			};
 			// One pixel prevents fractional glyph widths from introducing a new line after rounding.
-			const widthFor = (textRectangles: DOMRect[]) =>
-				Math.ceil(
-					Math.max(...textRectangles.map((rectangle) => rectangle.right)) -
-						Math.min(...textRectangles.map((rectangle) => rectangle.left)) +
-						horizontalInsets,
-				) + 1;
+			// The time floated into the last line is part of what must fit.
+			const meta = bubble.querySelector(".bubble-meta");
+			const widthFor = (textRectangles: DOMRect[]) => {
+				const rectangles = meta ? [...textRectangles, meta.getBoundingClientRect()] : textRectangles;
+
+				return (
+					Math.ceil(
+						Math.max(...rectangles.map((rectangle) => rectangle.right)) -
+							Math.min(...rectangles.map((rectangle) => rectangle.left)) +
+							horizontalInsets,
+					) + 1
+				);
+			};
 
 			let fittedWidth = originalBounds.width;
 			let nextWidth = widthFor(rectangles);

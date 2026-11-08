@@ -9,6 +9,43 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 ## Unreleased
 
 - Keep reaction chips and gallery overlays behind the conversation header when they scroll under it.
+- Show reactions as chips inside the bubble, drawn with Chatty's own doodle set for the six quick
+  reactions; yours is filled in ink, and pressing a chip toggles it.
+- Move the palette to "ink & pastel": warm paper surfaces and an iris-pastel bubble for your messages.
+- Show people without a photo as Messenger's grey silhouette, and groups without one as a group icon
+  on the group's own gradient; drop the plate behind every avatar.
+- Mark the open conversation and the current settings section by their fill alone, without an edge bar.
+- Chatty's own animated stickers: the bubble mascot in eight moods, at the top of the sticker tray.
+  Only the name is stored (`Message.stickerKey`, one of `BUILTIN_STICKER_KEYS`); clients draw them.
+- A message that is only 🎉, ❤️ or 👍 pops in and bursts across the screen when it arrives, and
+  again when tapped.
+- Chat folders in the sidebar (All, Unread, Groups, Direct), a green dot on online people's avatars,
+  and the day label stays at the top while you scroll through that day.
+- Select several messages (Select in a message's menu) to copy them or delete them for yourself; the
+  selection bar takes the composer's place.
+- Frosted surfaces fall back to solid ones when the system asks for reduced transparency, and the
+  wallpaper does not animate in a hidden tab.
+- Telegram-style bubbles: the last bubble of a run has a tail, and a text bubble carries its time
+  and ticks (✓ sent, ✓✓ read) floated into its last line. Your new message rises from the
+  composer; on touch, swipe a bubble left to reply and double-tap it for a heart.
+- Preview a chat without marking it read, so the sender's ticks stay put: hold the row on a phone
+  (the list blurs behind the chat and Open / Mark as read / Pin), or right-click the row or choose
+  Preview in its menu on a desktop (a panel beside the sidebar).
+- Pins, Telegram-style: the banner shows "Pinned message #n" with a segmented position bar, and each
+  click jumps to that pin and moves to the next older one; pinned messages wear a pin badge; a muted
+  or pinned chat shows its icon in the list; a message reached by a jump glints once.
+- Use the platform's own interface font, as Telegram does (SF Pro, Segoe UI, Roboto); handles, times
+  and counts drop the monospace face for tabular figures. The logo keeps General Sans; the unused
+  Geist, Geist Mono and Instrument Serif packages are removed.
+- Tidy the sidebar: one header row with the logo, Archived and New chat; compact Notes and Bookmarks
+  chips; and Telegram-style rows with the time on the name's line.
+- Give every conversation a flowing wallpaper — a four-colour gradient that moves one step each time
+  you send, under a hand-drawn doodle pattern that glows at night — and pick it from a Telegram-style
+  chat theme picker with live thumbnails, previewed live on a phone or a desktop window.
+- In a development build, sign in to the seeded accounts with `1` / `1`; the seed now creates only
+  `1@test.com`, `2@test.com` and `3@test.com`, and `seed:demo` adds history to them.
+- Add palettes to Settings → Appearance (ink & pastel, clay, ocean, forest, graphite), each with light
+  and dark, picked from preview cards beside the Light / System / Dark mode cards.
 - Rewrite the README around one light/dark hero image, setup and known gaps.
 
 ## [0.2.1] — 2026-11-06

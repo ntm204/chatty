@@ -67,7 +67,8 @@ test("global search opens a message in an archived conversation outside the load
 			.poll(() => dialog.locator("ul").evaluate((list) => list.parentElement!.scrollTop))
 			.toBeCloseTo(scrollTop, 0);
 		await dialog.getByRole("button", { name: "Close message search" }).click();
-		await page.getByRole("button", { name: "Notes", exact: true }).click();
+		await page.getByRole("button", { name: "More", exact: true }).click();
+		await page.getByRole("menuitem", { name: "Notes", exact: true }).click();
 		await expect(page.getByRole("main").getByText("Only you can see this", { exact: true })).toBeVisible();
 		await sendMessage(page, "Personal note from the compact Saved shortcut");
 		await expect(

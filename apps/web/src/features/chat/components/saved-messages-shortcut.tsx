@@ -35,9 +35,10 @@ export function SavedMessagesShortcut({ userId, onOpen }: SavedMessagesShortcutP
 				onClick={() => void open()}
 				aria-label="Notes"
 				title="Messages and files only you can see"
-				className="h-10 w-full justify-center gap-2 rounded-control bg-paper-sunken px-2 text-xs text-ink-soft hover:bg-ink/5"
+				role="menuitem"
+				className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13.5px] font-normal text-ink hover:bg-paper-sunken"
 			>
-				<NotebookPen className="size-4" />
+				<NotebookPen className="size-4 text-ink-faint" />
 				Notes
 			</Button>
 			{error && (

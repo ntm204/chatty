@@ -36,11 +36,25 @@ calls to action are not part of this messaging application.
   step is always a visible button below the copy: Find someone to chat with for a new account, Open
   unread chat when something is waiting, otherwise Start a new chat. Its content stays centered within the conversation pane
   without scrolling or clipping the heading on short laptops.
-- The inbox, conversation header, composer, secondary panels and account settings use white/lavender
-  surfaces, rounded edges and soft shadows. Outgoing messages are navy and actions are yellow.
+- The inbox, conversation header, composer, secondary panels and account settings use warm paper
+  surfaces, rounded edges and soft shadows. Outgoing messages are
+  iris pastel with ink text and actions are yellow ("ink & pastel", owner choice 2026-11-08).
 - Dark mode uses midnight surfaces, pale violet headings and faint violet washes. Existing theme
   preference persistence, reduced-motion handling, safe areas and keyboard focus are preserved.
 - The old collage component, stationery colors, grids and maximalism stylesheet are removed.
+- Reactions are chips inside the bubble (Telegram's arrangement), each one of Chatty's own doodle
+  drawings for the six quick reactions — a pastel bubble, an ink line, a white shine — or the system
+  emoji for anything else. The drawings are original, in the style of Icons8's "Bubbles" set, so the
+  repository can ship them; their `--color-sticker-*` tokens do not change with the theme.
+- Someone without a photo shows a plain head-and-shoulders figure (two for a group), the convention
+  social apps share; coloured initials are gone.
+- Interface text uses the platform's own face (SF Pro / Segoe UI / Roboto), as Telegram does; the
+  wordmark alone keeps General Sans. Machine text (times, counts, handles) uses tabular figures, not
+  a monospace face.
+- Settings → Appearance follows Claude's own layout: mode cards (Light / System / Dark) and palette
+  cards, each a thumbnail of the chat screen. Palettes live in `styles/palettes.css` and repaint the
+  same semantic tokens, including `--color-accent` (the call to action); "Clay" is the cream and
+  terracotta of Claude's app. `public/theme.js` stamps `data-palette` before the first paint.
 
 ## Implementation
 

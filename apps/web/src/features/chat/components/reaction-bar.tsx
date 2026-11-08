@@ -2,6 +2,7 @@ import type { ReactionEmoji } from "@chatty/shared-types";
 import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
+import { ReactionIcon } from "@/components/icons";
 import { cn } from "@/utils/cn";
 import { QUICK_REACTIONS } from "../constants/reactions";
 import { EmojiPicker } from "./emoji-picker";
@@ -81,7 +82,7 @@ export function ReactionBar({ myEmoji, onPick, align }: ReactionBarProps) {
 							isPicked && "bg-paper-sunken ring-1 ring-ink/20 hover:bg-paper-sunken",
 						)}
 					>
-						<span aria-hidden="true">{emoji}</span>
+						<ReactionIcon emoji={emoji} className="size-7" />
 					</Button>
 				);
 			})}

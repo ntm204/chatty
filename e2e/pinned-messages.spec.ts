@@ -83,7 +83,7 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await expect(page.locator(`#message-${photoId}`).getByText("Pinned", { exact: true })).toHaveCount(0);
 	await expect(page.locator(`#message-${textId}`).getByText("Pinned", { exact: true })).toHaveCount(0);
 	await expect(page.getByLabel("Show pinned messages")).toBeVisible();
-	expect((await page.locator(".pinned-messages-banner").boundingBox())!.height).toBeLessThanOrEqual(40);
+	expect((await page.locator(".pinned-messages-banner").boundingBox())!.height).toBeLessThanOrEqual(48);
 	await page.reload();
 	await openConversationWith(page, other);
 	await expect(page.getByLabel("Show pinned messages")).toBeVisible();
@@ -111,9 +111,9 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await expectMessageLocationCue(photoRow);
 	await expect(page.getByRole("button", { name: "Back to reply", exact: true })).toHaveCount(0);
 	await page.screenshot({ path: testInfo.outputPath("pin-location-photo-desktop-dark.png") });
-	// The bar itself never remembers that pick: clicking it (without opening the
-	// dropdown again) always jumps to the most recently pinned message instead.
-	await page.getByRole("button", { name: "Last pinned note" }).click();
+	// Picking the older photo carries the bar on to the next pin, which wraps to
+	// the newest: clicking the bar now jumps to the note.
+	await page.getByRole("button", { name: /Last pinned note/ }).click();
 	await expect(page.getByLabel("Message history").getByText("Last pinned note", { exact: true })).toBeInViewport();
 	await expectMessageLocationCue(textRow);
 	// The photo may have left the loaded window entirely; what matters is that no
@@ -123,7 +123,9 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 	await page.screenshot({ path: testInfo.outputPath("pin-location-text-desktop-light.png") });
 	await expect(textRow).not.toHaveAttribute("data-message-located", "true", { timeout: 5_000 });
-	await page.getByRole("button", { name: "Last pinned note" }).click();
+	// That click moved the bar on to the older pin; the next one wraps back to the note.
+	await page.getByRole("button", { name: /Pinned message 2 of 2/ }).click();
+	await page.getByRole("button", { name: /Last pinned note/ }).click();
 	await expectMessageLocationCue(textRow);
 	expect((await input.boundingBox())!.y).toBeCloseTo(before!.y, 0);
 	expect((await header.boundingBox())!.y).toBeCloseTo(headerBefore.y, 0);

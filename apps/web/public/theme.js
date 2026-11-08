@@ -16,6 +16,10 @@
  * Not bundled, so `chatty:theme` is written here as a literal. `src/constants/theme.ts`
  * holds the same string and points back at this file — the two must not drift.
  *
+ * It stamps the palette too (`chatty:palette`, see `src/constants/theme.ts`):
+ * every palette repaints the same tokens, so it has to land before the first
+ * paint for the same reason.
+ *
  * The preference is one of "light", "dark" or "system"; what lands on the
  * element is always "light" or "dark". Resolving here rather than in CSS is why
  * `globals.css` needs a single `[data-theme="dark"]` block instead of that block
@@ -36,4 +40,13 @@
 
 	document.documentElement.dataset.theme =
 		stored === "dark" || (stored !== "light" && prefersDark) ? "dark" : "light";
+
+	var palette = "ink";
+	try {
+		palette = localStorage.getItem("chatty:palette") || "ink";
+	} catch {
+		// Same as above: the default palette.
+	}
+	// Unknown values match no palette selector, so they draw the default.
+	document.documentElement.dataset.palette = palette;
 })();

@@ -38,3 +38,6 @@ export { getPinnedMessagePreview } from "./pinned-message-preview";
 export { getTotalUnreadCount, findFirstUnreadConversation } from "./unread-summary";
 export { loadRetainedVaultPage } from "./load-retained-vault-page";
 export { focusMenuItem } from "./focus-menu-item";
+export { easeInOutCubic, paintFlowingGradient } from "./flowing-gradient";
+export { playEmojiBurst } from "./emoji-burst";
+export { isInFolder } from "./filter-by-folder";

@@ -209,7 +209,7 @@ export function MessageList({
 					)}
 
 					{!hasMoreOlder && messages.length > 0 && (
-						<p className="note py-4 text-center text-ink-faint">
+						<p className="wallpaper-pill note mx-auto my-4 w-fit rounded-full px-3 py-1 text-ink-faint">
 							This is the beginning of the conversation.
 						</p>
 					)}

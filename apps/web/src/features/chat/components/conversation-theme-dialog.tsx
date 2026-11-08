@@ -1,28 +1,41 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Check, X } from "lucide-react";
+import { Check, Monitor, Smartphone, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { useDialog } from "@/hooks/use-dialog";
 import { cn } from "@/utils/cn";
-import { CONVERSATION_THEME_OPTIONS, getConversationThemeClasses } from "../constants/conversation-theme";
+import { CHAT_THEME_CHOICES } from "../constants/conversation-theme";
+import type { PreviewDevice } from "../types/theme-preview";
+import { ChatThemeThumbnail } from "./chat-theme-thumbnail";
+import { ThemeDevicePreview } from "./theme-device-preview";
 
 interface ConversationThemeDialogProps {
 	conversation: ConversationDTO;
 	onClose: () => void;
 }
 
-/** Preview is local; Apply uses the existing shared, persisted conversation theme. */
+/**
+ * The chat theme picker, laid out like Telegram's: a live preview of the
+ * conversation on top, and a strip of thumbnails — each one the wallpaper and
+ * bubbles of a theme — to choose from. Choosing previews locally; Apply saves
+ * the shared theme, which everyone in the conversation sees.
+ *
+ * The preview switches between a phone and a desktop window, opening on the
+ * kind of screen it is being viewed on.
+ */
 export function ConversationThemeDialog({ conversation, onClose }: ConversationThemeDialogProps) {
 	const [draft, setDraft] = useState(conversation.themeColor);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState("");
+	const [device, setDevice] = useState<PreviewDevice>(() =>
+		window.matchMedia?.("(min-width: 1024px)").matches ? "desktop" : "phone",
+	);
 	const close = useCallback(() => {
 		if (!isSaving) onClose();
 	}, [isSaving, onClose]);
 	const dialogRef = useDialog<HTMLDivElement>(close);
-	const theme = getConversationThemeClasses(draft);
 
 	async function applyTheme() {
 		if (isSaving) return;
@@ -31,13 +44,14 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 
 			return;
 		}
+
 		setIsSaving(true);
 		setError("");
 		try {
 			await api.setConversationTheme(conversation.id, draft);
 			onClose();
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not change the message color");
+			setError(caught instanceof Error ? caught.message : "Could not change the chat theme");
 		} finally {
 			setIsSaving(false);
 		}
@@ -45,7 +59,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
+			className="fixed inset-0 z-50 flex items-end justify-center bg-scrim/40 p-4 sm:items-center"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) close();
 			}}
@@ -54,15 +68,15 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
-				aria-label="Message color"
+				aria-label="Chat theme"
 				tabIndex={-1}
-				className="flex h-[580px] max-h-[calc(100dvh-32px)] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-rule-soft bg-paper-raised shadow-modal outline-none"
+				className="flex max-h-[calc(100dvh-32px)] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-paper-raised shadow-modal outline-none"
 			>
-				<div className="flex shrink-0 items-center justify-between border-b border-rule-soft px-5 py-4">
-					<h2 className="text-base font-semibold text-heading">Message color</h2>
+				<div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-3">
+					<h2 className="text-base font-semibold text-heading">Chat theme</h2>
 					<Button
 						variant="ghost"
-						aria-label="Close message color"
+						aria-label="Close chat theme"
 						disabled={isSaving}
 						onClick={close}
 						className="size-8 rounded-full p-0"
@@ -70,63 +84,93 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 						<X className="size-4" />
 					</Button>
 				</div>
-				<div className="min-h-0 flex-1 overflow-y-auto p-5">
+
+				<div className="min-h-0 overflow-y-auto">
 					<div
-						data-conversation-theme={draft ?? "default"}
-						className="theme-wallpaper rounded-2xl border border-rule-soft p-4"
-						role="img"
-						aria-label="Message color preview"
+						role="radiogroup"
+						aria-label="Preview on"
+						className="mx-auto mb-3 flex w-fit rounded-full bg-paper-sunken p-1"
 					>
-						<p className="mb-3 text-center text-[11px] text-ink-faint">A little more together</p>
-						<div className="w-fit rounded-2xl rounded-bl-md bg-paper-raised px-3 py-2 text-xs text-ink">
-							Hey, good to see you.
-						</div>
-						<div
-							className={cn(
-								"ml-auto mt-3 w-fit rounded-2xl rounded-br-md px-3 py-2 text-xs",
-								theme.bubble,
-								theme.bubbleInk,
-							)}
-						>
-							You too. Stay a little?
-						</div>
+						{(["phone", "desktop"] as const).map((option) => {
+							const Icon = option === "phone" ? Smartphone : Monitor;
+
+							return (
+								<Button
+									key={option}
+									variant="ghost"
+									role="radio"
+									aria-checked={device === option}
+									onClick={() => setDevice(option)}
+									className={cn(
+										"gap-1.5 rounded-full px-3.5 py-1.5 text-[12px]",
+										device === option
+											? "bg-paper-raised font-semibold text-ink shadow-sm hover:bg-paper-raised"
+											: "text-ink-soft hover:bg-transparent hover:text-ink",
+									)}
+								>
+									<Icon aria-hidden="true" className="size-3.5" />
+									{option === "phone" ? "Phone" : "Desktop"}
+								</Button>
+							);
+						})}
 					</div>
-					<p className="mb-3 mt-4 text-xs text-ink-soft">A shared color for messages in this chat.</p>
-					<div className="grid grid-cols-3 gap-2" role="group" aria-label="Choose a message color">
-						<Button
-							variant="ghost"
-							aria-label="Default color"
-							aria-pressed={draft === null}
-							disabled={isSaving}
-							onClick={() => setDraft(null)}
-							className={cn("theme-choice", draft === null && "theme-choice-selected")}
-						>
-							<span data-conversation-theme="default" className="theme-wallpaper theme-swatch">
-								<span className="bg-block" />
-								{draft === null && <Check className="size-4 text-heading" />}
-							</span>
-							<span>Default</span>
-						</Button>
-						{CONVERSATION_THEME_OPTIONS.map((option) => (
-							<Button
-								key={option.value}
-								variant="ghost"
-								aria-label={option.label}
-								aria-pressed={draft === option.value}
-								disabled={isSaving}
-								onClick={() => setDraft(option.value)}
-								className={cn("theme-choice", draft === option.value && "theme-choice-selected")}
-							>
-								<span data-conversation-theme={option.value} className="theme-wallpaper theme-swatch">
-									<span className={getConversationThemeClasses(option.value).bubble} />
-									{draft === option.value && <Check className="size-4 text-heading" />}
-								</span>
-								<span>{option.label}</span>
-							</Button>
-						))}
+					<div
+						role="img"
+						aria-label={`Chat theme preview on ${device}`}
+						className="flex h-[23rem] items-center justify-center px-5"
+					>
+						<ThemeDevicePreview theme={draft ?? "default"} device={device} />
 					</div>
+
+					<p className="mx-5 mt-3 text-xs text-ink-soft">
+						Wallpaper and message colour, shared with everyone in this chat.
+					</p>
+					<div
+						role="group"
+						aria-label="Choose a chat theme"
+						className="flex shrink-0 gap-2.5 overflow-x-auto px-5 pt-3 pb-4 [scrollbar-width:none]"
+					>
+						{CHAT_THEME_CHOICES.map((choice) => {
+							const isSelected = draft === choice.value;
+
+							return (
+								<Button
+									key={choice.value ?? "default"}
+									variant="ghost"
+									aria-label={choice.label}
+									aria-pressed={isSelected}
+									disabled={isSaving}
+									onClick={() => setDraft(choice.value)}
+									className="shrink-0 flex-col gap-1.5 p-0 hover:bg-transparent"
+								>
+									<span
+										className={cn(
+											"relative block h-24 w-[4.5rem] overflow-hidden rounded-xl ring-1 transition",
+											isSelected ? "ring-2 ring-ink" : "ring-rule hover:ring-ink-faint",
+										)}
+									>
+										<ChatThemeThumbnail theme={choice.value ?? "default"} className="h-full" />
+										{isSelected && (
+											<span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-ink text-paper-raised">
+												<Check aria-hidden="true" className="size-2.5" />
+											</span>
+										)}
+									</span>
+									<span
+										className={cn(
+											"text-[11px]",
+											isSelected ? "font-semibold text-ink" : "text-ink-soft",
+										)}
+									>
+										{choice.label}
+									</span>
+								</Button>
+							);
+						})}
+					</div>
+
 					{error && (
-						<p role="alert" className="mt-3 text-xs text-signal">
+						<p role="alert" className="mx-5 mb-2 text-xs text-signal">
 							{error}
 						</p>
 					)}
@@ -136,7 +180,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 						Cancel
 					</Button>
 					<Button disabled={isSaving} onClick={() => void applyTheme()}>
-						{isSaving ? "Applying…" : "Apply color"}
+						{isSaving ? "Applying…" : "Apply theme"}
 					</Button>
 				</div>
 			</div>

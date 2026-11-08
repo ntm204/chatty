@@ -9,7 +9,7 @@ export function getPinnedMessagePreview(pin: PinnedMessageDTO): string {
 	}
 	if (attachment?.kind === "audio") return "Voice message";
 	if (attachment) return attachment.fileName || "File";
-	if (message?.isSticker) return "Sticker";
+	if (message?.isSticker || message?.stickerKey) return "Sticker";
 
 	return pin.content || "Message";
 }

@@ -9,19 +9,26 @@ const pins = [
 ];
 
 describe("pinned message navigation", () => {
-	it("always jumps to the most recently pinned message until the dialog picks a different one", async () => {
+	it("jumps to the newest pin, then walks back through older pins and wraps", async () => {
 		const user = userEvent.setup();
 		const open = vi.fn();
 		render(<PinnedMessagesBanner pinnedMessages={pins} currentUserId="me" onOpenMessage={open} />);
 		await user.click(screen.getByText("Second pin"));
 		expect(open).toHaveBeenLastCalledWith("two");
+		await user.click(screen.getByText("First pin"));
+		expect(open).toHaveBeenLastCalledWith("one");
+		await user.click(screen.getByText("Second pin"));
+		expect(open).toHaveBeenLastCalledWith("two");
+	});
 
+	it("carries on from a pin picked in the dialog", async () => {
+		const user = userEvent.setup();
+		const open = vi.fn();
+		render(<PinnedMessagesBanner pinnedMessages={pins} currentUserId="me" onOpenMessage={open} />);
 		await user.click(screen.getByLabelText("Show pinned messages"));
 		await user.click(screen.getByRole("button", { name: "First pin" }));
 		expect(open).toHaveBeenLastCalledWith("one");
 		expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-
-		// Closing the dialog without picking anything else still targets the latest pin.
 		await user.click(screen.getByText("Second pin"));
 		expect(open).toHaveBeenLastCalledWith("two");
 	});

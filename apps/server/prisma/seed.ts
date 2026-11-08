@@ -3,8 +3,12 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-/** Same password for everyone, so local sign-in needs nothing memorised. */
-const SEED_PASSWORD = "SuperSecret123";
+/**
+ * Same one-character password for everyone, so local sign-in needs nothing
+ * memorised. Written straight to the hash, so it never meets the registration
+ * rules — those still apply to every account created through the app.
+ */
+const SEED_PASSWORD = "1";
 
 /**
  * Refuses to run against anything that is not a local database.
@@ -31,17 +35,18 @@ async function main(): Promise<void> {
 
 	const passwordHash = await bcrypt.hash(SEED_PASSWORD, 12);
 
+	// Numbered so a tester can tell the three browser windows apart at a glance.
 	const [minh, an, binh] = await Promise.all([
 		prisma.user.create({
-			data: { email: "minh@test.com", handle: "minh", displayName: "Minh", passwordHash },
+			data: { email: "1@test.com", handle: "user1", displayName: "User 1", passwordHash },
 			select: { id: true },
 		}),
 		prisma.user.create({
-			data: { email: "an@test.com", handle: "an", displayName: "An", passwordHash },
+			data: { email: "2@test.com", handle: "user2", displayName: "User 2", passwordHash },
 			select: { id: true },
 		}),
 		prisma.user.create({
-			data: { email: "binh@test.com", handle: "binh", displayName: "Binh", passwordHash },
+			data: { email: "3@test.com", handle: "user3", displayName: "User 3", passwordHash },
 			select: { id: true },
 		}),
 	]);
@@ -57,10 +62,10 @@ async function main(): Promise<void> {
 	});
 
 	await prisma.message.create({
-		data: { conversationId: direct.id, authorId: minh.id, content: "Chào An, khoẻ không?" },
+		data: { conversationId: direct.id, authorId: minh.id, content: "Chào bạn, khoẻ không?" },
 	});
 	await prisma.message.create({
-		data: { conversationId: direct.id, authorId: an.id, content: "Khoẻ, cảm ơn Minh!" },
+		data: { conversationId: direct.id, authorId: an.id, content: "Khoẻ, cảm ơn nhé!" },
 	});
 
 	// A group, so the group-specific rendering has something to show.
@@ -80,7 +85,7 @@ async function main(): Promise<void> {
 	});
 
 	console.log("Seeded 3 users (password for all: %s):", SEED_PASSWORD);
-	console.log("  minh@test.com, an@test.com, binh@test.com");
+	console.log("  1@test.com, 2@test.com, 3@test.com");
 	console.log("Seeded 1 direct conversation and 1 group.");
 }
 

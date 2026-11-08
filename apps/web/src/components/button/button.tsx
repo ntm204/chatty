@@ -44,7 +44,7 @@ export function Button({ variant = "primary", type = "button", className, childr
 				"cursor-pointer",
 				"disabled:cursor-not-allowed disabled:opacity-[0.32]",
 				variant === "primary" &&
-					"border border-brand-yellow bg-brand-yellow font-semibold text-brand-navy hover:border-brand-yellow-hover hover:bg-brand-yellow-hover",
+					"border border-accent bg-accent font-semibold text-accent-ink hover:border-accent-hover hover:bg-accent-hover",
 				variant === "outline" && "border border-ink font-semibold text-ink hover:bg-ink/5",
 				variant === "ghost" && "font-medium text-ink-soft hover:bg-ink/5",
 				variant === "danger" && "border border-signal font-semibold text-signal hover:bg-signal-soft",

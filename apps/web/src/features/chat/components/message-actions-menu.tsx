@@ -10,6 +10,7 @@ import {
 	Trash2,
 	UserRoundX,
 	X,
+	CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/button";
 
@@ -26,6 +27,8 @@ interface MessageActionsMenuProps {
 	/** Absent until somebody has reacted — see `MessageActions`. */
 	onShowReactions?: (() => void) | undefined;
 	onForward?: (() => void) | undefined;
+	/** Starts selecting messages, with this one picked. */
+	onSelect?: (() => void) | undefined;
 	onTogglePin?: (() => void) | undefined;
 	isPinned: boolean;
 	canChangeForEveryone: boolean;
@@ -44,6 +47,7 @@ export function MessageActionsMenu({
 	onReply,
 	onShowReactions,
 	onForward,
+	onSelect,
 	onTogglePin,
 	isPinned,
 	canChangeForEveryone,
@@ -118,6 +122,17 @@ export function MessageActionsMenu({
 				>
 					<SmilePlus className="size-4" />
 					Who reacted
+				</Button>
+			)}
+			{onSelect && (
+				<Button
+					variant="ghost"
+					role="menuitem"
+					onClick={() => runAndClose(onSelect)}
+					className="w-full justify-start px-2.5 py-2 text-ink"
+				>
+					<CheckCircle2 className="size-4" />
+					Select
 				</Button>
 			)}
 			{onForward && (

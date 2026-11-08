@@ -8,10 +8,15 @@ import { makeMessage, makeParticipant } from "./factories";
 
 const { renderedIds } = vi.hoisted(() => ({ renderedIds: [] as string[] }));
 vi.mock("@/features/chat/components/message-bubble", () => ({
-	MessageBubble: ({ message, onForward }: ComponentProps<typeof MessageBubble>) => {
+	MessageBubble: ({ message, onForward, footer }: ComponentProps<typeof MessageBubble>) => {
 		renderedIds.push(message.id);
 
-		return <button onClick={onForward}>{message.content}</button>;
+		return (
+			<>
+				<button onClick={onForward}>{message.content}</button>
+				{footer}
+			</>
+		);
 	},
 }));
 vi.mock("@/features/chat/components/message-actions", () => ({

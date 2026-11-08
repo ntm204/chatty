@@ -5,13 +5,13 @@ import { isSavedConversation } from "../utils/is-saved-conversation";
 import { AVATAR_SIZE_CLASSES } from "@/constants/avatar-sizes";
 import type { AvatarSize } from "@/types/avatar";
 import { cn } from "@/utils/cn";
-import { getInitials } from "@/utils/get-initials";
-import { getConversationTitle, getDirectPeer } from "../utils";
+import { getDirectPeer } from "../utils";
+import { GroupAvatar } from "./group-avatar";
 
 interface ConversationAvatarProps {
 	conversation: ConversationDTO;
 	currentUserId: string;
-	/** Unused — kept so callers that still track presence don't need a special case. */
+	/** Who is online now; a direct conversation's avatar shows the peer's dot. */
 	onlineUserIds: Set<string>;
 	size?: AvatarSize;
 }
@@ -19,17 +19,19 @@ interface ConversationAvatarProps {
 /**
  * The picture for a conversation row.
  *
- * A 1-1 is the other person's avatar. A group is an
- * ink-filled circle carrying the group's own initials — not one member's face,
- * because picking a member would be arbitrary and their presence would read as
- * the group's, and not a generic icon either, which made every group in a
- * sidebar look like the same conversation.
+ * A 1-1 is the other person's avatar. A group is its own picture, or, until
+ * someone sets one, a group icon on its own colour (`GroupAvatar`).
  *
  * Sized from the same map the avatar uses rather than a second copy of the
  * numbers: a sidebar mixing groups and direct chats has to keep one column of
  * text, and two maps drift the first time one of them is edited.
  */
-export function ConversationAvatar({ conversation, currentUserId, size = "md" }: ConversationAvatarProps) {
+export function ConversationAvatar({
+	conversation,
+	currentUserId,
+	onlineUserIds,
+	size = "md",
+}: ConversationAvatarProps) {
 	if (isSavedConversation(conversation, currentUserId)) {
 		return (
 			<span
@@ -56,18 +58,8 @@ export function ConversationAvatar({ conversation, currentUserId, size = "md" }:
 			);
 		}
 
-		return (
-			<span
-				aria-hidden="true"
-				className={cn(
-					"flex shrink-0 items-center justify-center bg-block font-mono font-semibold tracking-tight text-block-ink",
-					AVATAR_SIZE_CLASSES[size],
-				)}
-			>
-				{getInitials(getConversationTitle(conversation, currentUserId))}
-			</span>
-		);
+		return <GroupAvatar seed={conversation.id} size={size} />;
 	}
 
-	return <Avatar user={peer} size={size} />;
+	return <Avatar user={peer} size={size} isOnline={onlineUserIds.has(peer.id)} />;
 }

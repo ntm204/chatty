@@ -1,6 +1,9 @@
 import { ImagePlus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { BUILTIN_STICKER_KEYS } from "@chatty/shared-types";
 import { Button } from "@/components/button";
+import { ChattySticker } from "@/components/icons";
+import { BUILTIN_STICKER_LABELS, BUILTIN_STICKER_PREFIX } from "../constants/builtin-stickers";
 import { ACCEPTED_IMAGE_TYPES } from "../constants/attachment";
 import { MAX_PERSONAL_STICKERS } from "../constants/sticker";
 import { useStickers } from "../hooks";
@@ -136,6 +139,22 @@ export function StickerTray({ onPick, onClose }: StickerTrayProps) {
 					{isSending ? "Sending sticker…" : "Loading stickers…"}
 				</p>
 			)}
+			<p className="eyebrow px-3.5 pt-3 text-ink-faint">Chatty</p>
+			<div className="sticker-tray-builtin grid grid-cols-4 gap-1 px-2.5 pt-1.5">
+				{BUILTIN_STICKER_KEYS.map((key) => (
+					<Button
+						key={key}
+						variant="ghost"
+						onClick={() => void sendSticker(`${BUILTIN_STICKER_PREFIX}${key}`)}
+						disabled={isSending}
+						aria-label={`Send the ${BUILTIN_STICKER_LABELS[key]} sticker`}
+						className="aspect-square rounded-control p-1"
+					>
+						<ChattySticker sticker={key} className="size-full" />
+					</Button>
+				))}
+			</div>
+			{stickers.length > 0 && <p className="eyebrow px-3.5 pt-3 text-ink-faint">Yours</p>}
 			<div className="grid max-h-[240px] grid-cols-3 gap-2 overflow-y-auto p-3">
 				{stickers.map((sticker) => (
 					<div key={sticker.id}>

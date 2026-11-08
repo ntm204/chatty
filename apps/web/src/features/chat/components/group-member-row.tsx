@@ -87,7 +87,7 @@ export function GroupMemberRow({
 					{isSelf && <span className="font-normal text-ink-faint"> (you)</span>}
 				</span>
 				<span className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-faint">
-					<span className="truncate font-mono" title={`@${participant.handle}`}>
+					<span className="truncate" title={`@${participant.handle}`}>
 						@{participant.handle}
 					</span>
 					{participant.role === "admin" && (

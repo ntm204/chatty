@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import { DARK_SCHEME_QUERY, THEME_STORAGE_KEY } from "@/constants/theme";
-import type { ResolvedTheme, ThemePreference } from "@/types/theme";
+import {
+	DARK_SCHEME_QUERY,
+	DEFAULT_PALETTE,
+	PALETTE_OPTIONS,
+	PALETTE_STORAGE_KEY,
+	THEME_STORAGE_KEY,
+} from "@/constants/theme";
+import type { PaletteId, ResolvedTheme, ThemePreference } from "@/types/theme";
 
 /**
  * The reader's theme: what they asked for, and what that currently means.
@@ -18,11 +24,16 @@ import type { ResolvedTheme, ThemePreference } from "@/types/theme";
  *
  * In `src/hooks` rather than a feature's: the settings dialog changes the theme
  * and every feature is drawn in it, so it belongs to none of them.
+ *
+ * `palette` is the colour family, orthogonal to light and dark: every palette
+ * has both, so the two choices are stored and stamped separately.
  */
 interface ThemeState {
 	preference: ThemePreference;
 	resolved: ResolvedTheme;
 	setPreference: (preference: ThemePreference) => void;
+	palette: PaletteId;
+	setPalette: (palette: PaletteId) => void;
 }
 
 function readStoredPreference(): ThemePreference {
@@ -56,6 +67,18 @@ function stamp(resolved: ResolvedTheme): void {
 	document.documentElement.dataset.theme = resolved;
 }
 
+function readStoredPalette(): PaletteId {
+	try {
+		const stored = localStorage.getItem(PALETTE_STORAGE_KEY);
+		const known = PALETTE_OPTIONS.find((option) => option.id === stored);
+		if (known) return known.id;
+	} catch {
+		// Same bargain as the preference above: fall back to the default.
+	}
+
+	return DEFAULT_PALETTE;
+}
+
 const storedPreference = readStoredPreference();
 
 export const useTheme = create<ThemeState>((set) => ({
@@ -73,6 +96,19 @@ export const useTheme = create<ThemeState>((set) => ({
 		const resolved = resolveTheme(preference);
 		stamp(resolved);
 		set({ preference, resolved });
+	},
+
+	palette: readStoredPalette(),
+
+	setPalette(palette) {
+		try {
+			localStorage.setItem(PALETTE_STORAGE_KEY, palette);
+		} catch {
+			// Applies now; may not survive a reload.
+		}
+
+		document.documentElement.dataset.palette = palette;
+		set({ palette });
 	},
 }));
 

@@ -33,6 +33,39 @@ async function expectSeparateTouchTargets(page: Page, controls: Locator): Promis
 	}
 }
 
+/**
+ * Reaction chips are drawn at 28px and reach 44px with a pseudo-element mostly
+ * below them, so their boxes cannot be measured; each is probed at the top
+ * and bottom of its reach instead, and must stay inside the window. A probe
+ * only sees what is on screen, so the short landscape check measures size only.
+ */
+async function expectChipTouchTargets(page: Page, chips: Locator, shouldProbe = true): Promise<void> {
+	const viewport = page.viewportSize()!;
+	const boxes = await chips.evaluateAll((elements) =>
+		elements.map((element) => {
+			const rectangle = element.getBoundingClientRect();
+
+			return { x: rectangle.x, y: rectangle.y, width: rectangle.width, height: rectangle.height };
+		}),
+	);
+	expect(boxes.length).toBeGreaterThan(0);
+	for (const [index, box] of boxes.entries()) {
+		expect(box.height).toBe(28);
+		expect(box.width).toBeGreaterThanOrEqual(44);
+		expect(box.x).toBeGreaterThanOrEqual(0);
+		expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+		if (!shouldProbe) continue;
+		const centerX = box.x + box.width / 2;
+		const centerY = box.y + box.height / 2;
+		const hits = await chips.evaluateAll(
+			(elements, [chipIndex, x, top, bottom]) =>
+				[top!, bottom!].map((y) => elements[chipIndex!]!.contains(document.elementFromPoint(x!, y))),
+			[index, centerX, centerY - 15, centerY + 27],
+		);
+		expect(hits).toEqual([true, true]);
+	}
+}
+
 test("touch reaction targets stay separate at 320px while desktop keeps its compact controls", async ({
 	browser,
 	request,
@@ -93,7 +126,7 @@ test("touch reaction targets stay separate at 320px while desktop keeps its comp
 	expect(new Set(quickRows).size).toBeGreaterThan(1);
 	await reactionMenu.getByRole("menuitem", { name: "React with ❤️", exact: true }).tap();
 	await expect(chips.getByRole("button")).toHaveCount(4);
-	await expectSeparateTouchTargets(page, chips.getByRole("button"));
+	await expectChipTouchTargets(page, chips.getByRole("button"));
 	const overflow = chips.getByRole("button", { name: "1 more reactions. Show everyone who reacted", exact: true });
 	await overflow.tap();
 	await expect(page.getByRole("dialog", { name: "Reactions", exact: true })).toBeVisible();
@@ -107,9 +140,8 @@ test("touch reaction targets stay separate at 320px while desktop keeps its comp
 		"true",
 	);
 	await page.setViewportSize({ width: 640, height: 320 });
-	await expectSeparateTouchTargets(page, chips.getByRole("button"));
+	await expectChipTouchTargets(page, chips.getByRole("button"), false);
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-
 	const desktop = await browser.newContext({
 		viewport: { width: 1280, height: 800 },
 		storageState: await context.storageState(),
@@ -123,6 +155,5 @@ test("touch reaction targets stay separate at 320px while desktop keeps its comp
 	expect((await desktopActions.boundingBox())!.width).toBe(24);
 	expect((await desktopActions.boundingBox())!.height).toBe(24);
 	const desktopChips = desktopRow.getByRole("group", { name: "Reactions to your message", exact: true });
-	expect((await desktopChips.boundingBox())!.height).toBe(20);
-	expect((await desktopChips.getByRole("button").first().boundingBox())!.height).toBe(16);
+	expect((await desktopChips.getByRole("button").first().boundingBox())!.height).toBe(24);
 });

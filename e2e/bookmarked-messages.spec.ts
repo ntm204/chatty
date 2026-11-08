@@ -8,7 +8,8 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	const peer = makeUser("BookmarkPeer");
 	await register(await peerContext.newPage(), peer);
 	await register(page, makeUser("BookAuthor"));
-	await page.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	await page.getByRole("button", { name: "More", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
 	const emptyBookmarks = page.getByRole("dialog", { name: "Bookmarked messages" });
 	await expect(emptyBookmarks.getByText("No bookmarks yet.", { exact: true })).toBeVisible();
 	await expect(emptyBookmarks.getByRole("heading", { name: "Bookmarks", exact: true })).toBeVisible();
@@ -56,11 +57,13 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 		return { conversationId, originalId };
 	});
 	await page.reload();
-	await page.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	await page.getByRole("button", { name: "More", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
 	const dialog = page.getByRole("dialog", { name: "Bookmarked messages", exact: true });
 	const secondTab = await context.newPage();
 	await secondTab.goto("/");
-	await secondTab.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	await secondTab.getByRole("button", { name: "More", exact: true }).click();
+	await secondTab.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
 	const secondDialog = secondTab.getByRole("dialog", { name: "Bookmarked messages", exact: true });
 	await expect(secondDialog.getByText("Bookmarked extra 20", { exact: true })).toBeVisible();
 	await expect(dialog.getByRole("button", { name: "More bookmarks" })).toBeVisible();
@@ -69,7 +72,8 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	await dialog.getByText("My bookmarked original", { exact: true }).click();
 	await expect(dialog).toHaveCount(0);
 	await expect(page.locator(`#message-${ids.originalId}`)).toBeVisible();
-	await page.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	await page.getByRole("button", { name: "More", exact: true }).click();
+	await page.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
 	await page.route("**/messages/*/star", async (route) => {
 		if (route.request().method() === "DELETE")
 			await route.fulfill({
@@ -153,7 +157,8 @@ test("the thread menu, other tabs and the bookmarks list agree about one bookmar
 	await page.unroute("**/messages/*/star");
 
 	// Removing from the bookmarks list resets the thread menu in both tabs, and survives a reload.
-	await otherTab.getByRole("button", { name: "Bookmarked messages", exact: true }).click();
+	await otherTab.getByRole("button", { name: "More", exact: true }).click();
+	await otherTab.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
 	const dialog = otherTab.getByRole("dialog", { name: "Bookmarked messages", exact: true });
 	await dialog.getByRole("button", { name: "Remove bookmark", exact: true }).click();
 	await expect(dialog.getByText("No bookmarks yet.", { exact: true })).toBeVisible();

@@ -18,7 +18,8 @@ test.describe("sidebar organisation", () => {
 		await minhPage.getByRole("menuitem", { name: "Archive" }).click();
 		await expect(minhPage.getByRole("button", { name: new RegExp(anUser.displayName) })).not.toBeVisible();
 
-		await minhPage.getByRole("button", { name: "Archived" }).click();
+		await minhPage.getByRole("button", { name: "More", exact: true }).click();
+		await minhPage.getByRole("menuitem", { name: "Archived chats" }).click();
 		await expect(minhPage.getByRole("button", { name: new RegExp(anUser.displayName) })).toBeVisible();
 		await minhPage.getByRole("button", { name: "Conversation actions" }).click();
 		await minhPage.getByRole("menuitem", { name: "Unarchive", exact: true }).click();

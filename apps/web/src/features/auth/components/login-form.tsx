@@ -5,6 +5,7 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { useAuth } from "@/hooks/use-auth";
 import { focusField } from "@/utils/focus-field";
+import { toLoginEmail } from "../utils/to-login-email";
 
 export function LoginForm() {
 	const login = useAuth((state) => state.login);
@@ -35,7 +36,7 @@ export function LoginForm() {
 
 		setIsSubmitting(true);
 		try {
-			await login(fields.email.trim(), fields.password);
+			await login(toLoginEmail(fields.email), fields.password);
 		} catch (error) {
 			// The server returns one message for both a wrong password and an
 			// unknown email; showing it verbatim keeps that indistinguishable.
@@ -59,7 +60,9 @@ export function LoginForm() {
 			<TextField
 				label="Email"
 				name="email"
-				type="email"
+				// Text in development so the browser lets a bare "1" through to
+				// `toLoginEmail`; a real email everywhere else.
+				type={import.meta.env.DEV ? "text" : "email"}
 				autoComplete="username"
 				value={fields.email}
 				error={errors.email}

@@ -12,7 +12,10 @@ export function MessageTimeSeparator({ isoTimestamp }: MessageTimeSeparatorProps
 			className="flex justify-center py-5"
 			aria-label={`Conversation resumed at ${formatMessageTime(isoTimestamp)}`}
 		>
-			<time dateTime={isoTimestamp} className="meta rounded-full bg-paper-sunken px-3 py-1 text-ink-faint">
+			<time
+				dateTime={isoTimestamp}
+				className="wallpaper-pill meta rounded-full bg-paper-sunken px-3 py-1 text-ink-faint"
+			>
 				{formatMessageTime(isoTimestamp)}
 			</time>
 		</div>

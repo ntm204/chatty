@@ -48,7 +48,6 @@ export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps)
 									!isActive && !item.isDestructive && "text-ink-soft hover:text-ink",
 								)}
 							>
-								{isActive && <span className="absolute inset-y-2 left-0 w-0.5 bg-signal" />}
 								<item.icon
 									aria-hidden="true"
 									className={cn(

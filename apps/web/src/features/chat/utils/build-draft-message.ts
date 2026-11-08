@@ -62,6 +62,7 @@ export function buildDraftMessage(
 		content,
 		attachments,
 		isSticker: false,
+		stickerKey: null,
 		isForwarded: false,
 		mentionedUserIds: [],
 		createdAt: new Date().toISOString(),

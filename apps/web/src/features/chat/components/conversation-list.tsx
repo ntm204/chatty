@@ -1,4 +1,6 @@
 import type { ConversationDTO } from "@chatty/shared-types";
+import { BellOff, Pin } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { MAX_UNREAD_BADGE_COUNT } from "../constants/conversation-list";
@@ -8,6 +10,9 @@ import { ConversationAvatar } from "./conversation-avatar";
 import { useInfiniteScroll } from "../hooks/use-infinite-scroll";
 import type { ConversationPaging } from "../types/conversation-paging";
 import { ConversationActions } from "./conversation-actions";
+import { ConversationPreview } from "./conversation-preview";
+import { useLongPress } from "../hooks/use-long-press";
+import type { ConversationPreviewTarget } from "../types/conversation-preview";
 import { TypingDots } from "./typing-dots";
 import { useDraftPreviews } from "../hooks/use-draft-previews";
 import { useMuteExpiry } from "../hooks/use-mute-expiry";
@@ -20,6 +25,8 @@ interface ConversationListProps {
 	onSelect: (conversationId: string) => void;
 	typingByConversation: Record<string, string[]>;
 	paging: ConversationPaging;
+	/** Said instead of "No conversations yet" when a folder filters everything out. */
+	emptyMessage?: string;
 }
 
 export function ConversationList({
@@ -30,6 +37,7 @@ export function ConversationList({
 	onSelect,
 	typingByConversation,
 	paging,
+	emptyMessage,
 }: ConversationListProps) {
 	useMuteExpiry(conversations.map((conversation) => conversation.mutedUntil));
 	const loadMoreRef = useInfiniteScroll<HTMLLIElement>(
@@ -41,14 +49,29 @@ export function ConversationList({
 		currentUserId,
 		conversations.map((conversation) => conversation.id),
 	);
+	const [preview, setPreview] = useState<ConversationPreviewTarget | null>(null);
+	// Live from the list, so a message arriving while previewing shows up in it.
+	const previewed = preview && conversations.find((conversation) => conversation.id === preview.conversationId);
+
+	function openPreview(conversationId: string, row: Element, variant: ConversationPreviewTarget["variant"]) {
+		const sidebar = row.closest("aside")?.getBoundingClientRect();
+		const anchor = row.getBoundingClientRect();
+		setPreview({ conversationId, variant, anchor, sidebarRight: sidebar?.right ?? anchor.right });
+	}
+	// Touch: hold a row to read it without opening it — the phone's gesture for this.
+	const longPress = useLongPress((element) => {
+		const conversationId = element.dataset.conversationId;
+		if (conversationId) openPreview(conversationId, element, "sheet");
+	});
 
 	if (conversations.length === 0) {
 		return (
 			<div className="px-5 py-6 text-[13px] text-ink-faint">
 				<p role={paging.error ? "alert" : "status"}>
-					{paging.error || (paging.isLoading ? "Loading conversations…" : "No conversations yet.")}
+					{paging.error ||
+						(paging.isLoading ? "Loading conversations…" : (emptyMessage ?? "No conversations yet."))}
 				</p>
-				{!paging.error && !paging.isLoading && (
+				{!paging.error && !paging.isLoading && !emptyMessage && (
 					<p className="mt-1 text-xs">Search for someone above to start one.</p>
 				)}
 				{paging.error && (
@@ -61,7 +84,7 @@ export function ConversationList({
 	}
 
 	return (
-		<ul className="conversation-list flex flex-col gap-1.5 px-3 pb-3">
+		<ul className="conversation-list flex flex-col gap-0.5 px-2 pt-2 pb-3">
 			{paging.error && (
 				<li className="p-3 text-sm text-signal">
 					<p role="alert">{paging.error}</p>
@@ -90,12 +113,24 @@ export function ConversationList({
 					<li key={conversation.id} className="group relative">
 						<Button
 							variant="ghost"
-							onClick={() => onSelect(conversation.id)}
+							data-conversation-id={conversation.id}
+							{...longPress.handlers}
+							onClick={() => {
+								if (!longPress.shouldSuppressClick()) onSelect(conversation.id);
+							}}
+							// Desktop: right-click a row to read it without opening it.
+							onContextMenu={(event) => {
+								longPress.handlers.onContextMenu(event);
+								// On touch, a long press already opened the sheet.
+								if (window.matchMedia?.("(hover: none)").matches) return;
+								event.preventDefault();
+								openPreview(conversation.id, event.currentTarget, "popover");
+							}}
 							aria-current={isSelected ? "page" : undefined}
 							// A conversation row is a full-width, left-aligned block, not a
 							// centred action. twMerge lets these win over Button's defaults.
 							className={cn(
-								"conversation-row relative w-full items-center justify-start gap-3 rounded-panel px-3 py-3 text-left font-normal",
+								"conversation-row relative w-full items-center justify-start gap-3 px-2.5 py-2 text-left font-normal",
 								isSelected
 									? "bg-paper-sunken hover:bg-paper-sunken"
 									: isMentioned
@@ -103,14 +138,6 @@ export function ConversationList({
 										: "hover:bg-transparent",
 							)}
 						>
-							{/* Not colour alone, and not a check that reads as "seen": the same
-							    edge bar settings uses for its current section. */}
-							{isSelected && (
-								<span
-									aria-hidden="true"
-									className="conversation-row-marker absolute inset-y-3 left-0 w-0.5"
-								/>
-							)}
 							<ConversationAvatar
 								conversation={conversation}
 								currentUserId={currentUserId}
@@ -118,21 +145,40 @@ export function ConversationList({
 							/>
 
 							<span className="flex min-w-0 flex-1 flex-col">
-								<span className="flex min-w-0 items-baseline gap-3 pr-14">
+								{/* Name left, time right — Telegram's row. The time steps aside
+								    for the actions button on hover; on touch, where that button
+								    always shows, the line leaves it room instead. */}
+								<span className="flex min-w-0 items-baseline gap-2 [@media(hover:none)]:pr-8">
 									<span
 										title={getConversationTitle(conversation, currentUserId)}
 										className={cn(
-											"font-content min-w-0 truncate text-[14px] leading-5 text-ink",
+											"font-content min-w-0 flex-1 truncate text-[14.5px] leading-5 text-ink",
 											hasUnread ? "font-semibold" : "font-medium",
 										)}
 									>
 										{getConversationTitle(conversation, currentUserId)}
 									</span>
+									{/* Telegram's place for it: beside the name, where it qualifies the chat. */}
+									{isMuted && (
+										<BellOff
+											role="img"
+											aria-label="Muted"
+											className="size-3.5 shrink-0 self-center text-ink-faint"
+										/>
+									)}
+									{lastMessage && (
+										<span
+											className={cn(
+												"shrink-0 text-[11.5px] tabular-nums transition-opacity group-hover:opacity-0 group-focus-within:opacity-0",
+												hasUnread ? "font-medium text-signal" : "text-ink-faint",
+											)}
+										>
+											{formatRelativeTime(conversation.updatedAt)}
+										</span>
+									)}
 								</span>
-								<span
-									className={cn("flex min-w-0 items-center gap-2", isMuted && !hasUnread && "pr-8")}
-								>
-									<span className="font-content flex min-w-0 flex-1 items-center gap-1 text-[13px] leading-5">
+								<span className="flex min-w-0 items-center gap-2">
+									<span className="font-content flex min-w-0 flex-1 items-center gap-1 text-[13.5px] leading-5">
 										{hasDraft && <span className="shrink-0 font-medium text-signal">Draft:</span>}
 										{isLastMessageMine && !isSomeoneTyping && !hasDraft && (
 											<span className="shrink-0 text-ink-soft">You:</span>
@@ -161,12 +207,15 @@ export function ConversationList({
 												<TypingDots />
 											</span>
 										)}
-										{lastMessage && !hasDraft && !isSomeoneTyping && (
-											<span className="shrink-0 font-mono text-ink-faint">
-												· {formatRelativeTime(conversation.updatedAt)}
-											</span>
-										)}
 									</span>
+									{/* A pinned chat with nothing new says so where the count would be. */}
+									{!hasUnread && conversation.isPinned && (
+										<Pin
+											role="img"
+											aria-label="Pinned"
+											className="size-3.5 shrink-0 rotate-45 text-ink-faint"
+										/>
+									)}
 									{hasUnread && (
 										<span
 											aria-label={`${conversation.unreadCount} unread messages${isMentioned ? ", including a mention" : ""}`}
@@ -182,7 +231,17 @@ export function ConversationList({
 								</span>
 							</span>
 						</Button>
-						<ConversationActions conversation={conversation} currentUserId={currentUserId} />
+						<ConversationActions
+							conversation={conversation}
+							currentUserId={currentUserId}
+							onPreview={(row) =>
+								openPreview(
+									conversation.id,
+									row,
+									window.matchMedia?.("(hover: none)").matches ? "sheet" : "popover",
+								)
+							}
+						/>
 					</li>
 				);
 			})}
@@ -193,6 +252,21 @@ export function ConversationList({
 				<li ref={loadMoreRef} aria-hidden="true" className="py-3 text-center">
 					<span className="meta text-ink-faint">{paging.isLoadingMore ? "Loading…" : ""}</span>
 				</li>
+			)}
+			{previewed && preview && (
+				<ConversationPreview
+					conversation={previewed}
+					currentUserId={currentUserId}
+					onlineUserIds={onlineUserIds}
+					variant={preview.variant}
+					anchor={preview.anchor}
+					sidebarRight={preview.sidebarRight}
+					onOpen={() => {
+						setPreview(null);
+						onSelect(previewed.id);
+					}}
+					onClose={() => setPreview(null)}
+				/>
 			)}
 		</ul>
 	);

@@ -1,9 +1,11 @@
 import type { ParticipantDTO } from "@chatty/shared-types";
-import { Archive, Ban, BellOff, EyeOff, Pin } from "lucide-react";
+import { Archive, Ban, BellOff, Eye, EyeOff, Pin } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 
 interface ConversationActionsMenuProps {
+	/** Read the chat without marking it read — the menu's way in on touch, and for keyboards. */
+	onPreview: () => void;
 	isPinned: boolean;
 	isArchived: boolean;
 	isMuted: boolean;
@@ -22,6 +24,7 @@ interface ConversationActionsMenuProps {
 
 /** The default menu list; split out of `ConversationActions` once it grew items of its own. */
 export function ConversationActionsMenu({
+	onPreview,
 	isPinned,
 	isArchived,
 	isMuted,
@@ -38,6 +41,15 @@ export function ConversationActionsMenu({
 }: ConversationActionsMenuProps) {
 	return (
 		<>
+			<Button
+				variant="ghost"
+				role="menuitem"
+				onClick={onPreview}
+				className="w-full justify-start px-2.5 py-2 text-ink"
+			>
+				<Eye className="size-4 text-ink-faint" />
+				Preview
+			</Button>
 			<Button
 				variant="ghost"
 				role="menuitem"

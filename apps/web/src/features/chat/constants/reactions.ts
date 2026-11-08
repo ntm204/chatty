@@ -14,12 +14,12 @@ import type { ReactionEmoji } from "@chatty/shared-types";
 export const QUICK_REACTIONS: ReactionEmoji[] = ["❤️", "😂", "😮", "😢", "😡", "👍"];
 
 /**
- * How many distinct emoji a message shows before the rest collapse into one
- * chip.
+ * How many distinct emoji get their own chip before the rest collapse into one
+ * `+N` chip.
  *
  * Three, and the number is doing real work now that the set is open: a group of
  * thirty can put thirty different emoji on one sentence, and thirty chips would
- * be wider than the bubble they hang off. The overflow chip opens the list,
+ * be taller than the message they belong to. The overflow chip opens the list,
  * which is where a reaction that did not fit is still readable.
  */
 export const REACTION_CHIP_LIMIT = 3;

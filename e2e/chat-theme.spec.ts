@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
-test("row actions dismiss naturally and message colors preview, sync and persist", async ({ browser }) => {
+test("row actions dismiss naturally and chat themes preview, sync and persist", async ({ browser }) => {
 	const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 	const peerContext = await browser.newContext();
 	const page = await context.newPage();
@@ -12,7 +12,7 @@ test("row actions dismiss naturally and message colors preview, sync and persist
 	await register(page, user);
 	await startDirectChat(page, other);
 	await openConversationWith(peer, user);
-	await sendMessage(page, "Color only, no wallpaper");
+	await sendMessage(page, "Theme me");
 
 	const actions = page.getByRole("button", { name: "Conversation actions" });
 	await page.getByRole("textbox", { name: "Message", exact: true }).hover();
@@ -34,25 +34,24 @@ test("row actions dismiss naturally and message colors preview, sync and persist
 	await expect(page.getByRole("menu")).toHaveCount(0);
 
 	const history = page.getByLabel("Message history");
-	const initialBackground = await history.evaluate((element) => getComputedStyle(element).backgroundImage);
-	const ownBubble = history.getByText("Color only, no wallpaper", { exact: true });
+	const ownBubble = history.getByText("Theme me", { exact: true });
 	const initialBubbleColor = await ownBubble.evaluate(
 		(element) => getComputedStyle(element.closest(".chat-bubble")!).backgroundColor,
 	);
 	await page.getByLabel("Conversation storage and details").click();
-	await page.getByRole("button", { name: /Message color: Default/ }).click();
-	const dialog = page.getByRole("dialog", { name: "Message color" });
+	await page.getByRole("button", { name: /Chat theme: Default/ }).click();
+	const dialog = page.getByRole("dialog", { name: "Chat theme" });
 	await dialog.getByRole("button", { name: "Iris", exact: true }).click();
 	await expect(page.getByRole("region", { name: "Conversation", exact: true })).toHaveAttribute(
 		"data-conversation-theme",
 		"default",
 	);
 	await dialog.getByRole("button", { name: "Cancel" }).click();
-	await page.getByRole("button", { name: /Message color: Default/ }).click();
-	await expect(dialog.getByRole("button", { name: "Default color" })).toHaveAttribute("aria-pressed", "true");
+	await page.getByRole("button", { name: /Chat theme: Default/ }).click();
+	await expect(dialog.getByRole("button", { name: "Default", exact: true })).toHaveAttribute("aria-pressed", "true");
 	await dialog.getByRole("button", { name: "Iris", exact: true }).click();
 	await page.screenshot({ path: "/tmp/chatty-theme-picker-light.png" });
-	await dialog.getByRole("button", { name: "Apply color" }).click();
+	await dialog.getByRole("button", { name: "Apply theme" }).click();
 	await expect(dialog).toHaveCount(0);
 	for (const participant of [page, peer]) {
 		await expect(participant.getByRole("region", { name: "Conversation", exact: true })).toHaveAttribute(
@@ -60,7 +59,8 @@ test("row actions dismiss naturally and message colors preview, sync and persist
 			"iris",
 		);
 	}
-	expect(await history.evaluate((element) => getComputedStyle(element).backgroundImage)).toBe(initialBackground);
+	// The theme brings its flowing wallpaper behind the history.
+	await expect(page.locator(".conversation-pane > .chat-wallpaper canvas")).toBeAttached();
 	expect(
 		await ownBubble.evaluate((element) => getComputedStyle(element.closest(".chat-bubble")!).backgroundColor),
 	).not.toBe(initialBubbleColor);
@@ -73,12 +73,14 @@ test("row actions dismiss naturally and message colors preview, sync and persist
 	await page.emulateMedia({ colorScheme: "dark" });
 	await page.setViewportSize({ width: 390, height: 844 });
 	await page.getByLabel("Conversation storage and details").click();
-	await page.getByRole("button", { name: /Message color: Iris/ }).click();
-	await expect(dialog.getByRole("button", { name: "Apply color" })).toBeInViewport({ ratio: 1 });
+	await page.getByRole("button", { name: /Chat theme: Iris/ }).click();
+	await expect(dialog.getByRole("button", { name: "Apply theme" })).toBeInViewport({ ratio: 1 });
+	// The thumbnails scroll sideways on a phone, as Telegram's do.
+	await dialog.getByRole("button", { name: "Fern", exact: true }).scrollIntoViewIfNeeded();
 	await expect(dialog.getByRole("button", { name: "Fern", exact: true })).toBeInViewport({ ratio: 1 });
 	await page.screenshot({ path: "/tmp/chatty-theme-picker-phone-dark.png" });
-	await dialog.getByRole("button", { name: "Default color" }).click();
-	await dialog.getByRole("button", { name: "Apply color" }).click();
+	await dialog.getByRole("button", { name: "Default", exact: true }).click();
+	await dialog.getByRole("button", { name: "Apply theme" }).click();
 	await expect(peer.getByRole("region", { name: "Conversation", exact: true })).toHaveAttribute(
 		"data-conversation-theme",
 		"default",

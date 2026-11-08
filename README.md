@@ -29,7 +29,8 @@ the external conditions in [Deployment](docs/DEPLOYMENT.md).
   and link vault per conversation.
 - **Privacy and accounts**: block and restrict, read-receipt and last-seen controls, email change,
   password reset by mail, account deletion.
-- **Interface**: light and dark themes, phone layouts, keyboard navigation, reduced motion.
+- **Interface**: five colour palettes (ink & pastel, clay, ocean, forest, graphite), each with light
+  and dark modes; phone layouts, keyboard navigation, reduced motion.
 
 ## Stack
 
@@ -61,8 +62,8 @@ npm run dev:server   # API + WebSocket on http://localhost:4000
 npm run dev:web      # open http://localhost:5173
 ```
 
-The seed creates `minh@test.com`, `an@test.com` and `binh@test.com` (password `SuperSecret123`),
-one direct conversation and one group. It refuses to run against anything that is not localhost.
+The seed creates `1@test.com`, `2@test.com` and `3@test.com` (password `1`; registration in the app
+still enforces the real password rules), one direct conversation and one group. It refuses to run against anything that is not localhost.
 Mail goes to Mailpit at http://localhost:8025, so a reset link arrives as an email you can open.
 
 | Mode | Web | API | Purpose |
@@ -78,7 +79,9 @@ Good to know:
 - Redis is optional in development; set `REDIS_URL` only to exercise the multi-instance path.
 - `MAIL_TRANSPORT` has no default and the server will not boot without it.
 - `npm run seed:demo` adds a large realistic dataset (hundreds of messages and every attachment
-  kind) through the real API without wiping anything.
+  kind) to the three seeded accounts through the real API, without wiping anything; run the seed first.
+- In a development build the sign-in form completes a bare `1` to `1@test.com`, so the test
+  accounts sign in with `1` / `1`. Production builds send exactly what was typed.
 - Install, generate and migrate are setup steps, not commands to repeat every session.
 
 ## Checks

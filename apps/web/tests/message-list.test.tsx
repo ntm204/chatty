@@ -87,11 +87,11 @@ describe("MessageList", () => {
 		expect(screen.getByText("second")).toBeInTheDocument();
 	});
 
-	it("hides every message's time behind hover, with no persistent caption when the newest message isn't mine", () => {
+	it("shows every text message's time inside its bubble, with no persistent caption when the newest isn't mine", () => {
 		renderList();
 
 		const timeLabel = formatMessageTime(messages[0]!.createdAt);
-		for (const time of screen.getAllByText(timeLabel)) expect(time).toHaveClass("opacity-0");
+		for (const time of screen.getAllByText(timeLabel)) expect(time).toHaveClass("bubble-meta");
 		expect(screen.queryByText(/^Sent /)).not.toBeInTheDocument();
 	});
 
@@ -106,7 +106,7 @@ describe("MessageList", () => {
 			],
 		});
 
-		expect(screen.getByText(formatMessageTime(firstCreatedAt))).toHaveClass("opacity-0");
+		expect(screen.getByText(formatMessageTime(firstCreatedAt))).toHaveClass("bubble-meta");
 		expect(screen.getByText(/^Sent /)).toBeInTheDocument();
 	});
 
@@ -148,6 +148,8 @@ describe("MessageList", () => {
 		const reactionGroup = screen.getByRole("group", { name: "Reactions to received message" });
 		expect(reactionGroup.querySelectorAll("button")).toHaveLength(4);
 		expect(screen.queryByRole("button", { name: "😢, 1" })).not.toBeInTheDocument();
+		// Reactions sit inside the bubble they belong to, under its text.
+		expect(screen.getByText("first").closest(".chat-bubble")).toContainElement(reactionGroup);
 
 		await userEvent.click(screen.getByRole("button", { name: /2 more reactions/ }));
 
@@ -258,6 +260,7 @@ describe("MessageList", () => {
 
 		const firstRow = screen.getByText("first").closest("[data-message-interaction-row]");
 		expect(firstRow).not.toBeNull();
+		fireEvent.pointerDown(firstRow!, { pointerType: "touch" });
 		fireEvent.pointerUp(firstRow!, { pointerType: "touch" });
 
 		expect(firstRow).toHaveFocus();

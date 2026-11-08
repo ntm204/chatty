@@ -41,20 +41,15 @@ test.describe("reactions", () => {
 		expect(reactionBox).not.toBeNull();
 		if (!textBox || !reactionBox) throw new Error("Message and reaction must have browser geometry");
 
-		// The chip straddles the bubble's bottom edge — half on the message, half
-		// on the page — which is how Messenger and Instagram both draw it, and it
-		// necessarily reaches into the bubble's 8px of bottom padding. What it must
-		// never reach is the type. This was `>= textBox.y + textBox.height` when
-		// the chip hung clear of the bubble entirely; the tolerance is the padding
-		// it is now allowed to sit in, and a chip covering the descenders it
-		// originally guarded would still be many pixels above this line.
-		expect(reactionBox.y).toBeGreaterThan(textBox.y + textBox.height - 6);
-		expect(reactionBox.x).toBeGreaterThan(textBox.x + textBox.width / 2);
-		// And it really is straddling rather than resting under: its top edge is
-		// inside the bubble the reaction belongs to.
-		const bubbleBox = await messages(bobPage).getByText("shipped it").boundingBox();
+		// The chip sits inside the bubble, under the text, at its start.
+		expect(reactionBox.y).toBeGreaterThanOrEqual(textBox.y + textBox.height);
+		expect(reactionBox.x).toBeLessThan(textBox.x + textBox.width / 2);
+		const bubbleBox = await messages(bobPage)
+			.locator(".chat-bubble")
+			.filter({ hasText: "shipped it" })
+			.boundingBox();
 		if (!bubbleBox) throw new Error("The bubble must have browser geometry");
-		expect(reactionBox.y).toBeLessThan(bubbleBox.y + bubbleBox.height + reactionBox.height / 2);
+		expect(reactionBox.y + reactionBox.height).toBeLessThanOrEqual(bubbleBox.y + bubbleBox.height);
 
 		// Alice is looking at her own message and did nothing, so a chip appearing
 		// on her screen can only be the broadcast.
@@ -95,7 +90,7 @@ test.describe("reactions", () => {
 		// One reaction per person is the rule Messenger, Instagram and Telegram all
 		// implement, and it is enforced by the primary key rather than by the UI —
 		// so the only way to prove the two agree is to press two emoji in a real
-		// browser and count the chips that come back over the socket.
+		// browser and count the reactions that come back over the socket.
 		const aliceUser = makeUser("Ada");
 		const bobUser = makeUser("Bram");
 

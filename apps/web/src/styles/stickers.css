@@ -1,0 +1,167 @@
+/* Motion for Chatty's built-in stickers (ChattySticker). Each mood moves only
+ * its own part; everything rests under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+	.chatty-sticker .sticker-hand {
+		transform-origin: 98px 84px;
+		animation: sticker-wave 1.2s ease-in-out infinite;
+	}
+	.chatty-sticker .sticker-heart {
+		transform-origin: 64px 92px;
+		animation: sticker-beat 1s ease-in-out infinite;
+	}
+	.chatty-sticker .sticker-drip {
+		animation: sticker-drip 1.4s ease-in infinite;
+	}
+	.chatty-sticker .sticker-z {
+		animation: sticker-float 2.4s ease-out infinite;
+	}
+	.chatty-sticker .sticker-z:nth-child(2) {
+		animation-delay: 0.8s;
+	}
+	.chatty-sticker .sticker-z:nth-child(3) {
+		animation-delay: 1.6s;
+	}
+	.chatty-sticker .sticker-hat {
+		transform-origin: 64px 18px;
+		animation: sticker-wobble 0.6s ease-in-out infinite alternate;
+	}
+	.chatty-sticker .sticker-confetti {
+		animation: sticker-confetti 1.8s ease-in infinite;
+	}
+	.chatty-sticker .sticker-confetti:nth-of-type(2n) {
+		animation-delay: 0.6s;
+	}
+	.chatty-sticker .sticker-thumb {
+		transform-origin: 96px 100px;
+		animation: sticker-thumbs 1.1s cubic-bezier(0.3, 1.8, 0.5, 1) infinite;
+	}
+	.chatty-sticker:has(.sticker-drip) .sticker-body,
+	.chatty-sticker:not(:has(.sticker-hand, .sticker-heart, .sticker-z, .sticker-hat, .sticker-thumb, .sticker-drip))
+		.sticker-body {
+		transform-origin: 64px 100px;
+		animation: sticker-bounce 1.2s ease-in-out infinite;
+	}
+	/* The tray is still until you point at a sticker; a page of motion is noise. */
+	.sticker-tray-builtin .chatty-sticker * {
+		animation-play-state: paused;
+	}
+	.sticker-tray-builtin button:is(:hover, :focus-visible) .chatty-sticker * {
+		animation-play-state: running;
+	}
+}
+@keyframes sticker-wave {
+	25% {
+		rotate: -22deg;
+	}
+	50% {
+		rotate: 8deg;
+	}
+	75% {
+		rotate: -16deg;
+	}
+}
+@keyframes sticker-beat {
+	15% {
+		scale: 1.18;
+	}
+	30% {
+		scale: 0.96;
+	}
+	45% {
+		scale: 1.1;
+	}
+}
+@keyframes sticker-drip {
+	0% {
+		translate: 0 0;
+		opacity: 0;
+	}
+	20% {
+		opacity: 1;
+	}
+	100% {
+		translate: 0 20px;
+		opacity: 0;
+	}
+}
+@keyframes sticker-float {
+	0% {
+		translate: 0 6px;
+		opacity: 0;
+	}
+	30% {
+		opacity: 1;
+	}
+	100% {
+		translate: 10px -24px;
+		opacity: 0;
+	}
+}
+@keyframes sticker-wobble {
+	from {
+		rotate: -6deg;
+	}
+	to {
+		rotate: 6deg;
+	}
+}
+@keyframes sticker-confetti {
+	0% {
+		translate: 0 -10px;
+		opacity: 0;
+	}
+	15% {
+		opacity: 1;
+	}
+	100% {
+		translate: 0 40px;
+		rotate: 160deg;
+		opacity: 0;
+	}
+}
+@keyframes sticker-thumbs {
+	0%,
+	70%,
+	100% {
+		rotate: 0deg;
+		scale: 1;
+	}
+	30% {
+		rotate: -14deg;
+		scale: 1.12;
+	}
+}
+@keyframes sticker-bounce {
+	0%,
+	60%,
+	100% {
+		translate: 0 0;
+	}
+	25% {
+		translate: 0 -8px;
+	}
+}
+
+/* The emoji burst's canvas: above everything, never in the way. */
+.emoji-burst {
+	position: fixed;
+	inset: 0;
+	width: 100vw;
+	height: 100vh;
+	z-index: 60;
+	pointer-events: none;
+}
+/* A big emoji pops in when it is new, and again each time it is tapped. */
+@media (prefers-reduced-motion: no-preference) {
+	.jumbo-pop {
+		animation: jumbo-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+	}
+}
+@keyframes jumbo-pop {
+	0% {
+		transform: scale(0.3) rotate(-12deg);
+	}
+	60% {
+		transform: scale(1.15) rotate(4deg);
+	}
+}

@@ -48,7 +48,11 @@ test("a failed sticker send keeps the tray, and separate removal never deletes t
 		const remove = tray.getByRole("button", { name: "Remove this sticker" });
 		await expect(remove).toBeVisible();
 		await tray.evaluate(async (element) => {
-			await Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.finished));
+			// The tray's opening motion, not the built-in stickers, which loop forever.
+			const settling = element
+				.getAnimations({ subtree: true })
+				.filter((animation) => animation.effect?.getTiming().iterations !== Infinity);
+			await Promise.all(settling.map((animation) => animation.finished));
 		});
 		const sendBox = (await send.boundingBox())!;
 		const removeBox = (await remove.boundingBox())!;
