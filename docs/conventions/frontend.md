@@ -227,14 +227,13 @@ in their place is the bug they were extracted to fix:
 
 Three fonts and one rule about when each applies:
 
-- `font-sans` (General Sans, with Geist as fallback) is the main interface text.
-- `font-display` (Clash Display) is the display type declared in the current design tokens.
-- **`font-mono` (Geist Mono) is anything a machine produced** — a timestamp, a handle, a count, an
-  avatar's initials. That one rule is most of the personality, so two utilities exist to spend it in
-  one place rather than in forty files:
-  - `eyebrow` — a label, byline or status: mono, uppercase, tracked out, 10px.
-  - `meta` — a machine's own output: mono, tabular, 10.5px, so a number changing width does not
-    shift the row it sits in.
+- `font-sans` is the platform's interface font (SF Pro / Segoe UI / Roboto); `font-display` is the
+  same family for headings, and `font-brand` (General Sans Bold) is the wordmark only.
+- **Anything a machine produced — a timestamp, a handle, a count — uses tabular figures**, not a
+  separate face: two utilities hold the rule in one place rather than in forty files:
+  - `eyebrow` — a label or status: the interface font, 11.5px, semibold.
+  - `meta` — a machine's own output: the interface font, tabular, 11.5px, so a number changing
+    width does not shift its neighbours.
 
   Neither sets a colour. That is the caller's, which is what keeps `eyebrow text-signal` from being a
   fight between two classes.

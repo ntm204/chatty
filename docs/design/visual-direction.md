@@ -9,10 +9,9 @@ screens within the viewport.
 
 The reference was inspected in a browser on desktop and phone, including its actual font and color
 styles. Core colors are navy `#06038d`, yellow `#fbc80b`, violet `#5750fe` and lavender `#e6e6f4`.
-Clash Display 700 supplies the bold fixed headings; General Sans supplies interface text, with
-self-hosted Geist as a fallback and Geist Mono for handles/timestamps. What people write — messages,
-names, previews, drafts — is set in Geist (`font-content`): General Sans has no Vietnamese ranges, so
-letters such as ễ, ờ and ứ were drawn in Geist inside a General Sans word. The mark is a CSS chat bubble
+Type is now the platform's own interface font (SF Pro, Segoe UI, Roboto), as Telegram does: full
+Vietnamese, nothing to download. General Sans Bold sets only the wordmark — the one font the build
+fetches. Clash Display, the other General Sans weights, Geist and Geist Mono were dropped. The mark is a CSS chat bubble
 with two eyes and a lowercase wordmark. The eyes follow the pointer within a few pixels, blink
 occasionally and wink on hover. Pointer inactivity recenters them; hidden pages pause blinking
 and reduced motion disables the effect. It replaces the former serif/asterisk identity.

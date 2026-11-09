@@ -9,7 +9,7 @@ Status: `done` · `next` · `planned` · `blocked` · `dropped`
 
 On 2026-09-08 the owner replaced the nostalgic maximalism direction with the visual style of
 [chatty.net](https://chatty.net/). The interface now uses that reference's navy/yellow/violet palette,
-Clash Display and General Sans, rounded surfaces and faint static gradients. Authentication,
+the platform font with a General Sans wordmark, rounded surfaces and faint static gradients. Authentication,
 chat welcome, the inbox, conversation surfaces and settings share the system, including dark mode
 and phone layouts. A follow-up removes oversized promotional headings, decorative chat previews,
 floating badges, grain and blurred rings. Login/registration fit ordinary laptop and phone
