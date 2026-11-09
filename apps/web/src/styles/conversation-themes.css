@@ -192,38 +192,14 @@
 	padding-top: var(--conversation-chrome-height);
 }
 
-/* A hairline hugs the content; the small inward-facing tab locates the message
- * without painting the avatar, metadata or the whole width of the conversation. */
-/* Drawn with outline and box-shadow, which do not count as overflow: the old
-   inset -3px box made every message row 3px wider than its container, enough
-   for a stray sideways scroll beside a long outgoing message. */
 .message-location-marker {
+	/* Marks the located message for navigation; draws nothing. The bubble's own
+	 * glint (`message-arrive-flash`) is the cue, without an outline around it. */
 	position: absolute;
 	inset: 0;
-	z-index: 1;
-	outline: 1px solid color-mix(in srgb, var(--color-message-locator) 45%, transparent);
-	outline-offset: 2px;
-	border-radius: var(--radius-message);
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 320ms ease;
-}
-.message-location-marker::after {
-	content: "";
-	position: absolute;
-	top: 50%;
-	right: 0;
-	width: 3px;
-	height: 16px;
-	max-height: 50%;
-	border-radius: 3px;
-	box-shadow: 4px 0 0 var(--color-message-locator);
-	transform: translateY(-50%);
-}
-[data-message-side="outgoing"] .message-location-marker::after {
-	right: auto;
-	left: 0;
-	box-shadow: -4px 0 0 var(--color-message-locator);
 }
 [data-message-located="true"] .message-location-marker {
 	opacity: 1;
