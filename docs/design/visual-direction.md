@@ -53,7 +53,7 @@ calls to action are not part of this messaging application.
 - Settings → Appearance follows Claude's own layout: mode cards (Light / System / Dark) and palette
   cards, each a thumbnail of the chat screen. Palettes live in `styles/palettes.css` and repaint the
   same semantic tokens, including `--color-accent` (the call to action); "Clay" is the cream and
-  terracotta of Claude's app. `public/theme.js` stamps `data-palette` before the first paint.
+  terracotta of Claude's app. `public/theme.js` stamps `data-palette` before the first paint — only when a session is stored: the sign-in screens always use the default palette.
 
 ## Implementation
 

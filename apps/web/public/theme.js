@@ -18,7 +18,8 @@
  *
  * It stamps the palette too (`chatty:palette`, see `src/constants/theme.ts`):
  * every palette repaints the same tokens, so it has to land before the first
- * paint for the same reason.
+ * paint for the same reason — but only with a stored session, because the
+ * sign-in screens always use the default palette.
  *
  * The preference is one of "light", "dark" or "system"; what lands on the
  * element is always "light" or "dark". Resolving here rather than in CSS is why
@@ -41,9 +42,11 @@
 	document.documentElement.dataset.theme =
 		stored === "dark" || (stored !== "light" && prefersDark) ? "dark" : "light";
 
+	// A chosen palette applies inside the app only; signed out (no stored
+	// session) the sign-in screens keep the default. `App` keeps it in step.
 	var palette = "ink";
 	try {
-		palette = localStorage.getItem("chatty:palette") || "ink";
+		if (localStorage.getItem("chatty:token")) palette = localStorage.getItem("chatty:palette") || "ink";
 	} catch {
 		// Same as above: the default palette.
 	}

@@ -65,7 +65,7 @@ export function ThemeDevicePreview({ theme, device }: ThemeDevicePreviewProps) {
 									index === 0 && "bg-selection",
 								)}
 							>
-								{index === 0 ? <GroupAvatar seed={name} size="xs" /> : <SilhouetteAvatar size="xs" />}
+								{index === 0 ? <GroupAvatar size="xs" /> : <SilhouetteAvatar size="xs" />}
 								<span className="flex min-w-0 flex-col gap-0.5">
 									<span className="truncate text-[10px] font-medium text-ink">{name}</span>
 									<span className="h-1 w-10 rounded-full bg-rule" />

@@ -12,8 +12,10 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 - Show reactions as chips inside the bubble, drawn with Chatty's own doodle set for the six quick
   reactions; yours is filled in ink, and pressing a chip toggles it.
 - Move the palette to "ink & pastel": warm paper surfaces and an iris-pastel bubble for your messages.
-- Show people without a photo as Messenger's grey silhouette, and groups without one as a group icon
-  on the group's own gradient; drop the plate behind every avatar.
+- Show people without a photo as Messenger's grey silhouette, and groups without one as three grey
+  figures in the same style; drop the plate behind every avatar.
+- A chosen palette colours the signed-in app only: sign-in, registration and recovery always use the
+  default colours.
 - Mark the open conversation and the current settings section by their fill alone, without an edge bar.
 - Chatty's own animated stickers: the bubble mascot in eight moods, at the top of the sticker tray.
   Only the name is stored (`Message.stickerKey`, one of `BUILTIN_STICKER_KEYS`); clients draw them.

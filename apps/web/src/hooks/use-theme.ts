@@ -107,7 +107,7 @@ export const useTheme = create<ThemeState>((set) => ({
 			// Applies now; may not survive a reload.
 		}
 
-		document.documentElement.dataset.palette = palette;
+		// Stamped on <html> by `App`, which also knows whether anyone is signed in.
 		set({ palette });
 	},
 }));

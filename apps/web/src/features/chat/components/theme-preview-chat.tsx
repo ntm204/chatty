@@ -34,7 +34,7 @@ export function ThemePreviewChat({ theme, messages, flowKey, isCompact }: ThemeP
 					isCompact ? "px-3 pt-7 pb-2" : "px-4 py-2.5",
 				)}
 			>
-				<GroupAvatar seed="Weekend getaway" size={isCompact ? "xs" : "sm"} />
+				<GroupAvatar size={isCompact ? "xs" : "sm"} />
 				<span className="flex min-w-0 flex-col leading-tight">
 					<span
 						className={cn("truncate font-semibold text-heading", isCompact ? "text-[11px]" : "text-[13px]")}

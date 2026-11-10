@@ -7,7 +7,9 @@ import { LoginPage } from "@/features/auth/pages/login-page";
 import { ResetPasswordPage } from "@/features/auth/pages/reset-password-page";
 import { ScreenLoadBoundary } from "@/components/screen-load-boundary/screen-load-boundary";
 import { SettingsPage } from "@/features/profile/pages/settings-page";
+import { DEFAULT_PALETTE } from "@/constants/theme";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 
 const ChatPage = lazy(() => import("@/features/chat/pages/chat-page").then((module) => ({ default: module.ChatPage })));
 
@@ -15,6 +17,13 @@ export function App() {
 	const currentUser = useAuth((state) => state.currentUser);
 	const isRestoring = useAuth((state) => state.isRestoring);
 	const restoreSession = useAuth((state) => state.restoreSession);
+	const palette = useTheme((state) => state.palette);
+
+	// A chosen palette is part of your account's app, not of the front door:
+	// sign-in, registration and recovery always wear the default colours.
+	useEffect(() => {
+		document.documentElement.dataset.palette = currentUser ? palette : DEFAULT_PALETTE;
+	}, [currentUser, palette]);
 
 	useEffect(() => {
 		// A token that expires mid-session used to fail every request separately,

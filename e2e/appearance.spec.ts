@@ -70,4 +70,31 @@ test.describe("appearance", () => {
 		await page.reload();
 		await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 	});
+
+	test("a chosen palette colours the signed-in app only; the sign-in screens keep the default", async ({ page }) => {
+		const user = makeUser("PaletteReader");
+		await register(page, user);
+		await page.getByLabel("Account settings").click();
+		await page.getByRole("button", { name: /Appearance/ }).click();
+		await page.getByRole("radio", { name: /Clay/ }).click();
+		await expect(page.locator("html")).toHaveAttribute("data-palette", "clay");
+
+		await page.keyboard.press("Escape");
+		await page.getByLabel("Sign out").click();
+		await expect(page.getByLabel("Password")).toBeVisible();
+		await expect(page.locator("html")).toHaveAttribute("data-palette", "ink");
+		// Also before the app loads: the pre-paint script sees no session.
+		await page.reload();
+		await expect(page.locator("html")).toHaveAttribute("data-palette", "ink");
+
+		// The welcome plays on a fresh load; skip it, as the register helper does.
+		await page
+			.getByRole("button", { name: "Skip intro" })
+			.evaluateAll((buttons) => (buttons[0] as HTMLButtonElement | undefined)?.click());
+		await page.getByLabel("Email").fill(user.email);
+		await page.getByLabel("Password").fill(user.password);
+		await page.getByRole("button", { name: "Sign in" }).click();
+		await expect(page.getByLabel("Find someone")).toBeVisible({ timeout: 15_000 });
+		await expect(page.locator("html")).toHaveAttribute("data-palette", "clay");
+	});
 });
