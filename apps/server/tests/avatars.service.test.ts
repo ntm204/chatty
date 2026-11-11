@@ -7,7 +7,8 @@ import { register } from "../src/modules/auth/auth.service.js";
 import { clearAvatar, getAvatarFilePath, getUserById, setAvatar } from "../src/modules/users/users.service.js";
 
 /** Matches UPLOAD_DIR in vitest.config.ts — the whole tree is removed at the end. */
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 afterAll(async () => {
 	await rm(UPLOAD_DIR, { recursive: true, force: true });

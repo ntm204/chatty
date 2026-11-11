@@ -21,7 +21,8 @@ import { installFakeIO } from "./fake-io.js";
  * user whose id is an attachment id — and nothing below this layer can see it.
  */
 
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 let server: Server;
 let baseUrl: string;

@@ -10,7 +10,8 @@ import { getAttachmentFilePath, getAttachmentUrls } from "../src/modules/attachm
 import { deleteMessage, listMessages, sendMessage } from "../src/modules/messages/messages.service.js";
 import { installFakeIO } from "./fake-io.js";
 
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 // `sendMessage` broadcasts, and getIO() throws when nothing has been installed.
 beforeEach(() => {

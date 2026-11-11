@@ -18,7 +18,7 @@ const PASSWORD = "SuperSecret123";
  * test's TRUNCATE — see the warning in tests/setup.ts. The tests below are about
  * profiles, not about registration, so the hash only has to be *a* valid one.
  */
-const passwordHash = await bcrypt.hash(PASSWORD, 12);
+const passwordHash = await bcrypt.hash(PASSWORD, 4);
 
 let fakeIO: FakeIO;
 

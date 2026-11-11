@@ -20,12 +20,13 @@ export default defineConfig({
 		execArgv: process.allowedNodeEnvironmentFlags.has("--no-experimental-webstorage")
 			? ["--no-experimental-webstorage"]
 			: [],
-		// Bound memory locally; CI can spend the isolated runner on the complete suite.
+		// Bounded locally (it runs alongside the server suite in `verify`); CI can
+		// spend the isolated runner on the complete suite.
 		maxWorkers: process.env.VITEST_MAX_WORKERS
 			? Number(process.env.VITEST_MAX_WORKERS)
 			: process.env.CI
 				? undefined
-				: 2,
+				: 4,
 		// Components touch the DOM; jsdom gives them one without a browser.
 		environment: "jsdom",
 		globals: true,

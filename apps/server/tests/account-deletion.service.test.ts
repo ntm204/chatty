@@ -15,7 +15,7 @@ import { installFakeIO, type FakeIO } from "./fake-io.js";
 const PASSWORD = "SuperSecret123";
 
 /** One hash for the whole file — bcrypt at cost 12 is ~300ms a call. */
-const passwordHash = await bcrypt.hash(PASSWORD, 12);
+const passwordHash = await bcrypt.hash(PASSWORD, 4);
 
 let fakeIO: FakeIO;
 

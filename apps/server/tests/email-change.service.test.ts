@@ -12,7 +12,7 @@ const OLD_EMAIL = "minh_test@chatty.test";
 const NEW_EMAIL = "minh_new@chatty.test";
 
 /** One hash for the whole file — bcrypt at cost 12 is ~300ms a call. */
-const passwordHash = await bcrypt.hash(PASSWORD, 12);
+const passwordHash = await bcrypt.hash(PASSWORD, 4);
 
 let sent: ReturnType<typeof vi.spyOn>;
 

@@ -19,7 +19,8 @@ import { setAvatar } from "../src/modules/users/users.service.js";
  * while every service test stayed green.
  */
 
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 let server: Server;
 let baseUrl: string;

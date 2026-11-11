@@ -13,7 +13,7 @@ const PASSWORD = "SuperSecret123";
 const EMAIL = "minh_test@chatty.test";
 
 /** One hash for the whole file — see the note in profile.service.test.ts. */
-const passwordHash = await bcrypt.hash(PASSWORD, 12);
+const passwordHash = await bcrypt.hash(PASSWORD, 4);
 
 let fakeIO: FakeIO;
 let sent: ReturnType<typeof vi.spyOn>;

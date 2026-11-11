@@ -15,13 +15,37 @@ Every feature is a folder under `src/modules/<feature>/` with the same four file
 | `*.controller.ts` | parse input, call one service, shape the response | contain business rules or DB calls |
 | `*.service.ts` | business logic + database access | know it was called over HTTP |
 
-A fifth file is allowed only to break an import cycle, and only when it holds no logic of its own.
-`modules/messages/messages.mapper.ts` is the one instance: `conversations.service` needs the same
-`messageSelect` and `toMessageDTO` that `messages.service` uses, but `messages.service` already
-imports `assertParticipant` from `conversations.service`. Importing back would put a module-level
-const (`conversationSelect`) in the other module's temporal dead zone, so which of the two loaded
-first would decide whether the server started. If you reach for a fifth file for any other reason,
-the thing you are adding probably belongs in `lib/`.
+Mappers (`*.mapper.ts`: selects and row → DTO functions) are the other file a module may have.
+`modules/messages/messages.mapper.ts` also breaks an import cycle: `conversations` needs
+`messageSelect` and `toMessageDTO`, while every messages service imports `assertParticipant` from
+`conversations.service`. Importing back would put a module-level const in the other module's temporal
+dead zone, so which of the two loaded first would decide whether the server started. A file with logic
+that belongs to no module goes in `lib/`.
+
+### How a module grows
+
+`*.service.ts` stays the module's **only public entry**. When it grows past roughly 600 lines, or
+holds two concepts a developer changes separately, split it by sub-domain — never one function per
+file:
+
+| File | Holds | Example |
+| --- | --- | --- |
+| `<module>.service.ts` | re-exports only: `export * from "./<module>.<sub-domain>.service.js"` | `conversations.service.ts` |
+| `<module>.<sub-domain>.service.ts` | one concept's operations, roughly 150–450 lines | `conversations.group-management.service.ts`, `messages.editing.service.ts` |
+| `<module>.shared.ts` | internals used by two or more sub-domain files: guards, lock/transaction helpers, socket announcements | `conversations.shared.ts` |
+| `<module>.mapper.ts` | selects, row types, row → DTO | `conversations.mapper.ts` |
+
+- Controllers, sockets, other modules and tests import from `<module>.service.ts` only, so a split
+  never churns callers. One re-export layer — no barrel re-exporting another barrel.
+- A helper used by one sub-domain file stays private in that file; it moves to `shared.ts` when a
+  second file needs it, not before. `shared.ts` is not re-exported, except a guard other modules
+  need (`assertParticipant`).
+- A new feature goes in the sub-domain file it belongs to, or becomes a new one when none fits; a new
+  file under ~40 lines usually means it belongs in an existing one.
+- No repositories, base classes or DI containers until two concrete current uses need the same one.
+- `auth.service.ts` (~640 lines) is not split yet: its recovery flows share the bcrypt cost, token
+  hashing and session ending with sign-in. The next auth flow is the point to split into
+  `auth.recovery.service.ts` plus `auth.shared.ts`.
 
 The rule that makes this worth the extra files: **a service must not know what called it.** No `req`, no `res`, no status codes in a service — it takes plain arguments and returns plain data or throws.
 

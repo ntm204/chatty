@@ -11,12 +11,26 @@ const node = (...args) => [process.execPath, ...args];
 export async function runSteps(steps, { budgetMs, graceMs = 5_000, label = "check" }) {
 	const started = Date.now();
 	process.stdout.write(`[${label}] Budget: ${budgetMs / 1000}s. Stops on the first failed step.\n`);
-	for (const [command, ...args] of steps) {
+	for (const step of steps) {
 		const remaining = budgetMs - (Date.now() - started);
 		if (remaining <= 0) return 124;
 		const stepStarted = Date.now();
+		// A step is one command, or `{ parallel: [...] }`: independent commands
+		// run together, and the step fails if any of them does.
+		const group = Array.isArray(step) ? [step] : step.parallel;
+		const codes = await Promise.all(group.map((command) => runCommand(command, remaining)));
+		const code = codes.find((exitCode) => exitCode !== 0) ?? 0;
+		process.stdout.write(`[${label}] Step: ${((Date.now() - stepStarted) / 1000).toFixed(1)}s; exit ${code}.\n`);
+		if (code !== 0) return code;
+	}
+	process.stdout.write(`[${label}] Passed in ${((Date.now() - started) / 1000).toFixed(1)}s.\n`);
+
+	return 0;
+
+	function runCommand([command, ...args], remaining) {
 		process.stdout.write(`[${label}] ${[command, ...args].join(" ")}\n`);
-		const code = await new Promise((resolveCode) => {
+
+		return new Promise((resolveCode) => {
 			const child = spawn(command, args, { stdio: "inherit", detached: process.platform !== "win32" });
 			let stoppedCode;
 			let killTimer;
@@ -90,12 +104,7 @@ export async function runSteps(steps, { budgetMs, graceMs = 5_000, label = "chec
 			});
 			child.once("exit", (code) => finish(code ?? 1));
 		});
-		process.stdout.write(`[${label}] Step: ${((Date.now() - stepStarted) / 1000).toFixed(1)}s; exit ${code}.\n`);
-		if (code !== 0) return code;
 	}
-	process.stdout.write(`[${label}] Passed in ${((Date.now() - started) / 1000).toFixed(1)}s.\n`);
-
-	return 0;
 }
 
 function profile(name, args) {
@@ -107,7 +116,12 @@ function profile(name, args) {
 		npm("run", "lint"),
 		npm("run", "format:check"),
 	];
-	const tests = (changed) => npm("run", changed ? "test:changed" : "test", "--workspaces", "--if-present");
+	// Server and web suites share nothing, so they run at the same time.
+	const tests = (changed) => ({
+		parallel: ["apps/server", "apps/web"].map((workspace) =>
+			npm("run", changed ? "test:changed" : "test", "--workspace", workspace),
+		),
+	});
 	const browser = (config, budgetMs) => ({
 		budgetMs,
 		steps: [node("node_modules/@playwright/test/cli.js", "test", ...(config ? ["--config", config] : []), ...args)],

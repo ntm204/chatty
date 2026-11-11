@@ -16,7 +16,8 @@ import {
 import { installFakeIO, type FakeIO } from "./fake-io.js";
 
 /** Matches UPLOAD_DIR in vitest.config.ts — the whole tree is removed at the end. */
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 let fakeIO: FakeIO;
 

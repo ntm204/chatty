@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { PrismaClient } from "@prisma/client";
-import { TEST_DATABASE_URL } from "./test-database-url.js";
+import { TEST_DATABASE_URL, TEST_WORKERS, workerDatabaseUrl } from "./test-database-url.js";
 
 /**
  * Identifies this suite's claim on the test database.
@@ -51,10 +51,30 @@ async function ensureTestDatabase(): Promise<void> {
  * work: `pg_advisory_lock` is scoped to a *session*, and a pooled client would
  * be free to take the lock on one connection and run the unlock on another.
  */
-function createLockClient(): PrismaClient {
-	return new PrismaClient({
-		datasources: { db: { url: `${TEST_DATABASE_URL}?connection_limit=1` } },
-	});
+/**
+ * The run lock lives on the maintenance database, not on `chatty_test`: a
+ * database cannot be cloned while anyone is connected to it, and the lock's
+ * connection stays open for the whole run.
+ */
+function createAdminClient(): PrismaClient {
+	const adminUrl = new URL(TEST_DATABASE_URL);
+	adminUrl.pathname = "/postgres";
+	adminUrl.searchParams.set("connection_limit", "1");
+
+	return new PrismaClient({ datasources: { db: { url: adminUrl.toString() } } });
+}
+
+/**
+ * One fresh database per worker, cloned from the migrated `chatty_test`.
+ * Cloning copies the schema in well under a second each, where migrating every
+ * worker's database would cost seconds apiece.
+ */
+async function cloneWorkerDatabases(admin: PrismaClient): Promise<void> {
+	for (let worker = 1; worker <= TEST_WORKERS; worker += 1) {
+		const name = new URL(workerDatabaseUrl(worker)).pathname.slice(1);
+		await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
+		await admin.$executeRawUnsafe(`CREATE DATABASE "${name}" TEMPLATE "chatty_test"`);
+	}
 }
 
 /**
@@ -85,7 +105,7 @@ function createLockClient(): PrismaClient {
  */
 export default async function globalSetup(): Promise<() => Promise<void>> {
 	await ensureTestDatabase();
-	const lockClient = createLockClient();
+	const lockClient = createAdminClient();
 	const [claim] = await lockClient.$queryRaw<{ locked: boolean }[]>`
 		SELECT pg_try_advisory_lock(${TEST_RUN_LOCK_KEY}) AS locked
 	`;
@@ -103,6 +123,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
 		stdio: "inherit",
 		env: { ...process.env, DATABASE_URL: TEST_DATABASE_URL },
 	});
+	await cloneWorkerDatabases(lockClient);
 
 	return async () => {
 		// Explicit, though disconnecting would do it: the unlock says what is

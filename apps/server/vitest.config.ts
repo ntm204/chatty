@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { TEST_DATABASE_URL } from "./tests/test-database-url.js";
+import { TEST_DATABASE_URL, TEST_WORKERS } from "./tests/test-database-url.js";
 
 /**
  * Tests run against a separate database on the same Postgres instance as dev.
@@ -44,8 +44,8 @@ export default defineConfig({
 			"**/tests/global-setup.ts",
 			"**/tests/setup.ts",
 		],
-		// One shared database: parallel test files would truncate each other's
-		// fixtures mid-run. Tests within a file still run in order.
-		fileParallelism: false,
+		// Files run side by side, one worker per cloned database (see
+		// tests/global-setup.ts); tests within a file still run in order.
+		maxWorkers: TEST_WORKERS,
 	},
 });

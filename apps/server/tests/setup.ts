@@ -1,15 +1,25 @@
 import { afterAll, beforeEach } from "vitest";
-import { prisma } from "../src/lib/prisma.js";
+import { workerDatabaseUrl } from "./test-database-url.js";
 
 /**
  * Guard rail. `beforeEach` below wipes every table, so pointing this suite at
  * the dev database would silently destroy local data. Refusing to start is the
  * only acceptable behaviour if the name looks wrong.
  */
-const databaseUrl = process.env.DATABASE_URL ?? "";
+// Each worker has its own clone of chatty_test (see global-setup), so test
+// files can run side by side. Set before anything imports the Prisma client,
+// which reads DATABASE_URL once when it is created.
+const workerId = process.env.VITEST_POOL_ID ?? "1";
+process.env.DATABASE_URL = workerDatabaseUrl(workerId);
+// Files too: attachment and avatar tests write and delete uploads, and two
+// workers sharing one directory would remove each other's files.
+process.env.UPLOAD_DIR = `.data/test-uploads/w${workerId}`;
+const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl.endsWith("_test")) {
 	throw new Error(`Refusing to run tests against "${databaseUrl}" — the database name must end in "_test".`);
 }
+
+const { prisma } = await import("../src/lib/prisma.js");
 
 /**
  * Each test starts from an empty database, so tests cannot depend on the order

@@ -36,7 +36,7 @@ beforeAll(async () => {
 	server = createServer(createApp()).listen(0);
 	await once(server, "listening");
 	baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-	passwordHash = await bcrypt.hash(PASSWORD, 12);
+	passwordHash = await bcrypt.hash(PASSWORD, 4);
 });
 
 // Changing a password disconnects the account's sockets.

@@ -9,7 +9,8 @@ import { sendMessage } from "../src/modules/messages/messages.service.js";
 import { addSticker, listStickers, removeSticker } from "../src/modules/stickers/stickers.service.js";
 import { installFakeIO } from "./fake-io.js";
 
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 beforeEach(() => {
 	installFakeIO();

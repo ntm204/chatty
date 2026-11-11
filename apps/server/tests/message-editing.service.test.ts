@@ -19,7 +19,8 @@ import {
 } from "../src/modules/messages/messages.service.js";
 import { installFakeIO, type FakeIO } from "./fake-io.js";
 
-const UPLOAD_DIR = ".data/test-uploads";
+// This worker's own upload directory — see tests/setup.ts.
+const UPLOAD_DIR = process.env.UPLOAD_DIR!;
 
 let fakeIO: FakeIO;
 

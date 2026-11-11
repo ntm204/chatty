@@ -39,9 +39,11 @@ export interface AuthResult {
 /**
  * Cost factor for bcrypt. Each +1 doubles the time to hash, which is the point:
  * slow hashing is what makes offline brute-forcing a stolen database impractical.
- * Do not drop below 10.
+ * Do not drop below 10 — outside the test suite, which hashes hundreds of
+ * throwaway passwords and only checks that hashing and comparing agree; at the
+ * minimum cost (4) the suite no longer spends most of its time in bcrypt.
  */
-const PASSWORD_HASH_ROUNDS = 12;
+const PASSWORD_HASH_ROUNDS = env.NODE_ENV === "test" ? 4 : 12;
 
 /**
  * A valid bcrypt hash of a random throwaway string — no password can ever match it.
