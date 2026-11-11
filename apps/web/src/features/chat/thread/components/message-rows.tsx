@@ -47,8 +47,6 @@ export const MessageRows = memo(function MessageRows({
 	const rowKeys = useMessageRowKeys(messages, currentUserId);
 	const systemRuns = getSystemMessageRuns(messages, unreadDividerMessageId);
 
-	const readIndex = readReceipt ? messages.findIndex((message) => message.id === readReceipt.messageId) : -1;
-
 	return messages.map((message, index) => {
 		const previous = messages[index - 1];
 		const isFirstOfDay = isNewDay(message.createdAt, previous?.createdAt);
@@ -112,7 +110,6 @@ export const MessageRows = memo(function MessageRows({
 					isEditing={editingMessageId === message.id}
 					receipt={readReceipt?.messageId === message.id ? readReceipt : null}
 					// Everything of yours up to the newest message somebody read is read too.
-					isRead={readIndex >= 0 && index <= readIndex}
 					currentUserId={currentUserId}
 					participants={participants}
 					themeColor={themeColor}

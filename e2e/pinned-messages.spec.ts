@@ -231,3 +231,67 @@ test("a second jump made while the first is still loading is the one that stays"
 		await peerContext.close();
 	}
 });
+
+test("a message's actions menu opened just under the header and pins is never covered by them", async ({ browser }) => {
+	const context = await browser.newContext({ viewport: { width: 1280, height: 640 }, reducedMotion: "reduce" });
+	const peerContext = await browser.newContext();
+	try {
+		const page = await context.newPage();
+		const other = makeUser("EdgePeer");
+		await register(await peerContext.newPage(), other);
+		await register(page, makeUser("EdgeReader"));
+		await startDirectChat(page, other);
+		await sendMessage(page, "Pin me so the header grows");
+		await page.evaluate(async (apiUrl) => {
+			const headers = {
+				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
+				"Content-Type": "application/json",
+			};
+			const { items } = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
+			const conversationId = items[0].id;
+			for (let index = 0; index < 30; index++) {
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({ content: `Edge line ${index}` }),
+				});
+			}
+			const history = await (
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })
+			).json();
+			const pinned = history.find((message: { content: string }) => message.content === "Edge line 29");
+			await fetch(`${apiUrl}/conversations/${conversationId}/messages/${pinned.id}/pin`, {
+				method: "PUT",
+				headers,
+			});
+		}, API_URL);
+		await page.reload();
+		await openConversationWith(page, other);
+		await expect(page.locator(".pinned-messages-banner")).toBeVisible();
+
+		const row = page
+			.getByLabel("Message history")
+			.locator("[data-message-interaction-row]")
+			.filter({ has: page.getByText("Edge line 20", { exact: true }) })
+			.last();
+		await row.evaluate((element) => {
+			const history = element.closest('[aria-label="Message history"]')!;
+			const chromeBottom = document.querySelector(".conversation-chrome")!.getBoundingClientRect().bottom;
+			history.scrollTop += element.getBoundingClientRect().top - chromeBottom - 4;
+		});
+		await row.hover();
+		const rowTop = (await row.boundingBox())!.y;
+		await row.getByRole("button", { name: "Message actions" }).click();
+		const menu = page.getByRole("menu", { name: "Message actions" });
+		await expect(menu).toBeVisible();
+		const chrome = (await page.locator(".conversation-chrome").boundingBox())!;
+		const menuBounds = (await menu.boundingBox())!;
+		// Not under the header or pins…
+		expect(menuBounds.y).toBeGreaterThanOrEqual(chrome.y + chrome.height);
+		// …and not by scrolling the thread away: a menu placed under the header used to pull it ~300px.
+		expect(Math.abs((await row.boundingBox())!.y - rowTop)).toBeLessThanOrEqual(2);
+	} finally {
+		await context.close();
+		await peerContext.close();
+	}
+});

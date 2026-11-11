@@ -16,7 +16,6 @@ import { useMessageRowMutations } from "../hooks/use-message-row-mutations";
 import { DOUBLE_TAP_REACTION } from "../constants/message-row";
 import { MessageActionFeedback } from "./message-action-feedback";
 import { MessageActions } from "./message-actions";
-import { BubbleMeta } from "./bubble-meta";
 import { MessageBubble } from "./message-bubble";
 import { MessagePinBadge } from "./message-pin-badge";
 import { MessageSelectCheck } from "./message-select-check";
@@ -48,7 +47,6 @@ interface MessageRowProps extends MessageRowActions {
 	themeColor: ConversationTheme | null;
 	isPinned: boolean;
 	/** Yours, and read by somebody: the bubble shows two ticks. */
-	isRead?: boolean;
 }
 
 /**
@@ -73,7 +71,6 @@ export const MessageRow = memo(function MessageRow({
 	participants,
 	themeColor,
 	isPinned,
-	isRead = false,
 	...actions
 }: MessageRowProps) {
 	// Bind only after React's shallow comparison has admitted this row's update.
@@ -111,13 +108,9 @@ export const MessageRow = memo(function MessageRow({
 		!deliveryState &&
 		message.attachments.some((attachment) => attachment.kind === "image");
 	const hasImages = message.attachments.length > 0;
-	const isVoice = hasImages && message.attachments.every((attachment) => attachment.kind === "audio");
-	// A plain text or voice bubble carries its own time and ticks, as Telegram's do.
-	const hasTimeInBubble = !isDeleted && !isEditing && !deliveryState && (!hasImages || isVoice);
 	// A few emoji standing alone are drawn large and bare; a reply, caption or
 	// quote makes them part of something else.
 	const jumboCount = !isDeleted && !hasImages && !message.replyTo ? countJumboEmoji(message.content) : 0;
-	const hasBubbleMeta = hasTimeInBubble && jumboCount === 0;
 	const hasReactions = message.reactions.length > 0;
 	// One per person, so this is an emoji and not a list — see `MessageReaction`.
 	const myReaction = findMyReaction(message.reactions, currentUserId);
@@ -217,14 +210,6 @@ export const MessageRow = memo(function MessageRow({
 							onJumpToReplyOriginal={onJumpToReplyOriginal}
 							participants={participants}
 							themeColor={themeColor}
-							{...(hasBubbleMeta && {
-								meta: (
-									<BubbleMeta
-										createdAt={message.createdAt}
-										tick={isMine ? (isRead ? "read" : "sent") : null}
-									/>
-								),
-							})}
 							// Nothing to forward on a tombstone or a message still sending.
 							{...(!isDeleted && !deliveryState && { onForward })}
 							footer={
@@ -264,7 +249,7 @@ export const MessageRow = memo(function MessageRow({
 
 				<MessageMeta
 					createdAt={message.createdAt}
-					hasTimeOnMedia={hasTimeOnMedia || hasBubbleMeta}
+					hasTimeOnMedia={hasTimeOnMedia}
 					isMine={isMine}
 					isEdited={isEdited}
 					receipt={receipt}

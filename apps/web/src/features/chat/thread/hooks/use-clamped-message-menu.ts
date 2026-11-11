@@ -1,13 +1,19 @@
 import { useLayoutEffect, type RefObject } from "react";
+import { getMessageViewportTop } from "../../utils/message-viewport";
 
-/** Keep inline action menus inside both the viewport and the scrollable history. */
+/**
+ * Keep inline action menus inside the visible part of the history: below the
+ * floating header and pins (which cover the top of the scroll viewport) and
+ * above the composer. A menu with no room above its trigger flips below it
+ * rather than sliding down over the message it belongs to.
+ */
 export function useClampedMessageMenu(rootRef: RefObject<HTMLElement>, openPanel: string | null, contentKey: boolean) {
 	useLayoutEffect(() => {
 		if (!openPanel) return;
 		const root = rootRef.current;
 		if (!root) return;
 		let menu: HTMLElement | null = null;
-		const history = root.closest('[aria-label="Message history"]');
+		const history = root.closest<HTMLElement>('[aria-label="Message history"]');
 		let horizontal = 0;
 		let vertical = 0;
 		const position = () => {
@@ -21,7 +27,7 @@ export function useClampedMessageMenu(rootRef: RefObject<HTMLElement>, openPanel
 				observer?.observe(menu);
 			}
 			const bounds = history?.getBoundingClientRect();
-			const top = Math.max(8, (bounds?.top ?? 0) + 8);
+			const top = Math.max(8, (history ? getMessageViewportTop(history) : 0) + 8);
 			const bottom = Math.min(window.innerHeight - 8, (bounds?.bottom ?? window.innerHeight) - 8);
 			menu.style.maxHeight = `${Math.max(48, bottom - top)}px`;
 			menu.style.maxWidth = `${Math.max(0, window.innerWidth - 16)}px`;
@@ -30,7 +36,10 @@ export function useClampedMessageMenu(rootRef: RefObject<HTMLElement>, openPanel
 			const left = rect.left - horizontal;
 			const baselineTop = rect.top - vertical;
 			horizontal = Math.max(8, Math.min(left, window.innerWidth - rect.width - 8)) - left;
-			vertical = Math.max(top, Math.min(baselineTop, bottom - rect.height)) - baselineTop;
+			// Opened upward by default; when that would pass under the header, open downward instead.
+			const below = root.getBoundingClientRect().bottom + 8;
+			const preferredTop = baselineTop < top && below + rect.height <= bottom ? below : baselineTop;
+			vertical = Math.max(top, Math.min(preferredTop, bottom - rect.height)) - baselineTop;
 			menu.style.translate = `${horizontal}px ${vertical}px`;
 		};
 		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(position);

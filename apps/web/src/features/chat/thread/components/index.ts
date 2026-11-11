@@ -1,4 +1,3 @@
-export { BubbleMeta } from "./bubble-meta";
 export { DaySeparator } from "./day-separator";
 export { ForwardMessagePanel } from "./forward-message-panel";
 export { MessageActionFeedback } from "./message-action-feedback";

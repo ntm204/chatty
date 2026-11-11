@@ -9,12 +9,6 @@
 .chat-bubble.voice-message {
 	padding: 8px 10px 6px 8px;
 }
-/* The time sits in the duration line here, not floated into a last line of text. */
-.voice-player-time .bubble-meta {
-	top: 0;
-	float: none;
-	margin-left: 0;
-}
 .voice-player-toggle {
 	transition: transform 120ms ease;
 }

@@ -3,7 +3,6 @@ import { api } from "@/api/client";
 import type { AttachmentDTO, ConversationTheme } from "@chatty/shared-types";
 import { LoaderCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { useEffect, useRef } from "react";
-import type { ReactNode } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { getConversationThemeClasses } from "../../constants/conversation-theme";
@@ -17,11 +16,9 @@ interface VoicePlayerProps {
 	/** The conversation's shared accent, replacing the fixed default for "mine" surfaces — see ADR 0022. */
 	themeColor?: ConversationTheme | null;
 	className?: string;
-	/** The bubble's time and ticks, set at the end of the duration line as Telegram does. */
-	meta?: ReactNode;
 }
 
-export function VoicePlayer({ attachment, isMine = false, themeColor = null, className, meta }: VoicePlayerProps) {
+export function VoicePlayer({ attachment, isMine = false, themeColor = null, className }: VoicePlayerProps) {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const theme = getConversationThemeClasses(themeColor);
 	const isOffline = attachment.url === OFFLINE_BINARY_URL;
@@ -145,7 +142,6 @@ export function VoicePlayer({ attachment, isMine = false, themeColor = null, cla
 						>
 							{playbackRate}×
 						</Button>
-						{meta && <span className="voice-player-time ml-auto whitespace-nowrap pl-3">{meta}</span>}
 					</div>
 				</div>
 			</div>

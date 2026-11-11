@@ -44,15 +44,7 @@ test("wrapped text and links keep a compact bubble without changing their conten
 		await expect(main.getByText(LONG_MESSAGE, { exact: true })).toBeVisible();
 		await expect(main.getByText(MANUAL_LINES, { exact: true })).toBeVisible();
 		await page.evaluate(() => document.fonts.ready);
-		// Measure settled bubbles: a message still sending has no time in it yet,
-		// and the read tick can still change while the others open the chat.
-		await expect(
-			page
-				.locator("[data-message-interaction-row]")
-				.filter({ hasText: "Ừ, được nhé." })
-				.locator(".bubble-meta [aria-label='Read']"),
-		).toBeVisible({ timeout: 15_000 });
-		// …and after a just-sent bubble has finished rising into place.
+		// Measure settled bubbles, after a just-sent one has finished rising into place.
 		await expect(page.locator(".message-just-sent")).toHaveCount(0);
 		const paragraphs = page.locator("[data-message-interaction-row] p");
 		const geometry = () =>
@@ -68,9 +60,6 @@ test("wrapped text and links keep a compact bubble without changing their conten
 					const bubble = node.parentElement!;
 					const bounds = bubble.getBoundingClientRect();
 					const visible = rects.filter((rect) => rect.width > 0);
-					// The time and ticks floated into the last line are content too.
-					const meta = bubble.querySelector(".bubble-meta");
-					if (meta) visible.push(meta.getBoundingClientRect());
 					const paintedWidth =
 						Math.max(...visible.map((rect) => rect.right)) - Math.min(...visible.map((rect) => rect.left));
 					const style = getComputedStyle(bubble);
@@ -99,8 +88,7 @@ test("wrapped text and links keep a compact bubble without changing their conten
 		expect(desktop.find((row) => row.text === LINK_MESSAGE)?.height).toBeLessThan(60);
 		expect(desktop.find((row) => row.text === LONG_MESSAGE)?.height).toBeLessThan(60);
 		expect(desktop.find((row) => row.text === MANUAL_LINES)?.text).toBe(MANUAL_LINES);
-		// A short reply stays compact; it now also carries its time and ticks inside.
-		expect(desktop.find((row) => row.text === "Ừ, được nhé.")?.width).toBeLessThan(210);
+		expect(desktop.find((row) => row.text === "Ừ, được nhé.")?.width).toBeLessThan(160);
 		const link = main.getByRole("link", { name: "https://example.com/chatty-demo", exact: true });
 		await expect(link).toHaveAttribute("href", "https://example.com/chatty-demo");
 		await link.hover();

@@ -87,11 +87,11 @@ describe("MessageList", () => {
 		expect(screen.getByText("second")).toBeInTheDocument();
 	});
 
-	it("shows every text message's time inside its bubble, with no persistent caption when the newest isn't mine", () => {
+	it("hides every message's time behind hover, with no persistent caption when the newest message isn't mine", () => {
 		renderList();
 
 		const timeLabel = formatMessageTime(messages[0]!.createdAt);
-		for (const time of screen.getAllByText(timeLabel)) expect(time).toHaveClass("bubble-meta");
+		for (const time of screen.getAllByText(timeLabel)) expect(time).toHaveClass("opacity-0");
 		expect(screen.queryByText(/^Sent /)).not.toBeInTheDocument();
 	});
 
@@ -106,7 +106,7 @@ describe("MessageList", () => {
 			],
 		});
 
-		expect(screen.getByText(formatMessageTime(firstCreatedAt))).toHaveClass("bubble-meta");
+		expect(screen.getByText(formatMessageTime(firstCreatedAt))).toHaveClass("opacity-0");
 		expect(screen.getByText(/^Sent /)).toBeInTheDocument();
 	});
 

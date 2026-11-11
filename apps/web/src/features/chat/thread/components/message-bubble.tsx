@@ -37,8 +37,6 @@ interface MessageBubbleProps {
 	 * id for a forward to name.
 	 */
 	onForward?: () => void;
-	/** Time and ticks drawn inside a text bubble; absent leaves them to the gutter. */
-	meta?: ReactNode;
 	/**
 	 * The reaction chips. Inside a text bubble, under the text; under a photo,
 	 * file, voice note or sticker, which have no bubble of their own to hold them.
@@ -70,7 +68,6 @@ export function MessageBubble({
 	themeColor,
 	onForward,
 	footer,
-	meta,
 }: MessageBubbleProps) {
 	const theme = getConversationThemeClasses(themeColor);
 	const images = message.attachments.filter((attachment) => attachment.kind === "image");
@@ -167,7 +164,6 @@ export function MessageBubble({
 						attachment={voice}
 						isMine={isMine}
 						themeColor={themeColor}
-						meta={meta}
 						className={cn(
 							"chat-bubble",
 							(isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition],
@@ -232,8 +228,6 @@ export function MessageBubble({
 					participants={participants}
 					className={cn(
 						"font-content whitespace-pre-wrap wrap-anywhere text-pretty",
-						// Inline, so the floated time can share its last line.
-						meta && jumboCount === 0 && "inline",
 						// Smaller as the count grows, so three still fit the column a
 						// bubble would have occupied.
 						jumboCount === 1 && "text-[44px] leading-[1.15]",
@@ -242,7 +236,6 @@ export function MessageBubble({
 					)}
 				/>
 			)}
-			{meta}
 			{footer}
 		</div>
 	);
