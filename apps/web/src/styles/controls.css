@@ -1,0 +1,200 @@
+/* Shared controls: the brand mark, ambient background, buttons, fields and avatar dot.
+ * Their callers' geometry stays in charge; these rules add only surface and motion. */
+
+/* A restrained navy/yellow identity. Fixed-height entry screens prioritize
+ * the actual form and conversations over promotional decoration.
+ */
+.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
+	color: var(--color-heading);
+	font-family: var(--font-brand);
+	font-weight: 700;
+	font-size: 32px;
+	line-height: 1;
+	letter-spacing: -1px;
+}
+.brand-symbol {
+	position: relative;
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: 39px;
+	height: 30px;
+	background: currentColor;
+	border-radius: 9px 9px 0 9px;
+}
+.brand-symbol::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	bottom: -5px;
+	border-top: 7px solid currentColor;
+	border-left: 7px solid transparent;
+}
+.brand-symbol i {
+	display: block;
+	width: 4px;
+	height: 8px;
+	background: var(--color-paper-raised);
+	border-radius: 3px;
+}
+
+/* Eye translation and blinking use separate transforms to keep the wordmark still. */
+.brand-symbol i {
+	translate: var(--gaze-x, 0px) var(--gaze-y, 0px);
+	transform-origin: center;
+	transition: translate 180ms ease-out;
+	animation: brand-blink 7.2s ease-in-out infinite;
+}
+.brand[data-gaze-paused] .brand-symbol i {
+	animation-play-state: paused;
+}
+@keyframes brand-blink {
+	0%,
+	91%,
+	95%,
+	100% {
+		transform: scaleY(1);
+	}
+	93% {
+		transform: scaleY(0.12);
+	}
+}
+@keyframes brand-wink {
+	0%,
+	100% {
+		transform: scaleY(1);
+	}
+	35%,
+	65% {
+		transform: scaleY(0.12);
+	}
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+	.brand:hover .brand-symbol i:last-child {
+		animation: brand-wink 480ms ease-in-out;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.brand .brand-symbol i {
+		animation: none;
+		transition: none;
+		translate: none;
+	}
+}
+
+/* Static radial washes avoid blurred borders, grain and muddy dark-mode yellows. */
+.ambient-background {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+	background:
+		radial-gradient(
+			ellipse at 7% 10%,
+			color-mix(in srgb, var(--color-halo-yellow) 12%, transparent),
+			transparent 48%
+		),
+		radial-gradient(
+			ellipse at 95% 90%,
+			color-mix(in srgb, var(--color-halo-purple) 9%, transparent),
+			transparent 52%
+		),
+		var(--color-paper-raised);
+}
+
+/* Shared functional surfaces; caller-supplied geometry stays in charge. */
+.chatty-button {
+	transition:
+		background-color 150ms,
+		color 150ms,
+		box-shadow 150ms,
+		border-color 150ms;
+}
+.chatty-button:focus-visible {
+	outline: 2px solid var(--color-heading);
+	outline-offset: 2px;
+}
+.chatty-button[data-variant="primary"]:hover:not(:disabled) {
+	box-shadow: 0 4px 12px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.text-field:focus {
+	border-color: var(--color-heading);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 10%, transparent);
+}
+
+/* A ring of the surface colour cuts the dot out of the photo behind it. */
+.avatar-online-dot {
+	width: 28%;
+	height: 28%;
+	min-width: 9px;
+	min-height: 9px;
+	box-shadow: 0 0 0 2px var(--color-paper-raised);
+}
+/* Overlapping faces (a quarter of a face, AVATAR_GROUP_OVERLAP): each is cut out where the next overlaps it, so the gap is
+ * real transparency and works on any background, unlike a page-coloured ring. */
+.avatar-group-item:not(:last-child) {
+	mask: radial-gradient(62% 62% at 125% 50%, transparent 99%, #000 100%);
+}
+/* A group's two faces: the back one is cut out around the front one (bottom-left). */
+.group-avatar-back {
+	mask: radial-gradient(58% 58% at 3% 97%, transparent 99%, #000 100%);
+}
+/* The shared icon tooltip fades in; it never moves, so nothing slides under the pointer. */
+@media (prefers-reduced-motion: no-preference) {
+	.tooltip-bubble {
+		animation: tooltip-enter 120ms ease-out;
+	}
+}
+@keyframes tooltip-enter {
+	from {
+		opacity: 0;
+	}
+}
+
+/* Loading placeholders: a faint ink wash that breathes, static under reduced motion. */
+.skeleton {
+	display: block;
+	background: color-mix(in srgb, var(--color-ink) 7%, transparent);
+	animation: skeleton-breathe 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-breathe {
+	50% {
+		opacity: 0.55;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.skeleton {
+		animation: none;
+	}
+	.chatty-button {
+		transition: none;
+	}
+}
+
+/* Validation must remain distinct from both the neutral field and its focus ring. */
+.text-field[aria-invalid="true"],
+.auth-fields .text-field[aria-invalid="true"] {
+	border-color: var(--color-signal);
+}
+.text-field[aria-invalid="true"]:focus {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-signal) 14%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+	.chatty-button[data-variant="primary"] {
+		transition:
+			background-color 150ms,
+			border-color 150ms,
+			box-shadow 150ms,
+			transform 120ms;
+	}
+	.chatty-button[data-variant="primary"]:active:not(:disabled) {
+		transform: translateY(1px);
+	}
+}

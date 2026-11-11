@@ -7,6 +7,7 @@ import { Button } from "@/components/button";
 import { AVATAR_MAX_BYTES, AVATAR_UPLOAD_HINT } from "@/constants/avatar-upload";
 import { useAuth } from "@/hooks/use-auth";
 import type { AvatarSize } from "@/types/avatar";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface CurrentUserAvatarProps {
 	user: CurrentUserDTO;
@@ -55,7 +56,7 @@ export function CurrentUserAvatar({ user, size = "lg" }: CurrentUserAvatarProps)
 		try {
 			setCurrentUser(await api.uploadAvatar(file));
 		} catch (uploadError) {
-			setError((uploadError as Error).message);
+			setError(getErrorMessage(uploadError, "Your photo could not be saved. Try again."));
 		} finally {
 			setIsSaving(false);
 		}
@@ -67,7 +68,7 @@ export function CurrentUserAvatar({ user, size = "lg" }: CurrentUserAvatarProps)
 		try {
 			setCurrentUser(await api.deleteAvatar());
 		} catch (removeError) {
-			setError((removeError as Error).message);
+			setError(getErrorMessage(removeError, "Your photo could not be removed. Try again."));
 		} finally {
 			setIsSaving(false);
 		}

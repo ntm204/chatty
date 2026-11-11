@@ -11,11 +11,15 @@ interface ConversationNavigationParams {
 	setOpenedSavedConversation: (conversation: ConversationDTO | null) => void;
 	setRequestedMessageId: (messageId: string | null) => void;
 	setIsConversationSearchOpen: (isOpen: boolean) => void;
+	/** A jump is still fetching the window around its message. */
+	isNavigationPending: boolean;
 }
 
 interface ConversationNavigation {
 	openNotificationConversation: (conversationId: string) => Promise<void>;
 	handleConversationStarted: (conversationId: string, conversation?: ConversationDTO) => void;
+	/** Opens a conversation at one message — from a bookmark or a global search hit. */
+	openMessageIn: (conversation: ConversationDTO, messageId: string) => void;
 	handleConversationSelected: (conversationId: string) => void;
 	selectSearchResult: (session: MessageSearchSession) => void;
 	closeMessageSearch: () => void;
@@ -38,6 +42,7 @@ export function useConversationNavigation({
 	setOpenedSavedConversation,
 	setRequestedMessageId,
 	setIsConversationSearchOpen,
+	isNavigationPending,
 }: ConversationNavigationParams): ConversationNavigation {
 	function handleConversationStarted(conversationId: string, conversation?: ConversationDTO) {
 		if (conversation) setOpenedSavedConversation(conversation);
@@ -45,6 +50,11 @@ export function useConversationNavigation({
 		setIsConversationSearchOpen(false);
 		setRequestedMessageId(null);
 		setSelectedConversationId(conversationId);
+	}
+
+	function openMessageIn(conversation: ConversationDTO, messageId: string) {
+		handleConversationStarted(conversation.id, conversation);
+		setRequestedMessageId(messageId);
 	}
 
 	function handleConversationSelected(conversationId: string) {
@@ -85,17 +95,25 @@ export function useConversationNavigation({
 	// search panel closes and the list is asked to load the page around it.
 	const jumpToMessage = useCallback(
 		(messageId: string) => {
-			if (scrollToMessage(messageId)) return;
+			if (scrollToMessage(messageId)) {
+				// An earlier jump may still be fetching its window; when it landed it would replace
+				// the thread and pull the reader back. Retargeting cancels it (the history effect
+				// drops a superseded response) and reloads around where they actually went.
+				if (isNavigationPending) setRequestedMessageId(messageId);
+
+				return;
+			}
 
 			setIsConversationSearchOpen(false);
 			setRequestedMessageId(messageId);
 		},
-		[setIsConversationSearchOpen, setRequestedMessageId],
+		[isNavigationPending, setIsConversationSearchOpen, setRequestedMessageId],
 	);
 
 	return {
 		openNotificationConversation,
 		handleConversationStarted,
+		openMessageIn,
 		handleConversationSelected,
 		selectSearchResult,
 		closeMessageSearch,

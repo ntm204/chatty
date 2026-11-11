@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 import { expectMessageLocationCue } from "./message-navigation-assertions.js";
 
 test("pinned photos and text navigate without moving the app shell", async ({ browser }, testInfo) => {
@@ -36,21 +36,21 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 		.poll(() => photo.evaluate((element) => element.closest('[id^="message-"]')!.id))
 		.not.toContain("draft");
 	const photoId = await photo.evaluate((element) => element.closest('[id^="message-"]')!.id.slice(8));
-	await page.evaluate(async () => {
+	await page.evaluate(async (apiUrl) => {
 		const headers = {
 			Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 			"Content-Type": "application/json",
 		};
-		const data = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+		const data = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 		for (let index = 0; index < 85; index++) {
-			const response = await fetch(`http://localhost:4100/conversations/${data.items[0].id}/messages`, {
+			const response = await fetch(`${apiUrl}/conversations/${data.items[0].id}/messages`, {
 				method: "POST",
 				headers,
 				body: JSON.stringify({ content: `History between pins ${index}` }),
 			});
 			if (!response.ok) throw new Error("Could not seed pin history");
 		}
-	});
+	}, API_URL);
 	await sendMessage(page, "Last pinned note");
 	await expect
 		.poll(() =>
@@ -65,18 +65,18 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 		.getByText("Last pinned note", { exact: true })
 		.evaluate((element) => element.closest('[id^="message-"]')!.id.slice(8));
 	await page.evaluate(
-		async ({ ids }) => {
+		async ({ ids, apiUrl }) => {
 			const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
-			const data = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+			const data = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 			for (const id of ids) {
-				const response = await fetch(
-					`http://localhost:4100/conversations/${data.items[0].id}/messages/${id}/pin`,
-					{ method: "PUT", headers },
-				);
+				const response = await fetch(`${apiUrl}/conversations/${data.items[0].id}/messages/${id}/pin`, {
+					method: "PUT",
+					headers,
+				});
 				if (!response.ok) throw new Error(`Pin request failed: ${response.status} ${await response.text()}`);
 			}
 		},
-		{ ids: [photoId, textId] },
+		{ ids: [photoId, textId], apiUrl: API_URL },
 	);
 	// The badge above a pinned bubble was removed by design: pinned status is
 	// only ever surfaced through the bar and its dropdown, never inline.
@@ -155,4 +155,79 @@ test("pinned photos and text navigate without moving the app shell", async ({ br
 	await page.getByLabel("Close pinned messages").click();
 	await context.close();
 	await peerContext.close();
+});
+
+test("a second jump made while the first is still loading is the one that stays", async ({ browser }) => {
+	const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: "reduce" });
+	const peerContext = await browser.newContext();
+	try {
+		const page = await context.newPage();
+		const other = makeUser("RacePinSender");
+		await register(await peerContext.newPage(), other);
+		await register(page, makeUser("RacePinReader"));
+		await startDirectChat(page, other);
+		await sendMessage(page, "Old pinned note");
+		const ids = await page.evaluate(async (apiUrl) => {
+			const headers = {
+				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
+				"Content-Type": "application/json",
+			};
+			const { items } = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
+			const conversationId = items[0].id;
+			// The composer's send may still be in flight; wait for the server to hold it.
+			let oldId: string | undefined;
+			for (let attempt = 0; attempt < 50 && !oldId; attempt++) {
+				const history = await (
+					await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })
+				).json();
+				oldId = history.find((message: { content: string }) => message.content === "Old pinned note")?.id;
+				if (!oldId) await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			if (!oldId) throw new Error("The first note never reached the server");
+			for (let index = 0; index < 85; index++) {
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({ content: `Filler ${index}` }),
+				});
+			}
+			const newest = await (
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({ content: "Newest pinned note" }),
+				})
+			).json();
+			for (const id of [oldId, newest.id]) {
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages/${id}/pin`, { method: "PUT", headers });
+			}
+
+			return { oldId, newestId: newest.id as string };
+		}, API_URL);
+		await page.reload();
+		await openConversationWith(page, other);
+
+		// Hold the old message's window so the second jump happens while it is in flight.
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => (release = resolve));
+		await page.route(new RegExp(`/messages/${ids.oldId}/context`), async (route) => {
+			await held;
+			await route.continue().catch(() => undefined);
+		});
+		await page.getByLabel("Show pinned messages").click();
+		await page.getByRole("dialog", { name: "Pinned messages" }).getByText("Old pinned note").click();
+		await page.getByLabel("Show pinned messages").click();
+		await page.getByRole("dialog", { name: "Pinned messages" }).getByText("Newest pinned note").click();
+		release();
+
+		const history = page.getByLabel("Message history");
+		await expect(history.getByText("Newest pinned note", { exact: true })).toBeInViewport();
+		// Give the superseded response time to land; it must not pull the thread back.
+		await page.waitForTimeout(800);
+		await expect(history.getByText("Newest pinned note", { exact: true })).toBeInViewport();
+		await expect(history.getByText("Old pinned note", { exact: true })).not.toBeInViewport();
+	} finally {
+		await context.close();
+		await peerContext.close();
+	}
 });

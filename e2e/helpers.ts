@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
+import { e2eApiUrl } from "./database.js";
 
 // Contexts opened with `browser.newContext()` belong to the worker's browser, not
 // to the test, so any a spec forgets to close keep their pages and sockets for the
@@ -17,6 +18,12 @@ test.afterEach(async ({ browser }) => {
  * registration — three of the things most likely to break and least likely to
  * be caught anywhere else.
  */
+
+/**
+ * This worker's API server. Pass it into `page.evaluate` as an argument when the
+ * request runs in the browser: the callback is serialised, so it cannot see this.
+ */
+export const API_URL = e2eApiUrl();
 
 export interface TestUser {
 	displayName: string;

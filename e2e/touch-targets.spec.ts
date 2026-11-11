@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { makeUser, register, sendMessage, startGroupChat, type TestUser } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startGroupChat, type TestUser } from "./helpers.js";
 
 interface ReactionFixture {
 	account: TestUser;
@@ -71,7 +71,7 @@ test("touch reaction targets stay separate at 320px while desktop keeps its comp
 	request,
 }) => {
 	test.setTimeout(60_000);
-	const apiUrl = process.env.E2E_API_URL ?? "http://localhost:4100";
+	const apiUrl = API_URL;
 	const peers: ReactionFixture[] = [];
 	// Extra reactors are HTTP fixtures: this test measures real rendered reaction
 	// controls, while the author's account and interactions still use the UI.

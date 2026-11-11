@@ -5,6 +5,7 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { focusField } from "@/utils/focus-field";
 import { getServerErrorField } from "@/utils/server-error-field";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface ChangeEmailFormProps {
 	user: CurrentUserDTO;
@@ -62,7 +63,7 @@ export function ChangeEmailForm({ user }: ChangeEmailFormProps) {
 		} catch (error) {
 			// "Email already registered" and "that is already the address on this
 			// account" are the server's to know; both belong beside the new address.
-			const message = (error as Error).message;
+			const message = getErrorMessage(error, "Your email could not be changed. Try again.");
 			const field = getServerErrorField(message, { email: "newEmail", currentPassword: "currentPassword" });
 			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
 			focusField(form, field);

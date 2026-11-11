@@ -2,7 +2,8 @@ import type { UserDTO } from "@chatty/shared-types";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NewConversationPanel } from "@/features/chat/components/new-conversation-panel";
+import { NewConversationPanel } from "@/features/chat/sidebar/components/new-conversation-panel";
+import { serverError } from "./factories";
 
 const searchUsers = vi.fn();
 const createConversation = vi.fn();
@@ -147,7 +148,7 @@ describe("NewConversationPanel", () => {
 	});
 
 	it("surfaces a failed search instead of failing silently", async () => {
-		searchUsers.mockRejectedValue(new Error("Network is down"));
+		searchUsers.mockRejectedValue(serverError("Network is down"));
 		const user = userEvent.setup();
 		render(<NewConversationPanel onConversationStarted={vi.fn()} />);
 

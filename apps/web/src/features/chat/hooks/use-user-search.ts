@@ -1,6 +1,7 @@
 import type { UserDTO } from "@chatty/shared-types";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface UserSearch {
 	query: string;
@@ -77,7 +78,8 @@ export function useUserSearch(excludeUserIds: string[] = []): UserSearch {
 				setHasSearched(true);
 			})
 			.catch((searchError: Error) => {
-				if (generation === generationRef.current) setError(searchError.message);
+				if (generation === generationRef.current)
+					setError(getErrorMessage(searchError, "Search could not finish. Try again."));
 			})
 			.finally(() => {
 				if (generation === generationRef.current) setIsSearching(false);

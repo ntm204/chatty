@@ -1,0 +1,245 @@
+/* The open conversation: pane, header, history, composer, details panel and selection. */
+
+.conversation-pane {
+	border: 0;
+	border-radius: 20px;
+	background: var(--color-paper-raised);
+}
+.conversation-header {
+	height: 77px;
+	background: var(--color-paper-raised);
+	border-bottom: 1px solid var(--color-rule-soft);
+}
+.conversation-header h1 {
+	font-size: 16px;
+	line-height: 23px;
+}
+.conversation-header > button {
+	width: 35px;
+	height: 35px;
+	border-radius: 50%;
+	color: var(--color-heading);
+	background: var(--color-paper);
+}
+.message-paper {
+	background: var(--color-paper-raised);
+}
+.day-label {
+	background: var(--color-paper);
+	color: var(--color-ink-faint);
+	font-family: var(--font-sans);
+	font-size: 11px;
+	text-transform: none;
+	letter-spacing: 0;
+	padding: 5px 15px;
+}
+.message-composer {
+	border-top: 1px solid var(--color-rule-soft);
+	padding-block: 16px;
+	background: var(--color-paper-raised);
+}
+.composer-well {
+	min-height: 46px;
+	background: var(--color-paper);
+	border: 1px solid var(--color-rule-soft);
+}
+.composer-well:focus-within {
+	border-color: var(--color-heading);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 8%, transparent);
+}
+#conversation-details {
+	border: 0;
+	border-radius: 20px;
+	background: var(--color-paper-raised);
+}
+#conversation-details > div:first-of-type {
+	background: var(--color-paper-raised);
+	border-radius: 20px 20px 0 0;
+}
+@media (max-width: 1023px) {
+	.conversation-pane,
+	#conversation-details {
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.message-composer {
+		padding-bottom: max(16px, env(safe-area-inset-bottom));
+	}
+	.message-composer textarea {
+		max-height: min(160px, max(44px, calc(var(--chat-viewport-height, 100dvh) * 0.2)));
+	}
+	.composer-attachments img {
+		width: min(80px, calc(var(--chat-viewport-height, 100dvh) * 0.15));
+		height: min(80px, calc(var(--chat-viewport-height, 100dvh) * 0.15));
+	}
+	.message-composer [role="dialog"] {
+		max-height: calc(var(--chat-viewport-height, 100dvh) * 0.5);
+		overflow-y: auto;
+	}
+}
+@media (max-width: 639px) {
+	.message-composer :is(input:not([type="range"]), textarea) {
+		font-size: 16px;
+	}
+}
+@media (pointer: coarse) {
+	.message-composer
+		:is(
+			.composer-well > button,
+			button[aria-haspopup="menu"],
+			button[type="submit"],
+			button[aria-label="Record a voice message"],
+			button[aria-label="Cancel reply"],
+			button[aria-label^="Remove attached image"],
+			button[aria-label="Remove this sticker"]
+		) {
+		min-width: 44px;
+		min-height: 44px;
+	}
+	.message-composer textarea {
+		font-size: 16px;
+	}
+}
+.conversation-pane > .chat-wallpaper {
+	z-index: 0;
+}
+.conversation-pane > :not(.chat-wallpaper, .conversation-chrome) {
+	position: relative;
+	z-index: 1;
+}
+
+/* The history passes behind the fixed chrome. A dense translucent wash keeps
+ * the controls readable while leaving nearby messages softly visible. Above the
+ * history's own layers (reaction chips, gallery overlays are z-10), below the
+ * reaction picker (z-30) that may open over it. */
+.conversation-chrome {
+	--conversation-chrome-height: 77px;
+	position: absolute;
+	inset: 0 0 auto;
+	z-index: 20;
+}
+.conversation-pane {
+	--conversation-chrome-height: 77px;
+}
+.conversation-pane[data-has-pins="true"] {
+	--conversation-chrome-height: 125px;
+}
+.conversation-pane[data-search-open="true"] {
+	--conversation-chrome-height: 125px;
+}
+.conversation-pane[data-has-pins="true"][data-search-open="true"] {
+	--conversation-chrome-height: 173px;
+}
+.conversation-pane .conversation-header,
+.conversation-pane .pinned-messages-banner,
+.conversation-pane .conversation-message-search {
+	background: color-mix(in srgb, var(--color-paper-raised) 82%, transparent);
+	border-color: color-mix(in srgb, var(--color-rule-soft) 68%, transparent);
+	-webkit-backdrop-filter: blur(11px) saturate(112%);
+	backdrop-filter: blur(11px) saturate(112%);
+}
+.conversation-pane .conversation-header > button {
+	background: color-mix(in srgb, var(--color-paper) 76%, transparent);
+}
+.conversation-pane .conversation-message-search:focus-within {
+	border-color: var(--color-ink);
+}
+.conversation-message-content {
+	padding-top: var(--conversation-chrome-height);
+}
+.message-location-marker {
+	/* Marks the located message for navigation; draws nothing. The bubble's own
+	 * glint (`message-arrive-flash`) is the cue, without an outline around it. */
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 320ms ease;
+}
+[data-message-located="true"] .message-location-marker {
+	opacity: 1;
+	transition-duration: 120ms;
+}
+
+/* Arriving at a message — from a pin, a reply or search — the bubble itself
+ * glints once, as Telegram's does, so the eye lands on it before the marker. */
+@media (prefers-reduced-motion: no-preference) {
+	[data-message-located="true"] :is(.chat-bubble, .message-gallery, .voice-player, .file-card) {
+		animation: message-arrive-flash 0.9s ease-out;
+	}
+}
+@keyframes message-arrive-flash {
+	0% {
+		filter: brightness(1);
+		transform: scale(1);
+	}
+	25% {
+		filter: brightness(0.86);
+		transform: scale(1.03);
+	}
+	100% {
+		filter: brightness(1);
+		transform: scale(1);
+	}
+}
+/* Below the header, pins and the sticky day label, which all float over the top of the history. */
+.jump-to-unread {
+	top: calc(var(--conversation-chrome-height, 0px) + 44px);
+}
+.message-paper {
+	scroll-padding-top: calc(var(--conversation-chrome-height, 0px) + 8px);
+}
+@media (prefers-reduced-motion: reduce) {
+	.message-location-marker {
+		transition: none;
+	}
+}
+@media (prefers-reduced-transparency: reduce) {
+	.conversation-pane .conversation-header,
+	.conversation-pane .pinned-messages-banner,
+	.conversation-pane .conversation-message-search {
+		background: var(--color-paper-raised);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+}
+
+/* ── Swipe to reply (touch) ── */
+[data-message-interaction-row] {
+	touch-action: pan-y;
+}
+.swipe-reply-hint {
+	position: absolute;
+	top: 50%;
+	right: -36px;
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--color-paper-raised) 85%, transparent);
+	color: var(--color-ink-soft);
+	transform: translateY(-50%) scale(var(--swipe-progress, 0));
+	opacity: var(--swipe-progress, 0);
+	pointer-events: none;
+}
+
+/* The day label rides at the top while you scroll through that day, as in
+ * Telegram, then hands over to the next day's label. */
+.conversation-pane .day-separator {
+	position: sticky;
+	top: calc(var(--conversation-chrome-height, 0px) + 8px);
+	z-index: 5;
+	pointer-events: none;
+}
+
+/* A picked message while selecting: a flat band across the thread's width, as
+ * in Telegram — square, so stacked picks read as one continuous selection. */
+[data-message-side]:has(> [data-message-interaction-row][data-selected]) {
+	border-radius: 0;
+	background: color-mix(in srgb, var(--color-heading) 9%, transparent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 9%, transparent);
+}
+[data-message-interaction-row][data-selected] {
+	cursor: pointer;
+}

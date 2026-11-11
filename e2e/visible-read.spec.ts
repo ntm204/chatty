@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, messages, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import {
+	API_URL,
+	makeUser,
+	messages,
+	openConversationWith,
+	register,
+	sendMessage,
+	startDirectChat,
+} from "./helpers.js";
 
 test("an incoming message stays unread while the reader is scrolled up", async ({ browser }) => {
 	const sender = await browser.newContext();
@@ -12,16 +20,16 @@ test("an incoming message stays unread while the reader is scrolled up", async (
 	await register(senderPage, senderUser);
 	await startDirectChat(senderPage, readerUser);
 	await expect(senderPage.getByRole("main").getByRole("heading", { name: readerUser.displayName })).toBeVisible();
-	const conversationId = await senderPage.evaluate(async () => {
+	const conversationId = await senderPage.evaluate(async (apiUrl) => {
 		const headers = {
 			Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 			"Content-Type": "application/json",
 		};
-		const response = await fetch("http://localhost:4100/conversations", { headers });
+		const response = await fetch(`${apiUrl}/conversations`, { headers });
 		const data = (await response.json()) as { items: { id: string }[] };
 		const id = data.items[0]!.id;
 		for (let index = 0; index < 35; index += 1) {
-			const sent = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
+			const sent = await fetch(`${apiUrl}/conversations/${id}/messages`, {
 				method: "POST",
 				headers,
 				body: JSON.stringify({ content: `Visible history ${index + 1}` }),
@@ -30,18 +38,21 @@ test("an incoming message stays unread while the reader is scrolled up", async (
 		}
 
 		return id;
-	});
+	}, API_URL);
 	await openConversationWith(readerPage, senderUser);
 	const history = readerPage.getByRole("region", { name: "Message history" });
 	async function unreadCount(): Promise<number> {
-		return readerPage.evaluate(async (id) => {
-			const response = await fetch(`http://localhost:4100/conversations/${id}`, {
-				headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
-			});
-			const conversation = (await response.json()) as { unreadCount: number };
+		return readerPage.evaluate(
+			async ({ id, apiUrl }) => {
+				const response = await fetch(`${apiUrl}/conversations/${id}`, {
+					headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
+				});
+				const conversation = (await response.json()) as { unreadCount: number };
 
-			return conversation.unreadCount;
-		}, conversationId);
+				return conversation.unreadCount;
+			},
+			{ id: conversationId, apiUrl: API_URL },
+		);
 	}
 	await expect.poll(unreadCount).toBe(0);
 	await history.evaluate((element) => {

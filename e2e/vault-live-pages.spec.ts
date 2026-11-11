@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, startDirectChat } from "./helpers.js";
 
 test("vault retains loaded link pages and reading position across live retraction and category return", async ({
 	browser,
@@ -11,16 +11,16 @@ test("vault retains loaded link pages and reading position across live retractio
 	await register(await peerContext.newPage(), peer);
 	await register(page, makeUser("VaultReader"));
 	await startDirectChat(page, peer);
-	const seeded = await page.evaluate(async () => {
+	const seeded = await page.evaluate(async (apiUrl) => {
 		const headers = {
 			Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 			"Content-Type": "application/json",
 		};
-		const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+		const conversations = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 		const conversationId = conversations.items[0].id as string;
 		let newestId = "";
 		for (let index = 0; index < 45; index++) {
-			const response = await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, {
+			const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
 				method: "POST",
 				headers,
 				body: JSON.stringify({ content: `https://example.com/vault-page-${index}` }),
@@ -29,7 +29,7 @@ test("vault retains loaded link pages and reading position across live retractio
 			newestId = (await response.json()).id;
 		}
 		return { conversationId, newestId };
-	});
+	}, API_URL);
 	await page.getByRole("button", { name: "Conversation storage and details" }).click();
 	const vault = page.getByRole("complementary", { name: "Conversation details" });
 	await vault.getByRole("button", { name: "Media, files and links" }).click();
@@ -50,13 +50,16 @@ test("vault retains loaded link pages and reading position across live retractio
 	});
 	const readingLink = vault.getByText("https://example.com/vault-page-38", { exact: true });
 	const readingTop = (await readingLink.boundingBox())!.y;
-	await page.evaluate(async ({ conversationId, newestId }) => {
-		const response = await fetch(`http://localhost:4100/conversations/${conversationId}/messages/${newestId}`, {
-			method: "DELETE",
-			headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
-		});
-		if (!response.ok) throw new Error("Retract link failed");
-	}, seeded);
+	await page.evaluate(
+		async ({ conversationId, newestId, apiUrl }) => {
+			const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages/${newestId}`, {
+				method: "DELETE",
+				headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
+			});
+			if (!response.ok) throw new Error("Retract link failed");
+		},
+		{ ...seeded, apiUrl: API_URL },
+	);
 	await expect(vault.getByText("https://example.com/vault-page-44", { exact: true })).toHaveCount(0);
 	await expect(vault.getByText("Loading more…", { exact: true })).toHaveCount(0);
 	await expect(oldest).toHaveCount(1);

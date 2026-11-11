@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { MessageDeliveryStatus } from "@/features/chat/components/message-delivery-status";
-import { ComposerUploadPreview } from "@/features/chat/components/composer-upload-preview";
+import { MessageDeliveryStatus } from "@/features/chat/thread/components/message-delivery-status";
+import { ComposerUploadPreview } from "@/features/chat/composer/components/composer-upload-preview";
 
 afterEach(() => vi.restoreAllMocks());
 

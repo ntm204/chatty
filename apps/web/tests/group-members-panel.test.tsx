@@ -2,8 +2,8 @@ import type { ReactElement } from "react";
 import { act, fireEvent, render as renderView, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GroupMembersPanel } from "@/features/chat/components/group-members-panel";
-import { makeConversation, makeParticipant, makeUser } from "./factories";
+import { GroupMembersPanel } from "@/features/chat/details/components/group-members-panel";
+import { makeConversation, makeParticipant, makeUser, serverError } from "./factories";
 
 function render(element: ReactElement) {
 	const result = renderView(element);
@@ -72,7 +72,7 @@ describe("GroupMembersPanel", () => {
 		});
 		expect(dialog).toBeVisible();
 		expect(removeParticipant).toHaveBeenCalledOnce();
-		await act(async () => fail(new Error("Retry removal")));
+		await act(async () => fail(serverError("Retry removal")));
 		expect(within(dialog).getByRole("alert")).toHaveTextContent("Retry removal");
 		removeParticipant.mockResolvedValue(undefined);
 		fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
@@ -217,7 +217,7 @@ describe("GroupMembersPanel", () => {
 	});
 
 	it("surfaces a failed removal instead of failing silently", async () => {
-		removeParticipant.mockRejectedValue(new Error("Network is down"));
+		removeParticipant.mockRejectedValue(serverError("Network is down"));
 		const user = userEvent.setup();
 		render(<GroupMembersPanel conversation={group} currentUserId="minh" onClose={vi.fn()} />);
 

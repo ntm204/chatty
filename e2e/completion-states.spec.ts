@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, messages, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import {
+	API_URL,
+	makeUser,
+	messages,
+	openConversationWith,
+	register,
+	sendMessage,
+	startDirectChat,
+} from "./helpers.js";
 
 test("sidebar distinguishes loading, failure, retry and empty without disabling navigation", async ({ page }) => {
 	await register(page, makeUser("SidebarRetry"));
@@ -17,13 +25,16 @@ test("sidebar distinguishes loading, failure, retry and empty without disabling 
 		});
 	});
 	await page.reload();
-	await expect(page.getByText("Loading conversations…")).toBeVisible();
+	// The held request outlasts the skeleton delay, so the placeholder rows appear.
+	await expect(page.getByRole("status").filter({ hasText: "Loading conversations" })).toBeAttached();
 	release();
 	await expect(page.getByRole("alert")).toContainText("Could not refresh conversations");
 	await expect(page.getByLabel("Find someone")).toBeEnabled();
 	await page.unroute(/\/conversations(?:\?.*)?$/);
 	await page.getByRole("button", { name: "Retry conversations" }).click();
-	await expect(page.getByText("No conversations yet.", { exact: true })).toBeVisible();
+	await expect(page.getByText("No conversations yet", { exact: true })).toBeVisible();
+	await page.getByRole("button", { name: "Find someone", exact: true }).click();
+	await expect(page.getByLabel("Find someone")).toBeFocused();
 });
 
 test("touch reactions converge after concurrent changes and a delayed HTTP response", async ({ browser }) => {
@@ -99,10 +110,10 @@ test("mobile search keeps long Unicode and markup-like text inside the result wi
 		]);
 		const token = await page.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}` };
-		const list = await (await page.request.get("http://localhost:4100/conversations", { headers })).json();
+		const list = await (await page.request.get(`${API_URL}/conversations`, { headers })).json();
 		const conversationId = list.items[0].id;
 		const rows = await (
-			await page.request.get(`http://localhost:4100/conversations/${conversationId}/messages`, { headers })
+			await page.request.get(`${API_URL}/conversations/${conversationId}/messages`, { headers })
 		).json();
 		await page.getByRole("button", { name: "Back to conversations" }).click();
 		const sidebar = page.getByRole("complementary");
@@ -117,16 +128,15 @@ test("mobile search keeps long Unicode and markup-like text inside the result wi
 		await expect(result.locator("img")).toHaveCount(0);
 		expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 		await page.screenshot({ path: "/tmp/chatty-40-mobile-search.png" });
-		const edited = await page.request.patch(
-			`http://localhost:4100/conversations/${conversationId}/messages/${rows[0].id}`,
-			{ headers, data: { content: "Needle updated safely" } },
-		);
+		const edited = await page.request.patch(`${API_URL}/conversations/${conversationId}/messages/${rows[0].id}`, {
+			headers,
+			data: { content: "Needle updated safely" },
+		});
 		expect(edited.ok()).toBe(true);
 		await expect(result).toContainText("Needle updated safely");
-		const removed = await page.request.delete(
-			`http://localhost:4100/conversations/${conversationId}/messages/${rows[0].id}`,
-			{ headers },
-		);
+		const removed = await page.request.delete(`${API_URL}/conversations/${conversationId}/messages/${rows[0].id}`, {
+			headers,
+		});
 		expect(removed.ok()).toBe(true);
 		await expect(dialog.locator("li")).toHaveCount(0);
 	} finally {

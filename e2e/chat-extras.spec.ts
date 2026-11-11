@@ -22,7 +22,7 @@ test("built-in stickers, chat folders and multi-select work against the real ser
 
 	// Folders: a direct chat is under Direct, not under Groups.
 	await page.getByRole("tab", { name: "Groups" }).click();
-	await expect(page.getByText("No groups yet.")).toBeVisible();
+	await expect(page.getByText("No groups yet", { exact: true })).toBeVisible();
 	await page.getByRole("tab", { name: "Direct" }).click();
 	await expect(page.getByRole("button", { name: new RegExp(peer.displayName) }).first()).toBeVisible();
 	await page.getByRole("tab", { name: "All" }).click();

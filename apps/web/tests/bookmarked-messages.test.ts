@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { SavedMessagePageDTO } from "@chatty/shared-types";
 import { api } from "@/api/client";
-import { useBookmarkedMessages } from "@/features/chat/hooks/use-bookmarked-messages";
-import { makeMessage } from "./factories";
+import { useBookmarkedMessages } from "@/features/chat/sidebar/hooks/use-bookmarked-messages";
+import { makeMessage, serverError } from "./factories";
 
 type Handler = (event: unknown) => void;
 const { handlers } = vi.hoisted(() => ({ handlers: new Map<string, Handler>() }));
@@ -81,7 +81,7 @@ it("retains a bookmark on failed removal and coalesces duplicate clicks", async 
 	});
 	expect(api.removeBookmark).toHaveBeenCalledTimes(1);
 	await act(async () => {
-		reject(new Error("Removal interrupted"));
+		reject(serverError("Removal interrupted"));
 		await removal;
 	});
 	expect(state.current.results).toHaveLength(1);
@@ -92,7 +92,7 @@ it("retains a bookmark on failed removal and coalesces duplicate clicks", async 
 it("clears visible results immediately on loss of membership", async () => {
 	vi.mocked(api.listBookmarkedMessages)
 		.mockResolvedValueOnce({ results: [result("first")], hasMore: false })
-		.mockRejectedValueOnce(new Error("Offline"));
+		.mockRejectedValueOnce(serverError("Offline"));
 	const { result: state } = renderHook(() => useBookmarkedMessages("me"));
 	await waitFor(() => expect(state.current.results).toHaveLength(1));
 	act(() => handlers.get("conversation:left")?.({ conversationId: "conversation-1" }));

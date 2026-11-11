@@ -1,7 +1,7 @@
 import { StrictMode, useLayoutEffect, useState } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useMessageDraft } from "@/features/chat/hooks/use-message-draft";
+import { useMessageDraft } from "@/features/chat/composer/hooks/use-message-draft";
 import { clearLocalUserData } from "@/lib/local-chat-store";
 import { getMessageDraftKey } from "@/lib/message-drafts";
 

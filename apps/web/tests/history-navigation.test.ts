@@ -5,7 +5,7 @@ import { api } from "@/api/client";
 import { MESSAGE_PAGE_SIZE } from "@/features/chat/constants/pagination";
 import { useConversationMessages } from "@/features/chat/hooks/use-conversation-messages";
 import { useAuth } from "@/hooks/use-auth";
-import { makeCurrentUser, makeMessage } from "./factories";
+import { makeCurrentUser, makeMessage, serverError } from "./factories";
 
 type SocketHandler = (payload: unknown) => void;
 const { socketHandlers } = vi.hoisted(() => ({ socketHandlers: new Map<string, SocketHandler>() }));
@@ -205,7 +205,7 @@ describe("history navigation", () => {
 			initialProps: { target: "message-10" as string | null },
 		});
 		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));
-		vi.mocked(api.listMessages).mockRejectedValue(new Error("Could not reach the server"));
+		vi.mocked(api.listMessages).mockRejectedValue(serverError("Could not reach the server"));
 		view.rerender({ target: null });
 		await waitFor(() => expect(view.result.current.loadError).toBe("Could not reach the server"));
 		expect(view.result.current.targetMessageId).toBeNull();
@@ -348,7 +348,7 @@ describe("history navigation", () => {
 			},
 		);
 		await waitFor(() => expect(view.result.current.messages.map((message) => message.id)).toEqual(["message-100"]));
-		vi.mocked(api.getMessageContext).mockRejectedValueOnce(new Error("Message no longer exists"));
+		vi.mocked(api.getMessageContext).mockRejectedValueOnce(serverError("Message no longer exists"));
 
 		view.rerender({ target: "removed-message" });
 
@@ -366,7 +366,7 @@ describe("history navigation", () => {
 
 	it("shows an unavailable-target notice instead of a thread error with a cached latest page", async () => {
 		localStore.readMessageSnapshot.mockResolvedValue([makeHistoryMessage(100)]);
-		vi.mocked(api.getMessageContext).mockRejectedValue(new Error("Message no longer exists"));
+		vi.mocked(api.getMessageContext).mockRejectedValue(serverError("Message no longer exists"));
 		const onUnavailableNavigation = vi.fn();
 		const view = renderHook(() =>
 			useConversationMessages("conversation", vi.fn(), "removed-message", onUnavailableNavigation),
@@ -384,7 +384,7 @@ describe("history navigation", () => {
 
 	it("still opens a cached conversation offline when no history navigation was requested", async () => {
 		localStore.readMessageSnapshot.mockResolvedValue([makeHistoryMessage(100)]);
-		vi.mocked(api.listMessages).mockRejectedValue(new Error("offline"));
+		vi.mocked(api.listMessages).mockRejectedValue(serverError("offline"));
 		const view = renderHook(() => useConversationMessages("conversation", vi.fn()));
 
 		await waitFor(() => expect(view.result.current.isLoadingThread).toBe(false));

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MessageGallery } from "@/features/chat/components/message-gallery";
+import { MessageGallery } from "@/features/chat/media/components/message-gallery";
 import { makeAttachment } from "./factories";
 
 /** `n` distinct images — distinct ids, because every card in the stack keys on them. */

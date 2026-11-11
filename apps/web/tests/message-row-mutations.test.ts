@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { useMessageRowMutations } from "@/features/chat/hooks/use-message-row-mutations";
-import type { MessageRowActions } from "@/features/chat/types/message-row-actions";
+import { useMessageRowMutations } from "@/features/chat/thread/hooks/use-message-row-mutations";
+import type { MessageRowActions } from "@/features/chat/thread/types/message-row";
 import { makeMessage } from "./factories";
 
 function makeActions(): MessageRowActions {

@@ -11,7 +11,11 @@ for (const viewport of [
 		await expect(intro).toBeVisible();
 		await expect(page.getByRole("textbox", { name: "Email", exact: true })).toHaveCount(0);
 		await expect
-			.poll(() => page.locator('input[type="email"]').evaluate((element) => Boolean(element.closest("[inert]"))))
+			.poll(() =>
+				page
+					.locator('input[autocomplete="username"]')
+					.evaluate((element) => Boolean(element.closest("[inert]"))),
+			)
 			.toBe(true);
 		await page.keyboard.press("Tab");
 		await expect(intro.getByRole("button", { name: "Skip intro" })).toBeFocused();

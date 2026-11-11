@@ -2,11 +2,11 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { ConversationActions } from "@/features/chat/components/conversation-actions";
-import { ConversationQuickActions } from "@/features/chat/components/conversation-quick-actions";
+import { ConversationActions } from "@/features/chat/sidebar/components/conversation-actions";
+import { ConversationQuickActions } from "@/features/chat/details/components/conversation-quick-actions";
 import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import { useRestrictedUsers } from "@/hooks/use-restricted-users";
-import { makeConversation, makeParticipant } from "./factories";
+import { makeConversation, makeParticipant, serverError } from "./factories";
 
 const UPDATED_CONVERSATION = {
 	conversationId: "conversation-1",
@@ -153,7 +153,7 @@ describe("ConversationActions", () => {
 	});
 
 	it("keeps a failed restriction actionable and reports the error in the menu", async () => {
-		vi.mocked(api.restrictUser).mockRejectedValueOnce(new Error("Could not restrict this person"));
+		vi.mocked(api.restrictUser).mockRejectedValueOnce(serverError("Could not restrict this person"));
 		const user = userEvent.setup();
 		renderDirectActions();
 
@@ -222,7 +222,7 @@ describe("ConversationActions", () => {
 		await user.click(screen.getByRole("button", { name: "Conversation actions" }));
 		await user.click(screen.getByRole("menuitem", { name: "Pin conversation" }));
 		await user.keyboard("{Escape}");
-		await act(async () => rejectRequest(new Error("Could not pin conversation")));
+		await act(async () => rejectRequest(serverError("Could not pin conversation")));
 		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 		expect(screen.getByRole("alert")).toHaveTextContent("Could not pin conversation");
 		await user.click(screen.getByRole("button", { name: "Dismiss conversation error" }));
@@ -250,9 +250,9 @@ describe("ConversationActions", () => {
 		pin.blur();
 		(pin as HTMLButtonElement).disabled = true;
 		expect(document.body).toHaveFocus();
-		await act(async () => rejectRequest(new Error("You can pin up to 5 conversations")));
-		// Abandoned focus returns to the menu's first item.
-		expect(preview).toHaveFocus();
+		await act(async () => rejectRequest(serverError("You can pin up to 5 conversations")));
+		// Abandoned focus returns to the action that failed, ready for a deliberate retry.
+		expect(pin).toHaveFocus();
 		await user.keyboard("{Escape}");
 		expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 		expect(trigger).toHaveFocus();
@@ -286,7 +286,7 @@ describe("ConversationActions", () => {
 		await user.click(screen.getByRole("menuitem", { name: "Forever" }));
 		expect(api.setConversationMuted).toHaveBeenCalledTimes(1);
 
-		await act(async () => rejectRequest(new Error("Mute was not confirmed")));
+		await act(async () => rejectRequest(serverError("Mute was not confirmed")));
 		expect(screen.getAllByRole("alert")).toHaveLength(2);
 		for (const alert of screen.getAllByRole("alert")) expect(alert).toHaveTextContent("Mute was not confirmed");
 		await user.click(screen.getAllByRole("button", { name: "Dismiss conversation error" })[0]!);

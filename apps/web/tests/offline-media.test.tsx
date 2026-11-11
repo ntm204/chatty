@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { OFFLINE_BINARY_URL, OFFLINE_IMAGE_URL } from "@/constants/offline-media";
-import { MessageFileCard } from "@/features/chat/components/message-file-card";
-import { AttachmentLightbox } from "@/features/chat/components/attachment-lightbox";
-import { downloadAttachment } from "@/features/chat/utils/download-attachment";
+import { MessageFileCard } from "@/features/chat/media/components/message-file-card";
+import { AttachmentLightbox } from "@/features/chat/media/components/attachment-lightbox";
+import { downloadAttachment } from "@/features/chat/media/utils/download-attachment";
 import { makeAttachment } from "./factories";
 
 afterEach(() => vi.unstubAllGlobals());

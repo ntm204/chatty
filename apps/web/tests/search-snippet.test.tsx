@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
-import { getSearchSnippet } from "@/features/chat/utils/search-snippet";
-import { SearchResultSnippet } from "@/features/chat/components/search-result-snippet";
+import { getSearchSnippet } from "@/features/chat/search/utils/search-snippet";
+import { SearchResultSnippet } from "@/features/chat/search/components/search-result-snippet";
 
 it("finds Vietnamese accents and decomposed marks without changing original spelling", () => {
 	const content = "Đường Đa\u0300 Nẵng";

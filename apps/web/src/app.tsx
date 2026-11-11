@@ -6,6 +6,7 @@ import { ForgotPasswordPage } from "@/features/auth/pages/forgot-password-page";
 import { LoginPage } from "@/features/auth/pages/login-page";
 import { ResetPasswordPage } from "@/features/auth/pages/reset-password-page";
 import { ScreenLoadBoundary } from "@/components/screen-load-boundary/screen-load-boundary";
+import { TooltipLayer } from "@/components/tooltip-layer";
 import { SettingsPage } from "@/features/profile/pages/settings-page";
 import { DEFAULT_PALETTE } from "@/constants/theme";
 import { useAuth } from "@/hooks/use-auth";
@@ -93,6 +94,7 @@ export function App() {
 					<Route path="*" element={<Navigate to={currentUser ? "/chat" : "/login"} replace />} />
 				</Routes>
 			</ScreenLoadBoundary>
+			<TooltipLayer />
 		</BrowserRouter>
 	);
 }

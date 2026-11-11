@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form";
+import { serverError } from "./factories";
 
 const requestPasswordReset = vi.fn();
 
@@ -48,7 +49,7 @@ describe("ForgotPasswordForm", () => {
 	});
 
 	it("shows a rate limit rather than pretending it worked", async () => {
-		requestPasswordReset.mockRejectedValue(new Error("Too many password reset requests. Try again later."));
+		requestPasswordReset.mockRejectedValue(serverError("Too many password reset requests. Try again later."));
 		const typist = userEvent.setup();
 		render(<ForgotPasswordForm />);
 

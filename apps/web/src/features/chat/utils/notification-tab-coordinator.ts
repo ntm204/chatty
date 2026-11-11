@@ -4,7 +4,7 @@ import {
 	NOTIFICATION_COORDINATION_CHANNEL_PREFIX,
 	NOTIFICATION_RECEIPT_STORAGE_PREFIX,
 	NOTIFICATION_RECEIPT_TTL_MS,
-} from "../constants/notification-coordination";
+} from "../constants/notifications";
 
 interface NotificationReceipt {
 	kind: "claim" | "shown";

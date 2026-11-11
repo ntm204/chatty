@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConversationCustomizePanel } from "@/features/chat/components/conversation-customize-panel";
-import { makeConversation, makeParticipant } from "./factories";
+import { ConversationCustomizePanel } from "@/features/chat/details/components/conversation-customize-panel";
+import { makeConversation, makeParticipant, serverError } from "./factories";
 
 const renameConversation = vi.fn();
 const uploadConversationAvatar = vi.fn();
@@ -120,7 +120,7 @@ describe("ConversationCustomizePanel, photo", () => {
 		const dialog = screen.getByRole("dialog", { name: "Group photo" });
 		const file = new File(["fake"], "photo.png", { type: "image/png" });
 		const fileInput = dialog.querySelector<HTMLInputElement>('input[type="file"]');
-		if (!fileInput) throw new Error("file input not found");
+		if (!fileInput) throw serverError("file input not found");
 		await user.upload(fileInput, file);
 
 		expect(uploadConversationAvatar).toHaveBeenCalledWith("group-1", file);
@@ -163,7 +163,7 @@ describe("ConversationCustomizePanel, theme", () => {
 		await user.click(screen.getByRole("button", { name: /Chat theme: Default/ }));
 		expect(screen.getByRole("button", { name: "Default" })).toHaveAttribute("aria-pressed", "true");
 		await user.click(screen.getByRole("button", { name: "Iris" }));
-		setConversationTheme.mockRejectedValueOnce(new Error("Please retry"));
+		setConversationTheme.mockRejectedValueOnce(serverError("Please retry"));
 		await user.click(screen.getByRole("button", { name: "Apply theme" }));
 		expect(await screen.findByRole("alert")).toHaveTextContent("Please retry");
 		await user.click(screen.getByRole("button", { name: "Apply theme" }));

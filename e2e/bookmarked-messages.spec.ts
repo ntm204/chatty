@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("bookmarks open archived originals, paginate, survive failed removal and retract live", async ({ browser }) => {
 	const context = await browser.newContext();
@@ -21,41 +21,39 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 	await page.getByLabel("Message actions").click();
 	await page.getByRole("menuitem", { name: "Bookmark message", exact: true }).click();
 	await expect(page.getByLabel("Message history").getByRole("status")).toContainText("Message bookmarked.");
-	const ids = await page.evaluate(async () => {
+	const ids = await page.evaluate(async (apiUrl) => {
 		const headers = {
 			Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 			"Content-Type": "application/json",
 		};
-		const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+		const conversations = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 		const conversationId = conversations.items[0].id;
-		const messages = await (
-			await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, { headers })
-		).json();
+		const messages = await (await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })).json();
 		const originalId = messages.find(
 			(message: { content: string }) => message.content === "My bookmarked original",
 		).id;
 		for (let index = 0; index < 21; index++) {
-			const response = await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, {
+			const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
 				method: "POST",
 				headers,
 				body: JSON.stringify({ content: `Bookmarked extra ${index}` }),
 			});
 			if (!response.ok) throw new Error("Seed message failed");
 			const message = await response.json();
-			const saved = await fetch(
-				`http://localhost:4100/conversations/${conversationId}/messages/${message.id}/star`,
-				{ method: "PUT", headers },
-			);
+			const saved = await fetch(`${apiUrl}/conversations/${conversationId}/messages/${message.id}/star`, {
+				method: "PUT",
+				headers,
+			});
 			if (!saved.ok) throw new Error("Bookmark seed failed");
 		}
-		const archived = await fetch(`http://localhost:4100/conversations/${conversationId}/archive`, {
+		const archived = await fetch(`${apiUrl}/conversations/${conversationId}/archive`, {
 			method: "PUT",
 			headers,
 			body: JSON.stringify({ archived: true }),
 		});
 		if (!archived.ok) throw new Error("Archive failed");
 		return { conversationId, originalId };
-	});
+	}, API_URL);
 	await page.reload();
 	await page.getByRole("button", { name: "More", exact: true }).click();
 	await page.getByRole("menuitem", { name: "Bookmarked messages", exact: true }).click();
@@ -84,25 +82,29 @@ test("bookmarks open archived originals, paginate, survive failed removal and re
 		else await route.continue();
 	});
 	await dialog.getByRole("button", { name: "Remove bookmark", exact: true }).first().click();
-	await expect(dialog.getByRole("alert")).toContainText("Remove failed");
+	// A 5xx body is never shown; the client's own next-step fallback is.
+	await expect(dialog.getByRole("alert")).toContainText("The bookmark could not be removed. Try again.");
 	await expect(dialog.getByText("Bookmarked extra 20", { exact: true })).toBeVisible();
 	await page.unroute("**/messages/*/star");
 	await dialog.getByRole("button", { name: "Remove bookmark", exact: true }).first().click();
 	await expect(dialog.getByText("Bookmarked extra 20", { exact: true })).toHaveCount(0);
 	await expect(secondDialog.getByText("Bookmarked extra 20", { exact: true })).toHaveCount(0);
 	await expect(secondDialog.getByText("Bookmarked extra 19", { exact: true })).toBeVisible();
-	await page.evaluate(async ({ conversationId }) => {
-		const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
-		const messages = await (
-			await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, { headers })
-		).json();
-		const target = messages.find((message: { content: string }) => message.content === "Bookmarked extra 19");
-		const response = await fetch(`http://localhost:4100/conversations/${conversationId}/messages/${target.id}`, {
-			method: "DELETE",
-			headers,
-		});
-		if (!response.ok) throw new Error("Retract failed");
-	}, ids);
+	await page.evaluate(
+		async ({ conversationId, apiUrl }) => {
+			const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
+			const messages = await (
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })
+			).json();
+			const target = messages.find((message: { content: string }) => message.content === "Bookmarked extra 19");
+			const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages/${target.id}`, {
+				method: "DELETE",
+				headers,
+			});
+			if (!response.ok) throw new Error("Retract failed");
+		},
+		{ ...ids, apiUrl: API_URL },
+	);
 	await expect(dialog.getByText("Bookmarked extra 19", { exact: true })).toHaveCount(0);
 	await expect(dialog.getByText("Bookmarked extra 18", { exact: true })).toBeVisible();
 	await context.close();

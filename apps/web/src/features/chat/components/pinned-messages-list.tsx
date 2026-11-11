@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { getPinnedMessageAuthorLabel, getPinnedMessagePreview } from "../utils/pinned-message-preview";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface PinnedMessagesListProps {
 	pinnedMessages: PinnedMessageDTO[];
@@ -63,7 +64,7 @@ export function PinnedMessagesList({ pinnedMessages, currentUserId, onOpenMessag
 		try {
 			await api.unpinMessage(pin.message.conversationId, pin.messageId);
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not unpin message");
+			setError(getErrorMessage(caught, "The message could not be unpinned. Try again."));
 		} finally {
 			setPendingId(null);
 		}

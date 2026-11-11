@@ -1,13 +1,13 @@
 import type { ComponentProps } from "react";
 import { fireEvent, render, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MessageRows } from "@/features/chat/components/message-rows";
-import type { MessageBubble } from "@/features/chat/components/message-bubble";
-import type { MessageActions } from "@/features/chat/components/message-actions";
+import { MessageRows } from "@/features/chat/thread/components/message-rows";
+import type { MessageBubble } from "@/features/chat/thread/components/message-bubble";
+import type { MessageActions } from "@/features/chat/thread/components/message-actions";
 import { makeMessage, makeParticipant } from "./factories";
 
 const { renderedIds } = vi.hoisted(() => ({ renderedIds: [] as string[] }));
-vi.mock("@/features/chat/components/message-bubble", () => ({
+vi.mock("@/features/chat/thread/components/message-bubble", () => ({
 	MessageBubble: ({ message, onForward, footer }: ComponentProps<typeof MessageBubble>) => {
 		renderedIds.push(message.id);
 
@@ -19,7 +19,7 @@ vi.mock("@/features/chat/components/message-bubble", () => ({
 		);
 	},
 }));
-vi.mock("@/features/chat/components/message-actions", () => ({
+vi.mock("@/features/chat/thread/components/message-actions", () => ({
 	MessageActions: ({ onTogglePin }: ComponentProps<typeof MessageActions>) => (
 		<button onClick={onTogglePin}>Toggle pin</button>
 	),

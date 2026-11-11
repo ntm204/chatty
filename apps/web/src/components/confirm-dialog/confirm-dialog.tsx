@@ -60,7 +60,7 @@ export function ConfirmDialog({
 				className="flex w-full max-w-[380px] flex-col gap-4 rounded-bubble border border-rule bg-paper-raised p-5 outline-none"
 			>
 				<div className="flex flex-col gap-1.5">
-					<h2 className="font-display text-[19px] leading-tight tracking-tight">{title}</h2>
+					<h2 className="font-display text-[20px] leading-tight tracking-tight">{title}</h2>
 					<p className="text-[13px] text-ink-soft">{body}</p>
 					{error && (
 						<p role="alert" className="text-[13px] text-signal">

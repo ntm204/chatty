@@ -26,6 +26,7 @@ Every kind of information already has a home. Update it there; do not create a n
 | XP progress | `docs/plans/experience-polish.md`; counts via `node scripts/check-experience-progress.mjs --json` |
 | Findings, test evidence, known limits | newest dated section of `docs/plans/acceptance-2026-09-25.md` |
 | Setup and commands | `README.md` |
+| Design rules learned from other systems | `docs/design/references.md` (dated section per source) |
 
 - No new reports, logs, review notes, READMEs, scripts or configs unless the owner asks or the code
   needs one. Prefer deleting stale material to adding more; Git keeps history.

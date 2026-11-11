@@ -64,7 +64,7 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<header className="flex shrink-0 items-start justify-between gap-4 border-b border-rule px-7 py-5">
 						<div className="min-w-0">
-							<h2 id={titleId} className="text-[19px] font-bold tracking-tight">
+							<h2 id={titleId} className="text-[20px] font-semibold tracking-tight">
 								{activeItem.label}
 							</h2>
 						</div>

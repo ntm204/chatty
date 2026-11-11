@@ -1,0 +1,178 @@
+/* The empty-chat welcome screen and its activity island. */
+
+.chat-welcome {
+	position: relative;
+	isolation: isolate;
+	min-height: 0;
+	height: 100%;
+	flex: 1;
+	display: grid;
+	place-items: center;
+	border-radius: 20px;
+	overflow: hidden;
+}
+.chat-welcome .ambient-background {
+	opacity: 0.6;
+}
+.welcome-content {
+	position: relative;
+	z-index: 1;
+	max-width: 480px;
+	padding: 24px;
+	text-align: center;
+}
+.welcome-icon {
+	display: grid;
+	place-items: center;
+	width: 60px;
+	height: 60px;
+	margin: 0 auto;
+	border-radius: 19px;
+	color: var(--color-heading);
+	background: var(--color-selection);
+}
+.welcome-mascot .brand-symbol {
+	width: 36px;
+	height: 29px;
+}
+.welcome-mascot .brand-symbol i {
+	animation-delay: -2.4s;
+}
+.welcome-content h1 {
+	margin-top: 24px;
+	font-family: var(--font-sans);
+	font-size: clamp(24px, 2.1vw, 30px);
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.03em;
+	color: var(--color-heading);
+}
+.welcome-content p {
+	margin-top: 14px;
+	font-size: 13px;
+	line-height: 1.7;
+	color: var(--color-ink-soft);
+}
+.welcome-cta {
+	margin-top: 24px;
+	min-height: 42px;
+	padding-inline: 21px;
+	border-radius: 24px;
+	font-size: 13px;
+}
+@media (max-height: 430px) {
+	.welcome-icon {
+		display: none;
+	}
+	.welcome-content {
+		padding: 16px;
+	}
+	.welcome-content h1 {
+		margin-top: 0;
+		font-size: 23px;
+	}
+	.welcome-content p {
+		margin-top: 10px;
+	}
+	.welcome-cta {
+		margin-top: 16px;
+	}
+}
+@media (prefers-reduced-motion: no-preference) {
+	.welcome-cta > svg {
+		transition: transform 160ms ease;
+	}
+	.welcome-cta:is(:hover, :focus-visible) > svg {
+		transform: translateX(3px);
+	}
+}
+
+/* A compact activity island that opens into conversation actions. */
+.welcome-island {
+	width: 248px;
+	max-width: 100%;
+	margin-inline: auto;
+	overflow: hidden;
+	border: 1px solid rgb(255 255 255 / 10%);
+	border-radius: 28px;
+	background: #101016;
+	color: #f3f0ff;
+	box-shadow:
+		0 12px 36px rgb(0 0 0 / 18%),
+		inset 0 1px 0 rgb(255 255 255 / 5%);
+	transition:
+		width 440ms cubic-bezier(0.22, 1, 0.36, 1),
+		border-radius 440ms ease;
+}
+.welcome-island[data-expanded="true"] {
+	width: 340px;
+	border-radius: 30px;
+}
+.welcome-island-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 54px;
+	padding: 14px 20px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+}
+.welcome-island-toggle:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -5px;
+	border-radius: 28px;
+}
+.welcome-island-dot {
+	width: 7px;
+	height: 7px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: #bcb2ff;
+	box-shadow: 0 0 12px rgb(188 178 255 / 35%);
+}
+.welcome-island[data-offline="true"] .welcome-island-toggle > svg:first-child {
+	color: #ffd166;
+}
+.welcome-island-chevron {
+	flex-shrink: 0;
+	opacity: 0.55;
+	transition: transform 350ms ease;
+}
+.welcome-island[data-expanded="true"] .welcome-island-chevron {
+	transform: rotate(180deg);
+}
+.welcome-island-details {
+	display: grid;
+	grid-template-rows: 0fr;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		grid-template-rows 440ms cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 250ms ease,
+		visibility 440ms;
+}
+.welcome-island[data-expanded="true"] .welcome-island-details {
+	grid-template-rows: 1fr;
+	opacity: 1;
+	visibility: visible;
+}
+.welcome-island-details > div {
+	min-height: 0;
+	overflow: hidden;
+}
+.welcome-island-details p {
+	margin: 0;
+	padding: 0 24px 18px;
+	color: #b9b5c8;
+	font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+	.welcome-island,
+	.welcome-island-details,
+	.welcome-island-chevron {
+		transition: none;
+	}
+}

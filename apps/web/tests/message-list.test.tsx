@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
 import { MAX_RETAINED_MESSAGES } from "@/features/chat/constants/pagination";
-import { MessageList } from "@/features/chat/components/message-list";
+import { MessageList } from "@/features/chat/thread/components/message-list";
 import { formatMessageTime } from "@/features/chat/utils";
 import { makeAttachment, makeMessage, makeOrphanedMessage, makeParticipant, makeSystemMessage } from "./factories";
 

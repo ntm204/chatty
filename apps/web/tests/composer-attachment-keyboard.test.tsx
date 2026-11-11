@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
-import { ComposerAttachmentMenu } from "@/features/chat/components/composer-attachment-menu";
+import { ComposerAttachmentMenu } from "@/features/chat/composer/components/composer-attachment-menu";
 
 it("leaves composition and keys outside the attachment menu alone, and consumes its own Escape", async () => {
 	const user = userEvent.setup();

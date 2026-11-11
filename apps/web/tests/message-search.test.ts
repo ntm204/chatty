@@ -2,8 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { MessageSearchPageDTO } from "@chatty/shared-types";
 import { api } from "@/api/client";
-import { useMessageSearch } from "@/features/chat/hooks/use-message-search";
-import { makeMessage } from "./factories";
+import { useMessageSearch } from "@/features/chat/search/hooks/use-message-search";
+import { makeMessage, serverError } from "./factories";
 
 type Handler = (event: unknown) => void;
 const { handlers } = vi.hoisted(() => ({ handlers: new Map<string, Handler>() }));
@@ -52,7 +52,7 @@ it("discards a pagination response from an earlier query", async () => {
 it("reports a failed page and retries without losing the existing results", async () => {
 	vi.spyOn(api, "searchMessages")
 		.mockResolvedValueOnce({ results: [result("first")], hasMore: true })
-		.mockRejectedValueOnce(new Error("Offline"))
+		.mockRejectedValueOnce(serverError("Offline"))
 		.mockResolvedValueOnce({ results: [result("second")], hasMore: false });
 	const view = renderHook(() => useMessageSearch("conversation-1"));
 	act(() => view.result.current.setQuery("query"));

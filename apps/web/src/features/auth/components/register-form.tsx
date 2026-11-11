@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { HANDLE_PATTERN, MAX_HANDLE_LENGTH, MIN_HANDLE_LENGTH, MIN_PASSWORD_LENGTH } from "@/constants/validation";
 import { focusField } from "@/utils/focus-field";
 import { getServerErrorField } from "@/utils/server-error-field";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 export function RegisterForm() {
 	const register = useAuth((state) => state.register);
@@ -61,7 +62,7 @@ export function RegisterForm() {
 				displayName: fields.displayName.trim(),
 			});
 		} catch (error) {
-			const message = (error as Error).message;
+			const message = getErrorMessage(error, "Your account could not be created. Try again.");
 			const field = getServerErrorField(message, { email: "email", handle: "handle" });
 			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
 			focusField(form, field);

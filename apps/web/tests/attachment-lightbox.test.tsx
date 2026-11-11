@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AttachmentLightbox } from "@/features/chat/components/attachment-lightbox";
+import { AttachmentLightbox } from "@/features/chat/media/components/attachment-lightbox";
 import { makeAttachment } from "./factories";
 
 function makeAttachments(count: number) {

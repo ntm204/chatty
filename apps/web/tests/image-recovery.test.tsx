@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { AttachmentLightbox } from "@/features/chat/components/attachment-lightbox";
+import { AttachmentLightbox } from "@/features/chat/media/components/attachment-lightbox";
 import { OFFLINE_IMAGE_URL } from "@/constants/offline-media";
 import { makeAttachment } from "./factories";
 

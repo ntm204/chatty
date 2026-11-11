@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, startDirectChat } from "./helpers.js";
 
 /**
  * What only a browser can say about paging the sidebar.
@@ -50,7 +50,7 @@ test.describe("conversation paging", () => {
 			}
 
 			return ids;
-		}, process.env.E2E_API_URL ?? "http://localhost:4100");
+		}, API_URL);
 
 		expect(created).toHaveLength(35);
 		await page.reload();
@@ -119,7 +119,7 @@ test.describe("conversation paging", () => {
 					body: JSON.stringify({ participantIds: [registered.user.id] }),
 				});
 			}
-		}, process.env.E2E_API_URL ?? "http://localhost:4100");
+		}, API_URL);
 
 		await maiPage.reload();
 		// Off the first page: the conversation with Linh is the oldest of the lot.

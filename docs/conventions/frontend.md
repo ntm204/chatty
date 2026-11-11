@@ -22,22 +22,22 @@ apps/web/src/
 │   │   ├── utils/        # pure helpers private to auth
 │   │   ├── constants/    # constants private to auth
 │   │   └── types/        # types private to auth
-│   └── chat/             # same shape
+│   └── chat/             # same shape at the root, plus sub-features (thread/, composer/, …)
 ├── components/           # SHARED UI — used by 2+ features
 ├── hooks/                # shared hooks
 ├── utils/                # shared pure functions (cn.ts lives here)
 ├── lib/                  # third-party client setup (socket.ts)
-├── api/                  # HTTP client for the backend
+├── api/                  # HTTP client: client.ts (public `api`), core.ts, one file per resource
 ├── constants/            # shared constants
 ├── types/                # shared types
-└── styles/               # globals.css
+└── styles/               # globals.css (tokens, base) + one file per screen area
 ```
 
 ### The one rule that matters most
 
 **Never import across features.** `features/chat` must not import from `features/auth`. If two features need the same thing, move it up into the shared `src/` folders.
 
-Why this one is non-negotiable: cross-feature imports are how a codebase turns into a ball of mud. Once `chat` imports from `auth`, deleting or reworking `auth` becomes a whole-app problem instead of a one-folder problem. The shared folders are the *declared* contract; a cross-feature import is an undeclared one.
+Why this one is non-negotiable: cross-feature imports are how a codebase turns into a ball of mud. Once `chat` imports from `auth`, deleting or reworking `auth` becomes a whole-app problem instead of a one-folder problem. The shared folders are the _declared_ contract; a cross-feature import is an undeclared one.
 
 Anything repeated in 2+ features (a button, an input, a date formatter) becomes shared. When creating a shared component:
 
@@ -45,6 +45,31 @@ Anything repeated in 2+ features (a button, an input, a date formatter) becomes 
 - Filename kebab-case: `button.tsx`
 - Ship an `index.ts` that re-exports it
 - Keep it simple first, extend on demand — do not design for requirements that do not exist yet
+
+### How a feature grows
+
+- **Sub-feature when a capability has its own UI + state + helpers and roughly 8+ files.** Nest it
+  as `features/<feature>/<sub>/{components,hooks,utils,constants,types}` — it stays part of the
+  same feature for the cross-feature rule. `features/chat` has `thread`, `composer`, `sidebar`,
+  `details`, `expressions`, `media`, `theme` and `search`; its README lists what each holds.
+- **Shared code lives at the feature root.** The route page and the components that compose
+  sub-features (the shell) live there too. A sub-feature may import root code, and another
+  sub-feature only through that sub-feature's folder barrel (`../../media/components`), never its
+  constants or types — once two sub-features need them, they move to the root. Root code other than
+  the shell never imports a sub-feature, so the dependency graph has no cycles.
+- **No tiny files.** Under ~40 lines is a file only when it is a reused primitive (a component, a
+  helper used in several places). Merge single-use helpers, constants and types into the file of the
+  capability they belong to (`thread/utils/message-grouping.ts`, `sidebar/constants/conversation-list.ts`).
+- **A hook over ~300 lines splits by concern, not by size.** The parent keeps the state and the
+  shared refs and composes the parts, so its return shape and callers do not change
+  (`useConversationMessages` → history, outbox, live events).
+- **CSS: one file per screen area** in `src/styles/` (`auth`, `controls`, `sidebar`,
+  `conversation`, `bubbles`, `overlays`, `welcome`, `themes`, `stickers`), imported from
+  `globals.css`. The import order is part of the cascade; a new rule goes into its area's file, not
+  into whichever file was open.
+- **API client: one file per resource** in `src/api/` (`auth`, `users`, `conversations`,
+  `messages`), with request, token refresh and session machinery in `core.ts`. `client.ts` composes
+  them into the single `api` object every caller imports.
 
 ---
 
@@ -55,7 +80,7 @@ Anything repeated in 2+ features (a button, an input, a date formatter) becomes 
 - Every declared hook must be used. Delete unused ones.
 - Fix all TypeScript errors and warnings. Do not ship code with red squiggles.
 - **Logic repeated in 2+ places gets extracted**: a custom hook in `hooks/` if it touches state/lifecycle, a pure function in `utils/` if it does not.
-- **Before creating a new util / hook / constant, grep for it first** across `src/utils`, `src/hooks`, `src/constants` and `src/features/*/{utils,hooks,constants}`. A name clash — or a *job* clash — means it already exists. Reuse it, or lift it to shared if it currently lives in another feature. Never create a second copy.
+- **Before creating a new util / hook / constant, grep for it first** across `src/utils`, `src/hooks`, `src/constants` and `src/features/*/{utils,hooks,constants}`. A name clash — or a _job_ clash — means it already exists. Reuse it, or lift it to shared if it currently lives in another feature. Never create a second copy.
 - **Over ~300 lines is a signal to split**, not a hard cap. The usual smell: one component owning a state machine plus several phase screens (`loading`, `empty`, `list`, `error`). Move each phase's render into a child and keep the state in the parent.
 
 ---
@@ -76,27 +101,27 @@ Anything repeated in 2+ features (a button, an input, a date formatter) becomes 
 - **`interface` for object shapes.** `type` is still correct for unions, intersections, mapped and conditional types.
 - **No inline types in a signature** — declare them at the top of the file:
 
-  ```tsx
-  // Wrong
-  function MessageRow({ message }: { message: MessageDTO }) {}
+    ```tsx
+    // Wrong
+    function MessageRow({ message }: { message: MessageDTO }) {}
 
-  // Right
-  interface MessageRowProps {
-      message: MessageDTO;
-  }
-  function MessageRow({ message }: MessageRowProps) {}
-  ```
+    // Right
+    interface MessageRowProps {
+    	message: MessageDTO;
+    }
+    function MessageRow({ message }: MessageRowProps) {}
+    ```
 
 - **Props interfaces are named `<ComponentName>Props`**, never the generic `Props`. A file full of `Props` types is unsearchable.
 - **Constants get an explicit type** — do not let TypeScript infer the shape of a constant array:
 
-  ```ts
-  interface NavItem {
-      label: string;
-      href: string;
-  }
-  const navItems: NavItem[] = [ ... ];
-  ```
+    ```ts
+    interface NavItem {
+        label: string;
+        href: string;
+    }
+    const navItems: NavItem[] = [ ... ];
+    ```
 
 - Types that cross the wire (what the API returns, what a socket event carries) live in **`packages/shared-types`**, not here. If the server and the client both need to know a shape, it belongs in the shared package so a change breaks the build on both sides instead of at runtime on one.
 - This project is on **React 18**, so `React.FormEvent` / `React.FormEventHandler` are fine. (They are deprecated on React 19; revisit this line when upgrading.)
@@ -128,8 +153,8 @@ export { Input } from "./input";
 ## State inside a component
 
 - Group semantically related `useState` calls into one object:
-  - `email` + `password` → `const [fields, setFields] = useState({ email: "", password: "" })`
-  - `emailError` + `passwordError` → `const [errors, setErrors] = useState({ email: "", password: "" })`
+    - `email` + `password` → `const [fields, setFields] = useState({ email: "", password: "" })`
+    - `emailError` + `passwordError` → `const [errors, setErrors] = useState({ email: "", password: "" })`
 - Do **not** group unrelated state, or state with different lifecycles. Two things that change for different reasons belong in two `useState` calls.
 
 ---
@@ -139,29 +164,29 @@ export { Input } from "./input";
 - Blank line between distinct logical blocks.
 - **Always a blank line between the logic and the `return`**:
 
-  ```tsx
-  // Right
-  export function MessageList({ messages }: MessageListProps) {
-      const sorted = [...messages].sort(byCreatedAt);
+    ```tsx
+    // Right
+    export function MessageList({ messages }: MessageListProps) {
+    	const sorted = [...messages].sort(byCreatedAt);
 
-      return <ul>{sorted.map(renderMessage)}</ul>;
-  }
-  ```
+    	return <ul>{sorted.map(renderMessage)}</ul>;
+    }
+    ```
 
 - Each field validation is its own `if`. No unnecessary nesting.
 - A validate function collects into one object and calls `setState` **once**:
 
-  ```ts
-  function validate() {
-      const nextErrors = { email: "", password: "" };
+    ```ts
+    function validate() {
+    	const nextErrors = { email: "", password: "" };
 
-      if (!fields.email.trim()) nextErrors.email = "Email is required";
-      if (!fields.password) nextErrors.password = "Password is required";
+    	if (!fields.email.trim()) nextErrors.email = "Email is required";
+    	if (!fields.password) nextErrors.password = "Password is required";
 
-      setErrors(nextErrors);
-      return !nextErrors.email && !nextErrors.password;
-  }
-  ```
+    	setErrors(nextErrors);
+    	return !nextErrors.email && !nextErrors.password;
+    }
+    ```
 
 - **Every `eslint-disable` needs a comment above it explaining why.** If you cannot explain it, do not disable it — fix the code so lint passes.
 
@@ -174,18 +199,18 @@ The project uses Tailwind CSS with the `cn()` helper (`@/utils/cn`).
 - **Never build classes with `.join(" ")` or template strings with nested ternaries.**
 - One condition per line:
 
-  ```tsx
-  // Wrong
-  className={["px-3 py-2", isActive ? "bg-ink" : "bg-rule-soft"].join(" ")}
+    ```tsx
+    // Wrong
+    className={["px-3 py-2", isActive ? "bg-ink" : "bg-rule-soft"].join(" ")}
 
-  // Right
-  className={cn(
-      "px-3 py-2",
-      isActive && "bg-ink text-paper",
-      isDisabled && "opacity-50",
-      !isActive && !isDisabled && "bg-gray-100",
-  )}
-  ```
+    // Right
+    className={cn(
+        "px-3 py-2",
+        isActive && "bg-ink text-paper",
+        isDisabled && "opacity-50",
+        !isActive && !isDisabled && "bg-gray-100",
+    )}
+    ```
 
 - Complex class logic goes into a helper function outside the JSX, never inline.
 
@@ -212,18 +237,18 @@ use it only where no colour can express the difference, such as deepening a scri
 Three tokens exist precisely because they must **not** invert with the theme, and using `ink`/`paper`
 in their place is the bug they were extracted to fix:
 
-| Token | For |
-| --- | --- |
-| `paper`, `paper-raised` | the sheet, and anything sitting on top of it |
-| `ink`, `ink-soft`, `ink-faint` | text, in three strengths |
-| `rule`, `rule-soft` | hairline borders and separators |
-| `signal` | **only** an unread count, the conversation you are in, and something you cannot undo |
-| `signal-soft` | the ground under a destructive hover, and a search hit |
-| `live` | presence, which is a different kind of fact from a notification |
-| `tint-*` / `tint-*-ink` | avatar grounds, always used as a pair — via `@/constants/avatar-colors` |
-| `block` / `block-ink` | the app's one solid fill: a message you sent, a group avatar. **Not** `bg-ink text-paper` — those two invert together, and a dark theme would answer with a white slab across half the thread |
-| `scrim` | behind a dialog or a lightbox. Goes *blacker* in dark rather than lighter, because a scrim's job is to darken what is behind it |
-| `on-media` | type and chrome drawn on a photograph or a scrim. The one token that is the same in both themes, because a stranger's picture knows nothing about the reader's theme |
+| Token                          | For                                                                                                                                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paper`, `paper-raised`        | the sheet, and anything sitting on top of it                                                                                                                                                  |
+| `ink`, `ink-soft`, `ink-faint` | text, in three strengths                                                                                                                                                                      |
+| `rule`, `rule-soft`            | hairline borders and separators                                                                                                                                                               |
+| `signal`                       | **only** an unread count, the conversation you are in, and something you cannot undo                                                                                                          |
+| `signal-soft`                  | the ground under a destructive hover, and a search hit                                                                                                                                        |
+| `live`                         | presence, which is a different kind of fact from a notification                                                                                                                               |
+| `tint-*` / `tint-*-ink`        | avatar grounds, always used as a pair — via `@/constants/avatar-colors`                                                                                                                       |
+| `block` / `block-ink`          | the app's one solid fill: a message you sent, a group avatar. **Not** `bg-ink text-paper` — those two invert together, and a dark theme would answer with a white slab across half the thread |
+| `scrim`                        | behind a dialog or a lightbox. Goes _blacker_ in dark rather than lighter, because a scrim's job is to darken what is behind it                                                               |
+| `on-media`                     | type and chrome drawn on a photograph or a scrim. The one token that is the same in both themes, because a stranger's picture knows nothing about the reader's theme                          |
 
 Three fonts and one rule about when each applies:
 
@@ -231,12 +256,16 @@ Three fonts and one rule about when each applies:
   same family for headings, and `font-brand` (General Sans Bold) is the wordmark only.
 - **Anything a machine produced — a timestamp, a handle, a count — uses tabular figures**, not a
   separate face: two utilities hold the rule in one place rather than in forty files:
-  - `eyebrow` — a label or status: the interface font, 11.5px, semibold.
-  - `meta` — a machine's own output: the interface font, tabular, 11.5px, so a number changing
-    width does not shift its neighbours.
+    - `eyebrow` — a label or status: the interface font, 11.5px, semibold.
+    - `meta` — a machine's own output: the interface font, tabular, 11.5px, so a number changing
+      width does not shift its neighbours.
 
-  Neither sets a colour. That is the caller's, which is what keeps `eyebrow text-signal` from being a
-  fight between two classes.
+    Neither sets a colour. That is the caller's, which is what keeps `eyebrow text-signal` from being a
+    fight between two classes.
+
+**Sizes come from one short scale:** 10, 11, 12, 13, 14, 16, 20 and 22px (`text-base` is 16), plus the
+jumbo-emoji sizes. No half pixels and no one-off steps; weights are `font-normal`, `font-medium` and
+`font-semibold` only. A size that seems to need a new step is nearly always a hierarchy problem.
 
 Fonts are **self-hosted**: Fontshare files are prepared by `scripts/prepare-fonts.mjs` in the web
 workspace; Geist comes from `@fontsource/*`. The declarations live in `globals.css`. Not a
@@ -284,12 +313,17 @@ this avoids.
 
 The principle: **every kind of UI element has exactly one source, and nothing bypasses it.** What chatty declares:
 
-| Element | Source |
-| --- | --- |
-| Buttons | `Button` from `@/components/button` (build it before the first button) |
-| Icons | `lucide-react` |
-| Images | raw `<img>` (no Next.js here — no image component to enforce) |
+| Element        | Source                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Buttons        | `Button` from `@/components/button` (build it before the first button)                  |
+| Icons          | `lucide-react`                                                                          |
+| Images         | raw `<img>` (no Next.js here — no image component to enforce)                           |
 | Internal links | `Link` from `react-router-dom`. Plain `<a>` only for external URLs or `target="_blank"` |
+| Tooltips       | Automatic: `TooltipLayer` (mounted once in `app.tsx`) names every icon-only `button`/`a` from its `aria-label`. Never add a per-button tooltip; `data-tooltip="…"` overrides the text, `data-tooltip="off"` opts out |
+| Loading        | `SkeletonList` from `@/components/skeleton` (or a feature skeleton built the same way) — never "Loading…" text for a list or thread. It waits `SKELETON_DELAY_MS` itself, so a fast load shows nothing |
+| Empty          | `EmptyState` from `@/components/empty-state`: say *why* it is empty (first visit, filter, search) and give one next step on a first visit |
+| Error text     | `getErrorMessage(caught, "What failed. Try again.")` from `@/utils/get-error-message` — never `caught.message`. Shows the server's 4xx words, the offline notice or a `UserFacingError`; everything else gets the fallback, which must name a next step |
+| Avatar stacks  | `AvatarGroup` from `@/components/avatar`: up to three faces, past that two and "+N", names in the tooltip |
 
 **Icons**: never inline an SVG for an icon and never add a second icon library. If `lucide-react` lacks one, add a named `IconXxx` under `src/components/icons/` that takes `ComponentProps<"svg">` and spreads it:
 
@@ -297,11 +331,11 @@ The principle: **every kind of UI element has exactly one source, and nothing by
 import type { ComponentProps } from "react";
 
 export function IconSpark(props: ComponentProps<"svg">) {
-    return (
-        <svg viewBox="0 0 24 24" fill="none" {...props}>
-            {/* path data */}
-        </svg>
-    );
+	return (
+		<svg viewBox="0 0 24 24" fill="none" {...props}>
+			{/* path data */}
+		</svg>
+	);
 }
 ```
 

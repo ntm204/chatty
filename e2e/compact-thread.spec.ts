@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, startGroupChat, sendMessage, openConversationNamed } from "./helpers.js";
+import { API_URL, makeUser, register, startGroupChat, sendMessage, openConversationNamed } from "./helpers.js";
 
 const LINK_MESSAGE = "Link kiểm tra metadata mà server không tự truy cập: https://example.com/chatty-demo";
 const LONG_MESSAGE = "[170/175] Ghi chú hiệu năng: chỉ truyền delta mới thay vì tải lại cả cuộc trò chuyện.";
@@ -25,18 +25,21 @@ test("wrapped text and links keep a compact bubble without changing their conten
 		await sendMessage(peerPage, LONG_MESSAGE);
 		await sendMessage(page, "Ừ, được nhé.");
 		// The composer is currently one line; preserve explicit newlines through the API fixture.
-		await peerPage.evaluate(async (content) => {
-			const token = localStorage.getItem("chatty:token");
-			const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-			const response = await fetch("http://localhost:4100/conversations", { headers });
-			const conversations = (await response.json()) as { items: { id: string }[] };
-			const sent = await fetch(`http://localhost:4100/conversations/${conversations.items[0]!.id}/messages`, {
-				method: "POST",
-				headers,
-				body: JSON.stringify({ content }),
-			});
-			if (!sent.ok) throw new Error("Could not create multiline fixture");
-		}, MANUAL_LINES);
+		await peerPage.evaluate(
+			async ({ content, apiUrl }) => {
+				const token = localStorage.getItem("chatty:token");
+				const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+				const response = await fetch(`${apiUrl}/conversations`, { headers });
+				const conversations = (await response.json()) as { items: { id: string }[] };
+				const sent = await fetch(`${apiUrl}/conversations/${conversations.items[0]!.id}/messages`, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({ content }),
+				});
+				if (!sent.ok) throw new Error("Could not create multiline fixture");
+			},
+			{ content: MANUAL_LINES, apiUrl: API_URL },
+		);
 		const main = page.getByRole("main");
 		await expect(main.getByText(LONG_MESSAGE, { exact: true })).toBeVisible();
 		await expect(main.getByText(MANUAL_LINES, { exact: true })).toBeVisible();

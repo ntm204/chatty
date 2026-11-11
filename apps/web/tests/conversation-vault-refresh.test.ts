@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { useConversationVault } from "@/features/chat/hooks/use-conversation-vault";
-import { makeAttachment } from "./factories";
+import { useConversationVault } from "@/features/chat/details/hooks/use-conversation-vault";
+import { makeAttachment, serverError } from "./factories";
 
 const { handlers } = vi.hoisted(() => ({ handlers: new Map<string, (event: unknown) => void>() }));
 vi.mock("@/features/chat/hooks/use-socket-event", () => ({
@@ -29,7 +29,7 @@ it("retains the loaded window, removes retracted media immediately and retries a
 		.mockResolvedValueOnce({ items: [photo("one"), photo("two")], hasMore: true })
 		.mockResolvedValueOnce({ items: [photo("three")], hasMore: false })
 		.mockResolvedValueOnce({ items: [photo("two")], hasMore: true })
-		.mockRejectedValueOnce(new Error("Refresh interrupted"))
+		.mockRejectedValueOnce(serverError("Refresh interrupted"))
 		.mockResolvedValueOnce({ items: [photo("two")], hasMore: true })
 		.mockResolvedValueOnce({ items: [photo("three")], hasMore: false });
 	const { result } = renderHook(() => useConversationVault("thread", "media"));
@@ -82,7 +82,7 @@ it("coalesces synchronous load-more requests and clears visible rows after membe
 	vi.mocked(api.listConversationMedia)
 		.mockResolvedValueOnce({ items: [photo("one")], hasMore: true })
 		.mockResolvedValueOnce({ items: [photo("one"), photo("two")], hasMore: false })
-		.mockRejectedValueOnce(new Error("No access"));
+		.mockRejectedValueOnce(serverError("No access"));
 	const { result } = renderHook(() => useConversationVault("thread", "media"));
 	await waitFor(() => expect(result.current.attachments).toHaveLength(1));
 	await act(async () => {

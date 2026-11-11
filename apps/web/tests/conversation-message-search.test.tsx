@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { ConversationMessageSearch } from "@/features/chat/components/conversation-message-search";
+import { ConversationMessageSearch } from "@/features/chat/search/components/conversation-message-search";
 import { makeMessage, makeUser } from "./factories";
 
 vi.mock("@/features/chat/hooks/use-socket-event", () => ({ useSocketEvent: vi.fn() }));

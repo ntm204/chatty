@@ -34,7 +34,7 @@ export function Button({ variant = "primary", type = "button", className, childr
 			// that override is exactly what twMerge inside cn() exists to resolve.
 			className={cn(
 				"chatty-button inline-flex items-center justify-center gap-2 rounded-control px-4 py-2 text-[13px] transition",
-				"outline-none focus-visible:ring-3 focus-visible:ring-ink/15",
+				"outline-none",
 				// Tailwind v3's Preflight set `cursor: pointer` on every button; v4's
 				// does not, so the upgrade silently gave the whole app an arrow
 				// cursor on everything clickable. Stated here rather than in a base

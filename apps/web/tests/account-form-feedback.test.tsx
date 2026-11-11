@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CurrentUserAvatar } from "@/components/current-user-avatar";
 import { RegisterForm } from "@/features/auth/components/register-form";
 import { useAuth } from "@/hooks/use-auth";
-import { makeCurrentUser } from "./factories";
+import { makeCurrentUser, serverError } from "./factories";
 
 const uploadAvatar = vi.fn();
 
@@ -21,7 +21,7 @@ beforeEach(() => {
 
 describe("account form feedback (XP-44)", () => {
 	it("puts a taken email beside the email field, keeps what was typed and focuses it", async () => {
-		const register = vi.fn().mockRejectedValue(new Error("Email already registered"));
+		const register = vi.fn().mockRejectedValue(serverError("Email already registered"));
 		useAuth.setState({ register } as never);
 		const typist = userEvent.setup();
 		render(<RegisterForm />);

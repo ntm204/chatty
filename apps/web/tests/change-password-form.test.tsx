@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangePasswordForm } from "@/features/profile/components/change-password-form";
+import { serverError } from "./factories";
 
 const changePassword = vi.fn();
 const storeSession = vi.fn();
@@ -122,7 +123,7 @@ describe("ChangePasswordForm", () => {
 	});
 
 	it("shows the server's message when the current password is wrong", async () => {
-		changePassword.mockRejectedValue(new Error("Current password is incorrect"));
+		changePassword.mockRejectedValue(serverError("Current password is incorrect"));
 		const typist = userEvent.setup();
 		render(<ChangePasswordForm />);
 

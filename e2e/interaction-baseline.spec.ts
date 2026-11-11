@@ -1,6 +1,6 @@
 import { cpus, platform, arch } from "node:os";
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
 
 test("records a repeatable interaction baseline and preserves mixed image choices", async ({ browser }, testInfo) => {
 	// The 200 real HTTP writes are fixture work, not the measured interaction's latency budget.
@@ -14,19 +14,19 @@ test("records a repeatable interaction baseline and preserves mixed image choice
 		await register(page, makeUser("MeasureAuthor"));
 		await startDirectChat(page, peer);
 		await expect(page.getByLabel("Message", { exact: true })).toBeVisible();
-		await page.evaluate(async () => {
+		await page.evaluate(async (apiUrl) => {
 			const headers = {
 				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 				"Content-Type": "application/json",
 			};
-			const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+			const conversations = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 			const id = conversations.items[0].id;
 			// Keep all 200 real HTTP writes, but overlap small batches of fixture work.
 			for (let offset = 0; offset < 200; offset += 4) {
 				await Promise.all(
 					Array.from({ length: 4 }, async (_, batchIndex) => {
 						const index = offset + batchIndex;
-						const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
+						const response = await fetch(`${apiUrl}/conversations/${id}/messages`, {
 							method: "POST",
 							headers,
 							body: JSON.stringify({
@@ -37,7 +37,7 @@ test("records a repeatable interaction baseline and preserves mixed image choice
 					}),
 				);
 			}
-		});
+		}, API_URL);
 		await page.reload();
 		await openConversationWith(page, peer);
 		await expect(page.getByLabel("Message history")).toContainText("Baseline 199:");

@@ -1,0 +1,139 @@
+/* Overlays above the chat: the settings dialog and the conversation preview. */
+
+.settings-dialog {
+	border: 1px solid var(--color-rule-soft);
+	border-radius: 24px;
+	background: var(--color-paper-raised);
+}
+.settings-nav {
+	background: var(--color-paper);
+	border-color: var(--color-rule-soft);
+}
+.settings-nav > h2 {
+	font-family: var(--font-sans);
+	font-size: 22px;
+	font-weight: 600;
+	color: var(--color-heading);
+	padding-block: 27px 22px;
+}
+.settings-nav nav {
+	gap: 4px;
+}
+.settings-nav button[aria-current="page"] {
+	background: var(--color-selection);
+	color: var(--color-selection-ink);
+}
+.settings-nav button[aria-current="page"] > span {
+	background: var(--color-heading);
+	border-radius: 5px;
+}
+.settings-dialog header {
+	border-bottom: 1px solid var(--color-rule-soft);
+	background: var(--color-paper-raised);
+	padding-top: 27px;
+}
+.settings-dialog header h2 {
+	font-family: var(--font-sans);
+	font-weight: 600;
+	font-size: 25px;
+	color: var(--color-heading);
+	letter-spacing: 0.01em;
+}
+@media (max-width: 639px) {
+	.settings-dialog {
+		height: 100%;
+		border-radius: 20px;
+	}
+	.settings-nav > h2 {
+		padding-block: 15px;
+		font-size: 23px;
+	}
+	.settings-nav > div:nth-child(2) {
+		display: none;
+	}
+	.settings-nav nav {
+		flex-direction: row;
+		overflow-x: auto;
+		flex-shrink: 0;
+		padding: 10px;
+	}
+	.settings-nav nav > button {
+		width: auto;
+		flex-shrink: 0;
+		white-space: nowrap;
+	}
+	.settings-nav nav > div {
+		display: none;
+	}
+	.settings-dialog header {
+		padding: 20px;
+	}
+	.settings-dialog header h2 {
+		font-size: 25px;
+	}
+}
+
+/* ── Conversation preview (ConversationPreview) ──
+ * Touch: the list blurs behind a centred card, iOS-style. Desktop: a panel
+ * beside the sidebar over a faint dim — no full-screen blur, which costs a
+ * large repaint on every frame and hides the app the reader is still using. */
+.conversation-preview[data-variant="sheet"] .conversation-preview-backdrop {
+	background: color-mix(in srgb, var(--color-scrim) 30%, transparent);
+	-webkit-backdrop-filter: blur(16px) saturate(120%);
+	backdrop-filter: blur(16px) saturate(120%);
+}
+.conversation-preview[data-variant="popover"] .conversation-preview-backdrop {
+	background: color-mix(in srgb, var(--color-scrim) 8%, transparent);
+}
+.conversation-preview[data-variant="sheet"] .conversation-preview-action {
+	justify-content: flex-start;
+	width: 100%;
+	height: 44px;
+	padding-inline: 12px;
+	border-radius: 12px;
+	font-size: 15px;
+	font-weight: 400;
+}
+.conversation-preview[data-variant="sheet"] .conversation-preview-action[data-variant="primary"] {
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--color-heading);
+	font-weight: 600;
+}
+.conversation-preview[data-variant="popover"] .conversation-preview-action {
+	height: 34px;
+	padding-inline: 12px;
+	font-size: 13px;
+}
+@media (prefers-reduced-motion: no-preference) {
+	.conversation-preview-backdrop {
+		animation: preview-fade 0.18s ease-out both;
+	}
+	.conversation-preview[data-variant="sheet"] .conversation-preview-card {
+		animation: preview-lift 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12) both;
+	}
+	.conversation-preview[data-variant="sheet"] .conversation-preview-menu {
+		animation: preview-lift 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.12) 0.04s both;
+	}
+	.conversation-preview[data-variant="popover"] .conversation-preview-card {
+		animation: preview-slide 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+	}
+}
+@keyframes preview-fade {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes preview-lift {
+	from {
+		opacity: 0;
+		transform: scale(0.92);
+	}
+}
+@keyframes preview-slide {
+	from {
+		opacity: 0;
+		transform: translateX(-10px);
+	}
+}

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MessageFileCard } from "@/features/chat/components/message-file-card";
-import { VoicePlayer } from "@/features/chat/components/voice-player";
+import { MessageFileCard } from "@/features/chat/media/components/message-file-card";
+import { VoicePlayer } from "@/features/chat/media/components/voice-player";
 import { makeAttachment } from "./factories";
 
 afterEach(() => vi.restoreAllMocks());

@@ -5,6 +5,7 @@ import { MIN_PASSWORD_LENGTH } from "@/constants/validation";
 import { useAuth } from "@/hooks/use-auth";
 import { focusField } from "@/utils/focus-field";
 import { getServerErrorField } from "@/utils/server-error-field";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 /**
  * Changes the signed-in user's password.
@@ -72,7 +73,7 @@ export function ChangePasswordForm() {
 			setFields({ currentPassword: "", newPassword: "", confirmPassword: "" });
 			setIsChanged(true);
 		} catch (error) {
-			const message = (error as Error).message;
+			const message = getErrorMessage(error, "Your password could not be changed. Try again.");
 			const field = getServerErrorField(message, {
 				currentPassword: "currentPassword",
 				newPassword: "newPassword",

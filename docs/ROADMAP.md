@@ -3203,7 +3203,7 @@ off-host path and retention, then repeat the proven drill on deployed infrastruc
 
 | # | Item | Status |
 | --- | --- | --- |
-| 133 | Reusable API-seeded accounts and long mixed-media conversations | Done — `npm run seed:demo` |
+| 133 | Reusable API-seeded accounts and long mixed-media conversations | Done — `npm run seed:demo` (feature tour; `-- --long` for long history) |
 
 The demo data is created through the same public HTTP routes as a real client. It therefore exercises
 authentication, the conversation transaction, idempotent message keys, image normalisation and

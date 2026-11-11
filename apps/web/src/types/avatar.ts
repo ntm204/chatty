@@ -1,3 +1,5 @@
+import type { UserDTO } from "@chatty/shared-types";
+
 /**
  * How large an avatar renders.
  *
@@ -7,3 +9,9 @@
  * agree with it exactly or the rows stop lining up.
  */
 export type AvatarSize = "2xs" | "xs" | "sm" | "md" | "lg";
+
+/** One face in an avatar group, with the name its tooltip and label use. */
+export interface AvatarGroupPerson {
+	user: UserDTO;
+	name: string;
+}

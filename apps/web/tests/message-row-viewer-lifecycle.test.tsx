@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { MessageRows } from "@/features/chat/components/message-rows";
+import { MessageRows } from "@/features/chat/thread/components/message-rows";
 import type { ThreadMessage } from "@/features/chat/types/thread-message";
 import { makeAttachment, makeMessage, makeParticipant } from "./factories";
 

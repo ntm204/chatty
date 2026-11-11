@@ -1,0 +1,194 @@
+/* Conversation themes, the flowing wallpaper and the theme picker's preview. */
+
+/* The persisted value selects message colors only; the reading surface stays
+ * quiet and consistent across conversations. */
+[data-conversation-theme="azure"] {
+	--chat-accent: var(--color-tint-azure);
+	--chat-mine: var(--color-tint-azure);
+	--chat-complement: var(--color-tint-teal);
+}
+[data-conversation-theme="amber"] {
+	--chat-accent: var(--color-tint-amber);
+	--chat-mine: var(--color-tint-amber);
+	--chat-complement: var(--color-tint-clay);
+}
+[data-conversation-theme="moss"] {
+	--chat-accent: var(--color-tint-moss);
+	--chat-mine: var(--color-tint-moss);
+	--chat-complement: var(--color-tint-fern);
+}
+[data-conversation-theme="plum"] {
+	--chat-accent: var(--color-tint-plum);
+	--chat-mine: var(--color-tint-plum);
+	--chat-complement: var(--color-tint-iris);
+}
+[data-conversation-theme="clay"] {
+	--chat-accent: var(--color-tint-clay);
+	--chat-mine: var(--color-tint-clay);
+	--chat-complement: var(--color-tint-amber);
+}
+[data-conversation-theme="teal"] {
+	--chat-accent: var(--color-tint-teal);
+	--chat-mine: var(--color-tint-teal);
+	--chat-complement: var(--color-tint-azure);
+}
+[data-conversation-theme="iris"] {
+	--chat-accent: var(--color-tint-iris);
+	--chat-mine: var(--color-tint-iris);
+	--chat-complement: var(--color-tint-plum);
+}
+[data-conversation-theme="fern"] {
+	--chat-accent: var(--color-tint-fern);
+	--chat-mine: var(--color-tint-fern);
+	--chat-complement: var(--color-tint-moss);
+}
+.theme-wallpaper {
+	background: var(--color-paper-raised);
+}
+
+/* ── Flowing wallpaper (FlowingWallpaper) ──
+ * A doodle tile, drawn for Chatty, repeated over the conversation. By day it
+ * sits softly on the full gradient; at night the pane is near-black and the
+ * gradient is masked to the doodles' lines, so they glow in the theme colours. */
+.chat-wallpaper {
+	--chat-doodles: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27300%27%20height%3D%27300%27%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%271.6%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27M2%202h14a3%203%200%200%201%203%203v6a3%203%200%200%201-3%203H9l-4%203v-3H5a3%203%200%200%201-3-3V5a3%203%200%200%201%203-3z%27%20transform%3D%27translate%2824.6%2013.2%29%20rotate%28-17%2010%2010%29%20scale%281.01%29%27%2F%3E%3Cpath%20d%3D%27M5%2014a4%204%200%200%201%20.5-8%205%205%200%200%201%209.5%201%203.5%203.5%200%200%201-.5%207z%27%20transform%3D%27translate%2863.9%2021.5%29%20rotate%2815%2010%2010%29%20scale%280.94%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28119.4%2022.7%29%20rotate%28-15%2010%2010%29%20scale%280.88%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28170.6%209.0%29%20rotate%2811%2010%2010%29%20scale%280.91%29%27%2F%3E%3Cpath%20d%3D%27M10%203a7%207%200%201%200%200%2014a7%207%200%201%200%200-14z%20M7%209h.01%20M13%209h.01%20M7%2012.5c1.6%201.6%204.4%201.6%206%200%27%20transform%3D%27translate%28222.5%2010.2%29%20rotate%281%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28269.6%2018.4%29%20rotate%2825%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M7%2015V3l11-2v12%20M7%2015a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%20M18%2013a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%27%20transform%3D%27translate%2814.0%2073.1%29%20rotate%28-10%2010%2010%29%20scale%280.80%29%27%2F%3E%3Cpath%20d%3D%27M1%209L18%202l-5%2016-3.5-6.5z%20M9.5%2011.5L18%202%27%20transform%3D%27translate%2865.7%2063.3%29%20rotate%2826%2010%2010%29%20scale%280.95%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28123.8%2059.1%29%20rotate%28-14%2010%2010%29%20scale%280.95%29%27%2F%3E%3Cpath%20d%3D%27M5%2014a4%204%200%200%201%20.5-8%205%205%200%200%201%209.5%201%203.5%203.5%200%200%201-.5%207z%27%20transform%3D%27translate%28165.6%2061.5%29%20rotate%2825%2010%2010%29%20scale%280.77%29%27%2F%3E%3Cpath%20d%3D%27M7%2015V3l11-2v12%20M7%2015a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%20M18%2013a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%27%20transform%3D%27translate%28214.2%2070.0%29%20rotate%2825%2010%2010%29%20scale%280.93%29%27%2F%3E%3Cpath%20d%3D%27M10%2017C4%2012%201%209%201%205.5A4%204%200%200%201%2010%204a4%204%200%200%201%209%201.5C19%209%2016%2012%2010%2017z%27%20transform%3D%27translate%28265.3%2063.1%29%20rotate%28-8%2010%2010%29%20scale%280.90%29%27%2F%3E%3Cpath%20d%3D%27M1%209L18%202l-5%2016-3.5-6.5z%20M9.5%2011.5L18%202%27%20transform%3D%27translate%2817.6%20119.1%29%20rotate%28-16%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M14%202a8%208%200%201%200%204%2012%207%207%200%200%201-4-12z%27%20transform%3D%27translate%2873.5%20119.4%29%20rotate%288%2010%2010%29%20scale%280.93%29%27%2F%3E%3Cpath%20d%3D%27M5%2014a4%204%200%200%201%20.5-8%205%205%200%200%201%209.5%201%203.5%203.5%200%200%201-.5%207z%27%20transform%3D%27translate%28120.4%20124.9%29%20rotate%28-6%2010%2010%29%20scale%281.00%29%27%2F%3E%3Cpath%20d%3D%27M1%209L18%202l-5%2016-3.5-6.5z%20M9.5%2011.5L18%202%27%20transform%3D%27translate%28168.6%20114.3%29%20rotate%28-10%2010%2010%29%20scale%280.89%29%27%2F%3E%3Cpath%20d%3D%27M10%202v16%20M2%2010h16%20M4.5%204.5l11%2011%20M15.5%204.5l-11%2011%27%20transform%3D%27translate%28223.8%20110.0%29%20rotate%2819%2010%2010%29%20scale%280.78%29%27%2F%3E%3Cpath%20d%3D%27M7%2015V3l11-2v12%20M7%2015a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%20M18%2013a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%27%20transform%3D%27translate%28260.8%20109.4%29%20rotate%2830%2010%2010%29%20scale%280.83%29%27%2F%3E%3Cpath%20d%3D%27M3%206h14v10H3z%20M3%206l7%205%207-5%27%20transform%3D%27translate%2810.6%20166.2%29%20rotate%286%2010%2010%29%20scale%280.80%29%27%2F%3E%3Cpath%20d%3D%27M10%203a7%207%200%201%200%200%2014a7%207%200%201%200%200-14z%20M7%209h.01%20M13%209h.01%20M7%2012.5c1.6%201.6%204.4%201.6%206%200%27%20transform%3D%27translate%2873.9%20174.0%29%20rotate%2823%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M10%202v16%20M2%2010h16%20M4.5%204.5l11%2011%20M15.5%204.5l-11%2011%27%20transform%3D%27translate%28113.0%20158.2%29%20rotate%28-15%2010%2010%29%20scale%280.78%29%27%2F%3E%3Cpath%20d%3D%27M2%202h14a3%203%200%200%201%203%203v6a3%203%200%200%201-3%203H9l-4%203v-3H5a3%203%200%200%201-3-3V5a3%203%200%200%201%203-3z%27%20transform%3D%27translate%28169.1%20162.2%29%20rotate%2814%2010%2010%29%20scale%280.92%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28212.3%20173.9%29%20rotate%28-16%2010%2010%29%20scale%280.88%29%27%2F%3E%3Cpath%20d%3D%27M4%203h12l-2%2014H6z%20M15%207h3v4h-2.5%27%20transform%3D%27translate%28260.1%20166.8%29%20rotate%28-30%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M3%206h14v10H3z%20M3%206l7%205%207-5%27%20transform%3D%27translate%2824.6%20208.4%29%20rotate%2824%2010%2010%29%20scale%280.82%29%27%2F%3E%3Cpath%20d%3D%27M10%203a7%207%200%201%200%200%2014a7%207%200%201%200%200-14z%20M7%209h.01%20M13%209h.01%20M7%2012.5c1.6%201.6%204.4%201.6%206%200%27%20transform%3D%27translate%2868.2%20220.2%29%20rotate%28-14%2010%2010%29%20scale%280.83%29%27%2F%3E%3Cpath%20d%3D%27M10%201l2.6%205.6%206%20.7-4.5%204.1%201.2%206L10%2014.4%204.7%2017.4l1.2-6L1.4%207.3l6-.7z%27%20transform%3D%27translate%28118.2%20208.9%29%20rotate%2816%2010%2010%29%20scale%281.00%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28167.0%20208.6%29%20rotate%28-23%2010%2010%29%20scale%281.07%29%27%2F%3E%3Cpath%20d%3D%27M10%2017C4%2012%201%209%201%205.5A4%204%200%200%201%2010%204a4%204%200%200%201%209%201.5C19%209%2016%2012%2010%2017z%27%20transform%3D%27translate%28220.4%20224.1%29%20rotate%28-28%2010%2010%29%20scale%281.06%29%27%2F%3E%3Cpath%20d%3D%27M4%203h12l-2%2014H6z%20M15%207h3v4h-2.5%27%20transform%3D%27translate%28275.9%20225.2%29%20rotate%2816%2010%2010%29%20scale%280.90%29%27%2F%3E%3Cpath%20d%3D%27M10%201l2.6%205.6%206%20.7-4.5%204.1%201.2%206L10%2014.4%204.7%2017.4l1.2-6L1.4%207.3l6-.7z%27%20transform%3D%27translate%2821.1%20273.9%29%20rotate%28-6%2010%2010%29%20scale%280.83%29%27%2F%3E%3Cpath%20d%3D%27M7%2015V3l11-2v12%20M7%2015a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%20M18%2013a3%202.5%200%201%201-3-2.5%203%202.5%200%200%201%203%202.5z%27%20transform%3D%27translate%2874.0%20268.1%29%20rotate%28-9%2010%2010%29%20scale%280.97%29%27%2F%3E%3Cpath%20d%3D%27M2%2010c3-5%206%205%209%200s6%205%208%200%27%20transform%3D%27translate%28114.0%20271.1%29%20rotate%28-5%2010%2010%29%20scale%280.82%29%27%2F%3E%3Cpath%20d%3D%27M1%209L18%202l-5%2016-3.5-6.5z%20M9.5%2011.5L18%202%27%20transform%3D%27translate%28175.7%20275.9%29%20rotate%288%2010%2010%29%20scale%281.06%29%27%2F%3E%3Cpath%20d%3D%27M10%203a7%207%200%201%200%200%2014a7%207%200%201%200%200-14z%20M7%209h.01%20M13%209h.01%20M7%2012.5c1.6%201.6%204.4%201.6%206%200%27%20transform%3D%27translate%28211.6%20269.6%29%20rotate%28-22%2010%2010%29%20scale%280.92%29%27%2F%3E%3Cpath%20d%3D%27M5%2014a4%204%200%200%201%20.5-8%205%205%200%200%201%209.5%201%203.5%203.5%200%200%201-.5%207z%27%20transform%3D%27translate%28271.9%20275.0%29%20rotate%28-1%2010%2010%29%20scale%280.82%29%27%2F%3E%3C%2Fsvg%3E");
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+.chat-wallpaper-gradient,
+.chat-wallpaper-pattern {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+.chat-wallpaper-pattern {
+	background: var(--chat-doodles) 0 0 / 300px 300px repeat;
+	opacity: 0.2;
+	mix-blend-mode: soft-light;
+}
+[data-theme="dark"] .chat-wallpaper:not(.chat-wallpaper-still) {
+	background: var(--color-paper);
+}
+[data-theme="dark"] .chat-wallpaper:not(.chat-wallpaper-still) .chat-wallpaper-gradient {
+	-webkit-mask: var(--chat-doodles) 0 0 / 300px 300px repeat;
+	mask: var(--chat-doodles) 0 0 / 300px 300px repeat;
+	opacity: 0.3;
+}
+[data-theme="dark"] .chat-wallpaper-pattern {
+	display: none;
+}
+
+/* The conversation shows its wallpaper through the history and the composer;
+ * by day a received bubble is paper-white on it, as on any wallpaper. */
+.conversation-pane .message-paper {
+	background: transparent;
+}
+.conversation-pane .message-composer {
+	background: color-mix(in srgb, var(--color-paper-raised) 82%, transparent);
+	-webkit-backdrop-filter: blur(11px) saturate(112%);
+	backdrop-filter: blur(11px) saturate(112%);
+}
+:root:not([data-theme="dark"]) :is(.conversation-pane, .theme-preview-chat) .chat-bubble.bg-paper-sunken {
+	background: var(--color-paper-raised);
+}
+
+/* Your bubble would share the wallpaper's pastel; lifting it towards paper and
+ * giving every bubble a hairline shadow keeps messages on top of the picture. */
+:root:not([data-theme="dark"])
+	:is(.conversation-pane, .theme-preview-chat)
+	.chat-bubble:is(.bg-block, [class*="bg-tint-"]) {
+	background-color: color-mix(in srgb, var(--chat-mine, var(--color-block)) 55%, var(--color-paper-raised));
+}
+.conversation-pane .chat-bubble,
+.theme-preview-chat .chat-bubble {
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+/* Dates and notes float on the wallpaper, so they sit on a frosted pill. */
+.conversation-pane .wallpaper-pill,
+.theme-preview-chat .wallpaper-pill {
+	background: color-mix(in srgb, var(--color-paper-raised) 78%, transparent);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+}
+[data-conversation-theme="default"] {
+	--chat-accent: var(--color-paper-raised);
+	--chat-complement: var(--color-paper-raised);
+}
+.theme-choice {
+	/* Selection changes immediately; only the hover wash eases between colors. */
+	transition-property: background-color, color;
+	min-width: 0;
+	flex-direction: column;
+	gap: 5px;
+	border: 1px solid var(--color-rule-soft);
+	border-radius: 12px;
+	padding: 7px;
+	font-size: 11px;
+}
+.theme-choice-selected {
+	border-color: var(--color-heading);
+	box-shadow: 0 0 0 1px var(--color-heading);
+	color: var(--color-heading);
+}
+.theme-swatch {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	height: 29px;
+	border-radius: 6px;
+	padding: 6px;
+}
+.theme-swatch > span {
+	width: 28px;
+	height: 14px;
+	border-radius: 7px 7px 2px 7px;
+}
+
+/* ── Theme picker's live device preview ── */
+/* Clipped by shape, not only overflow: the frosted bars are their own
+ * compositing layers, which slip past an overflow clip's rounded corners. */
+.theme-device-screen {
+	clip-path: inset(0 round 1.8rem);
+}
+.theme-device-desktop .theme-device-screen {
+	clip-path: inset(0 round 0.5rem);
+}
+.theme-preview-bar {
+	background: color-mix(in srgb, var(--color-paper-raised) 82%, transparent);
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
+}
+@media (prefers-reduced-motion: no-preference) {
+	/* Each bubble the sample conversation sends rises into place. */
+	.theme-preview-bubble {
+		animation: theme-preview-arrive 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+		transform-origin: bottom;
+	}
+}
+@keyframes theme-preview-arrive {
+	from {
+		opacity: 0;
+		transform: translateY(14px) scale(0.92);
+	}
+}
+
+/* ── Performance ──
+ * Not `content-visibility` on messages: skipped rows report estimated heights,
+ * and the reading-position anchor across unloaded history drifted by them. */
+/* Frosted glass is the costliest thing on screen; drop it where it is asked to go. */
+@media (prefers-reduced-transparency: reduce) {
+	.conversation-pane
+		:is(.conversation-header, .pinned-messages-banner, .conversation-message-search, .message-composer),
+	.theme-preview-bar,
+	.wallpaper-pill,
+	.conversation-preview-backdrop {
+		-webkit-backdrop-filter: none !important;
+		backdrop-filter: none !important;
+		background-color: var(--color-paper-raised) !important;
+	}
+}

@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, messages, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import {
+	API_URL,
+	makeUser,
+	messages,
+	openConversationWith,
+	register,
+	sendMessage,
+	startDirectChat,
+} from "./helpers.js";
 
 import { makeVoiceWave } from "./fixtures/voice.js";
-
-const API_URL = "http://localhost:4100";
 
 test("files, voice, links, thumbnails and the conversation vault work across two browsers", async ({ browser }) => {
 	const senderUser = makeUser("VaultSender");

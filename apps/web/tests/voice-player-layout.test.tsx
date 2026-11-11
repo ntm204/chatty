@@ -1,10 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { VoicePlayer } from "@/features/chat/components/voice-player";
-import { VoiceWaveform } from "@/features/chat/components/voice-waveform";
+import { VoicePlayer } from "@/features/chat/media/components/voice-player";
+import { VoiceWaveform } from "@/features/chat/media/components/voice-waveform";
 import { makeAttachment } from "./factories";
 const state = vi.hoisted(() => ({ isPlaying: false }));
-vi.mock("@/features/chat/hooks/use-voice-player", () => ({
+vi.mock("@/features/chat/media/hooks/use-voice-player", () => ({
 	useVoicePlayer: () => ({
 		audioRef: { current: null },
 		...state,

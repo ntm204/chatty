@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("global search opens a message in an archived conversation outside the loaded sidebar", async ({ browser }) => {
 	const writer = makeUser("SearchWriter");
@@ -16,16 +16,16 @@ test("global search opens a message in an archived conversation outside the load
 		await expect(page.getByRole("main").getByText("Tài liệu chuyến đi Đà Nẵng")).toBeVisible();
 		const token = await page.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}` };
-		const response = await page.request.get("http://localhost:4100/conversations", { headers });
+		const response = await page.request.get(`${API_URL}/conversations`, { headers });
 		const { items } = (await response.json()) as { items: { id: string }[] };
 		for (let index = 0; index < 23; index += 1) {
-			const seeded = await page.request.post(`http://localhost:4100/conversations/${items[0]!.id}/messages`, {
+			const seeded = await page.request.post(`${API_URL}/conversations/${items[0]!.id}/messages`, {
 				headers,
 				data: { content: `Da Nang note ${index + 1}` },
 			});
 			expect(seeded.ok()).toBe(true);
 		}
-		const archive = await page.request.put(`http://localhost:4100/conversations/${items[0]!.id}/archive`, {
+		const archive = await page.request.put(`${API_URL}/conversations/${items[0]!.id}/archive`, {
 			headers,
 			data: { archived: true },
 		});

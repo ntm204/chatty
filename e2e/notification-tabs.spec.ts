@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
 
 interface RecordedNotification {
 	title: string;
@@ -60,12 +60,10 @@ test("two hidden tabs elect one notification, keep previews private and navigate
 		await expect(first.getByRole("button", { name: new RegExp(author.displayName) })).toBeVisible();
 		const token = await first.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}` };
-		const conversations = await (
-			await first.request.get("http://localhost:4100/conversations", { headers })
-		).json();
+		const conversations = await (await first.request.get(`${API_URL}/conversations`, { headers })).json();
 		expect(
 			(
-				await first.request.put(`http://localhost:4100/conversations/${conversations.items[0].id}/archive`, {
+				await first.request.put(`${API_URL}/conversations/${conversations.items[0].id}/archive`, {
 					headers,
 					data: { archived: true },
 				})

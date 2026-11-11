@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { findVisibleMessageId } from "@/features/chat/utils/visible-message";
+import { findVisibleMessageId } from "@/features/chat/thread/utils/visible-message";
 import { makeMessage } from "./factories";
 
 function bounds(top: number, height: number, width = 400): DOMRect {

@@ -1,14 +1,15 @@
 import { ChatOverlays } from "../components/chat-overlays";
 import type { ConversationDTO } from "@chatty/shared-types";
 import { useCallback, useRef, useState } from "react";
-import { useGlobalSearchSession } from "../hooks/use-global-search-session";
+import { useGlobalSearchSession } from "../search/hooks";
 import { useConversationRoute } from "../hooks/use-conversation-route";
 import { useChatLayers } from "../hooks/use-chat-layers";
 import { useChatViewport } from "../hooks/use-chat-viewport";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/utils/cn";
 import { ChatWelcome } from "../components/chat-welcome";
-import { ChatConversationPane, ConversationSidebar } from "../components";
+import { ChatConversationPane } from "../components";
+import { ConversationSidebar } from "../sidebar/components";
 import {
 	useBlockedUsersSync,
 	useConversationList,
@@ -130,6 +131,7 @@ export function ChatPage() {
 
 	const {
 		handleConversationStarted,
+		openMessageIn,
 		openNotificationConversation,
 		handleConversationSelected,
 		selectSearchResult,
@@ -143,6 +145,7 @@ export function ChatPage() {
 		setOpenedSavedConversation,
 		setRequestedMessageId,
 		setIsConversationSearchOpen: layers.setIsConversationSearchOpen,
+		isNavigationPending: Boolean(requestedMessageId) && messageState.isLoadingThread,
 	});
 	useMessageNotifications(currentUser?.id ?? "", conversations, openNotificationConversation);
 
@@ -157,8 +160,7 @@ export function ChatPage() {
 				isConnectionLost={isConnectionLost}
 				onCloseShortcutHelp={() => layers.setIsShortcutHelpOpen(false)}
 				onSelectMessage={(conversation, messageId) => {
-					handleConversationStarted(conversation.id, conversation);
-					setRequestedMessageId(messageId);
+					openMessageIn(conversation, messageId);
 					globalSearch.selectConversation(conversation.id);
 					globalSearch.close();
 				}}
@@ -176,10 +178,7 @@ export function ChatPage() {
 					onSignOut={logout}
 					onOpenMessageSearch={globalSearch.open}
 					onShowKeyboardShortcuts={() => layers.setIsShortcutHelpOpen(true)}
-					onOpenBookmarkedMessage={(conversation, messageId) => {
-						handleConversationStarted(conversation.id, conversation);
-						setRequestedMessageId(messageId);
-					}}
+					onOpenBookmarkedMessage={openMessageIn}
 					isShowingArchived={isShowingArchived}
 					onToggleArchived={() => setIsShowingArchived(!isShowingArchived)}
 					typingByConversation={typingByConversation}

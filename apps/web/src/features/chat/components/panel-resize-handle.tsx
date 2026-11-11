@@ -64,7 +64,7 @@ export function PanelResizeHandle({
 			aria-valuemax={maxWidth}
 			aria-valuenow={width}
 			aria-valuetext={`${width} pixels`}
-			title="Drag to resize · Double-click to reset"
+			data-tooltip="Drag to resize · Double-click to reset"
 			data-dragging={isDragging || undefined}
 			className={cn(
 				// The hit area fills the whole gutter between the panels; the visible

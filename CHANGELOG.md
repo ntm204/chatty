@@ -8,12 +8,45 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Fix: jumping to a second message while the first jump was still loading (two quick taps on the pin bar on a
+  slow connection) no longer snaps the thread back to the first one when its late response lands.
+- Sidebar rows, Telegram-style: ticks and a grey time on the name's line, the count, "@" or pin on the
+  preview's; the bell-off sits right after a muted chat's name. Hovering swaps the whole right column
+  for the actions button, and on touch that button keeps its own lane instead of covering the count.
+- `npm run seed:demo` is now a short tour of every feature, with profile and group photos; the old
+  long history is `-- --long`.
+- The "N new messages" pill sits below the header and day label, where it can be pressed.
+- Loading shows placeholder rows and bubbles instead of "Loading…", and only when a load takes longer
+  than 300ms, so fast loads never flash.
+- Every icon-only button names itself on hover or keyboard focus (one shared tooltip, never on touch).
+- Empty screens say why they are empty — first visit, a folder, the archive, a new chat — and a first
+  visit offers "Find someone".
+- Error messages never show raw server or network text, and every one says what to do next.
+- A "N new messages" pill jumps up to the first unread message until you have seen it.
+- Destructive menu items sit last behind a divider; muted chats count unread in grey; one focus
+  outline across the app; font sizes trimmed to one short scale.
+- Voice messages, Telegram-style: they sit in the chat bubble with its tail, time and ticks; a solid
+  play disc, a slim waveform that fills as it plays, and a length that grows with the recording.
+- Avatar stacks follow Innovaccer's AvatarGroup rule: up to three faces, past that two and a "+N",
+  with everyone's name on hover. A group without its own picture shows two members' faces once one
+  of them has a photo.
+- Restructure for growth without changing behaviour: the chat feature is split into sub-features
+  (`thread`, `composer`, `sidebar`, `details`, `expressions`, `media`, `theme`, `search`), styles into
+  one stylesheet per screen area, the API client into one file per resource, and the conversations
+  and messages services into one file per responsibility behind unchanged entry points. Both
+  conventions files say when a feature or module earns its next split.
+- Browser tests run two spec files at once (`CHATTY_E2E_WORKERS`), each worker with its own servers,
+  database and upload folder; the full suite takes about five minutes.
+- When a conversation action fails, focus returns to the item you chose, ready for a retry.
 - Keep reaction chips and gallery overlays behind the conversation header when they scroll under it.
 - Show reactions as chips inside the bubble, drawn with Chatty's own doodle set for the six quick
   reactions; yours is filled in ink, and pressing a chip toggles it.
 - Move the palette to "ink & pastel": warm paper surfaces and an iris-pastel bubble for your messages.
 - Show people without a photo as Messenger's grey silhouette, and groups without one as three grey
   figures in the same style; drop the plate behind every avatar.
+- `verify:full` runs in about a minute instead of three-plus: each server test worker gets its own
+  database cloned from `chatty_test`, test passwords hash at bcrypt's minimum cost, and the server
+  and web suites run side by side.
 - A chosen palette colours the signed-in app only: sign-in, registration and recovery always use the
   default colours.
 - Mark the open conversation and the current settings section by their fill alone, without an edge bar.

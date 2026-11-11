@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { useAuth } from "@/hooks/use-auth";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 /**
  * Deletes the account, behind a password and a confirmation step.
@@ -35,7 +36,7 @@ export function DeleteAccountForm() {
 		try {
 			await deleteAccount(currentPassword);
 		} catch (deleteError) {
-			setError((deleteError as Error).message);
+			setError(getErrorMessage(deleteError, "Your account could not be deleted. Try again."));
 			setIsDeleting(false);
 		}
 		// No `finally`: on success this component is unmounted by the route guard,

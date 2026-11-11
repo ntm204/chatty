@@ -4,6 +4,8 @@ import { api } from "@/api/client";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
 import { useRestrictedUsers } from "@/hooks/use-restricted-users";
+import { getErrorMessage } from "@/utils/get-error-message";
+import { SkeletonList } from "@/components/skeleton";
 
 /**
  * The account-level home for people the user has restricted.
@@ -34,7 +36,7 @@ export function RestrictedUsersSettings() {
 			setNextCursor(page.nextCursor);
 			setHasLoaded(true);
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not load restricted people");
+			setError(getErrorMessage(caught, "Restricted people could not be loaded. Try again."));
 		} finally {
 			setIsLoading(false);
 			setIsLoadingMore(false);
@@ -54,7 +56,7 @@ export function RestrictedUsersSettings() {
 			// Reset rather than continuing from a stale cursor so no later page can 404.
 			await loadPage(undefined, true);
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Could not stop restricting user");
+			setError(getErrorMessage(caught, "Could not stop restricting. Try again."));
 		} finally {
 			setUnrestrictingUserId(null);
 		}
@@ -67,7 +69,7 @@ export function RestrictedUsersSettings() {
 			</p>
 
 			{isLoading ? (
-				<p className="text-[13px] text-ink-faint">Loading restricted people…</p>
+				<SkeletonList label="Loading restricted people" rows={3} isCompact className="-mx-2.5 px-0" />
 			) : !hasLoaded ? (
 				<div className="flex flex-col items-start gap-2">
 					<p role="alert" className="text-[13px] text-signal">

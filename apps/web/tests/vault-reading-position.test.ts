@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useVaultReadingPosition } from "@/features/chat/hooks/use-vault-reading-position";
+import { useVaultReadingPosition } from "@/features/chat/details/hooks/use-vault-reading-position";
 
 /**
  * A live update (a new link, a retracted message) reloads the vault list while

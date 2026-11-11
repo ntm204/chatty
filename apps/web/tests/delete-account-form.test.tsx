@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteAccountForm } from "@/features/profile/components/delete-account-form";
 import { useAuth } from "@/hooks/use-auth";
-import { makeCurrentUser } from "./factories";
+import { makeCurrentUser, serverError } from "./factories";
 
 const deleteAccount = vi.fn();
 
@@ -51,7 +51,7 @@ describe("DeleteAccountForm", () => {
 	});
 
 	it("keeps the session when the password is wrong", async () => {
-		deleteAccount.mockRejectedValue(new Error("Current password is incorrect"));
+		deleteAccount.mockRejectedValue(serverError("Current password is incorrect"));
 		const typist = userEvent.setup();
 		render(<DeleteAccountForm />);
 

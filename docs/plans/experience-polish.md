@@ -98,7 +98,7 @@ mốc tham chiếu của lần rà soát, không phải tỷ lệ coverage hoặ
 | Chuyển tiếp chỉ dùng các hội thoại sidebar đã tải; search/Saved toàn tài khoản chưa có điểm vào chung | Đã đối chiếu component, API client và service | XP-23, XP-26, XP-28 |
 | Read marker theo tin mới nhất đã tải; một số thao tác không trình bày lỗi mạng | Đã đọc source; bổ sung tình huống thực tế trước khi thay đổi | XP-09, XP-12, XP-16 |
 
-Các điểm vào: [nháp](../../apps/web/src/features/chat/hooks/use-message-draft.ts),
+Các điểm vào: [nháp](../../apps/web/src/features/chat/composer/hooks/use-message-draft.ts),
 [cleanup tài khoản](../../apps/web/src/hooks/use-auth.ts),
 [message service](../../apps/server/src/modules/messages/messages.service.ts),
 [CSP](../../apps/web/nginx.conf.template),

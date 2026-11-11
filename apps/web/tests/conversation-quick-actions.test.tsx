@@ -2,8 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { ConversationQuickActions } from "@/features/chat/components/conversation-quick-actions";
-import { makeConversation } from "./factories";
+import { ConversationQuickActions } from "@/features/chat/details/components/conversation-quick-actions";
+import { makeConversation, serverError } from "./factories";
 
 vi.mock("@/api/client", () => ({ api: { setConversationMuted: vi.fn() } }));
 
@@ -14,7 +14,7 @@ beforeEach(() => {
 describe("details mute actions", () => {
 	it("catches failures, keeps the menu actionable and closes only after a successful retry", async () => {
 		const user = userEvent.setup();
-		vi.mocked(api.setConversationMuted).mockRejectedValueOnce(new Error("Cannot save mute"));
+		vi.mocked(api.setConversationMuted).mockRejectedValueOnce(serverError("Cannot save mute"));
 		render(<ConversationQuickActions conversation={makeConversation()} onOpenSearch={() => undefined} />);
 		await user.click(screen.getByRole("button", { name: "Mute notifications" }));
 		await user.click(screen.getByRole("menuitem", { name: "15 minutes" }));
@@ -50,7 +50,7 @@ describe("details mute actions", () => {
 		await user.click(screen.getByRole("menuitem", { name: "Forever" }));
 		expect(api.setConversationMuted).toHaveBeenCalledTimes(1);
 		await user.click(trigger);
-		await act(async () => rejectRequest(new Error("Mute was not confirmed")));
+		await act(async () => rejectRequest(serverError("Mute was not confirmed")));
 		expect(screen.getByRole("alert")).toHaveTextContent("Mute was not confirmed");
 		await user.click(screen.getByRole("button", { name: "Dismiss conversation error" }));
 		expect(screen.queryByRole("alert")).not.toBeInTheDocument();

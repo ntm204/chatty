@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { AddGroupMembersDialog } from "@/features/chat/components/add-group-members-dialog";
-import { makeConversation, makeUser } from "./factories";
+import { AddGroupMembersDialog } from "@/features/chat/details/components/add-group-members-dialog";
+import { makeConversation, makeUser, serverError } from "./factories";
 
 vi.mock("@/api/client", () => ({ api: { searchUsers: vi.fn(), addParticipant: vi.fn() } }));
 
@@ -10,7 +10,7 @@ it("retains only failed additions and does not resend successful people on retry
 	vi.mocked(api.searchUsers).mockResolvedValue([makeUser("an", "An"), makeUser("binh", "Binh")]);
 	vi.mocked(api.addParticipant)
 		.mockResolvedValueOnce(makeConversation())
-		.mockRejectedValueOnce(new Error("Try again"))
+		.mockRejectedValueOnce(serverError("Try again"))
 		.mockResolvedValueOnce(makeConversation());
 	const close = vi.fn();
 	render(<AddGroupMembersDialog conversationId="group" participantIds={[]} onClose={close} />);

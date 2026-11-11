@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasMessageTimeGap, isWithinMessageBurst } from "@/features/chat/utils/message-spacing";
+import { hasMessageTimeGap, isWithinMessageBurst } from "@/features/chat/thread/utils/message-grouping";
 
 describe("message spacing", () => {
 	it("keeps nearby messages in one burst", () => {

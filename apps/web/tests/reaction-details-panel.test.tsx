@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { ReactionDetailsPanel } from "@/features/chat/components/reaction-details-panel";
+import { ReactionDetailsPanel } from "@/features/chat/expressions/components/reaction-details-panel";
 import { makeUser } from "./factories";
 
 it("supports arrow navigation and falls back to All when the selected reaction disappears", () => {

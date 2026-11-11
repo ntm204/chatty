@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
 /** Seed real rows over HTTP; the reader obtains them through the API and socket. */
 async function seedHistory(page: Page, count: number): Promise<string> {
@@ -21,7 +21,7 @@ async function seedHistory(page: Page, count: number): Promise<string> {
 			}
 			return conversationId;
 		},
-		{ apiUrl: process.env.E2E_API_URL ?? "http://localhost:4100", count },
+		{ apiUrl: API_URL, count },
 	);
 }
 
@@ -183,7 +183,7 @@ test("offers a quiet way back, follows incoming messages during a jump and respe
 					}
 					button.click();
 				}),
-			{ apiUrl: process.env.E2E_API_URL ?? "http://localhost:4100", conversationId, token: senderToken },
+			{ apiUrl: API_URL, conversationId, token: senderToken },
 		);
 		await expect(history.getByText("Arrived while the jump was moving")).toBeInViewport();
 		await expect.poll(distance).toBeLessThanOrEqual(1);
@@ -358,7 +358,8 @@ test("returns from search across live arrivals, a delayed latest page and a retr
 		);
 		await jump.click();
 		await expect(readerPage.getByText("This conversation could not be loaded.")).toBeVisible();
-		await expect(readerPage.getByText("Latest messages are temporarily unavailable")).toBeVisible();
+		// A 5xx body is never shown; the screen explains and its button offers the retry.
+		await expect(readerPage.getByText("Something went wrong on our side.")).toBeVisible();
 		await readerPage.getByRole("button", { name: "Try again" }).click();
 		await expect(history.getByText("Arrived while the latest page was loading")).toBeInViewport();
 		await expect.poll(distance).toBeLessThanOrEqual(1);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface ConfirmEmailFormProps {
 	token: string;
@@ -34,7 +35,7 @@ export function ConfirmEmailForm({ token }: ConfirmEmailFormProps) {
 			.confirmEmailChange({ token })
 			.then(() => setStatus("confirmed"))
 			.catch((confirmError: unknown) => {
-				setError((confirmError as Error).message);
+				setError(getErrorMessage(confirmError, "Your email could not be confirmed. Try again."));
 				setStatus("failed");
 			});
 	}, [token]);

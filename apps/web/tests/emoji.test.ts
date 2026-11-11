@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countJumboEmoji, searchEmoji } from "@/features/chat/utils";
+import { countJumboEmoji, searchEmoji } from "@/features/chat/expressions/utils";
 
 describe("countJumboEmoji", () => {
 	it("counts a single emoji", () => {

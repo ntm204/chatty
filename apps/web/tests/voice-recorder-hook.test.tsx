@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useVoiceRecorder } from "@/features/chat/hooks/use-voice-recorder";
+import { useVoiceRecorder } from "@/features/chat/composer/hooks/use-voice-recorder";
 
 const recorders: TestMediaRecorder[] = [];
 const getUserMedia = vi.fn<() => Promise<MediaStream>>();

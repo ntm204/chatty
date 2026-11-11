@@ -1,7 +1,7 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import type { useGlobalSearchSession } from "../hooks/use-global-search-session";
+import type { useGlobalSearchSession } from "../search/hooks";
 import { ConnectionBanner } from "./connection-banner";
-import { GlobalMessageSearch } from "./global-message-search";
+import { GlobalMessageSearch } from "../search/components";
 import { KeyboardShortcutsPanel } from "./keyboard-shortcuts-panel";
 
 interface ChatOverlaysProps {

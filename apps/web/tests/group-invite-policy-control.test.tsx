@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GroupInvitePolicyControl } from "@/features/chat/components/group-invite-policy-control";
+import { GroupInvitePolicyControl } from "@/features/chat/details/components/group-invite-policy-control";
 
 const setGroupInvitePolicy = vi.fn();
 

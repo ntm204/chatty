@@ -1,7 +1,7 @@
 import { cpus, platform, arch, totalmem } from "node:os";
 import { performance } from "node:perf_hooks";
 import { expect, test } from "@playwright/test";
-import { makeUser, register, startDirectChat, openConversationWith } from "./helpers.js";
+import { API_URL, makeUser, register, startDirectChat, openConversationWith } from "./helpers.js";
 
 test.use({ launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] } });
 
@@ -44,7 +44,7 @@ test("measures local built-app interactions, API load and retained browser memor
 		await openConversationWith(other, author);
 		const token = await page.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-		const api = "http://localhost:4100";
+		const api = API_URL;
 		const initial = (await (await fetch(`${api}/conversations`, { headers })).json()) as {
 			items: { id: string; participants: { id: string }[] }[];
 		};

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatRemaining } from "@/features/chat/utils/format-remaining";
+import { formatRemaining } from "@/features/chat/thread/utils/format-remaining";
 
 const NOW = new Date("2026-08-23T14:30:00Z");
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("restores an unloaded reply, retains it through lookup failure and sends only after resolution", async ({
 	browser,
@@ -27,18 +27,18 @@ test("restores an unloaded reply, retains it through lookup failure and sends on
 				),
 			)
 			.toBe(true);
-		const target = await page.evaluate(async () => {
+		const target = await page.evaluate(async (apiUrl) => {
 			const headers = {
 				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 				"Content-Type": "application/json",
 			};
-			const list = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+			const list = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 			const conversationId = list.items[0].id as string;
 			const messages = await (
-				await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, { headers })
+				await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })
 			).json();
 			for (let index = 0; index < 55; index++) {
-				const response = await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, {
+				const response = await fetch(`${apiUrl}/conversations/${conversationId}/messages`, {
 					method: "POST",
 					headers,
 					body: JSON.stringify({ content: `Newer context ${index}` }),
@@ -47,7 +47,7 @@ test("restores an unloaded reply, retains it through lookup failure and sends on
 			}
 
 			return { conversationId, messageId: messages[0].id as string };
-		});
+		}, API_URL);
 		await page.route("**/messages/*/context?*", (route) =>
 			route.fulfill({
 				status: 503,
@@ -70,16 +70,19 @@ test("restores an unloaded reply, retains it through lookup failure and sends on
 		await expect(page.getByLabel("Message", { exact: true })).toHaveValue("");
 		await expect
 			.poll(() =>
-				page.evaluate(async ({ conversationId }) => {
-					const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
-					const messages = await (
-						await fetch(`http://localhost:4100/conversations/${conversationId}/messages`, { headers })
-					).json();
+				page.evaluate(
+					async ({ conversationId, apiUrl }) => {
+						const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
+						const messages = await (
+							await fetch(`${apiUrl}/conversations/${conversationId}/messages`, { headers })
+						).json();
 
-					return messages.find(
-						(message: { content: string }) => message.content === "Nháp reply được giữ nguyên",
-					)?.replyTo?.id;
-				}, target),
+						return messages.find(
+							(message: { content: string }) => message.content === "Nháp reply được giữ nguyên",
+						)?.replyTo?.id;
+					},
+					{ ...target, apiUrl: API_URL },
+				),
 			)
 			.toBe(target.messageId);
 	} finally {

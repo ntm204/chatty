@@ -1,3 +1,4 @@
+import { ApiError } from "@/api/core";
 import type {
 	AttachmentDTO,
 	ConversationDTO,
@@ -173,4 +174,9 @@ export function makeConversation(overrides: Partial<ConversationDTO> = {}): Conv
 		updatedAt: FIXED_DATE,
 		...overrides,
 	};
+}
+
+/** What the API client throws for a 4xx answer carrying the server's own, people-facing message. */
+export function serverError(message: string, status = 400): ApiError {
+	return new ApiError(message, status, true);
 }

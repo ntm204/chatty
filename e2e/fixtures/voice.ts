@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { API_URL } from "../helpers.js";
 
 /** A real PCM recording with speech-like pauses and changing amplitude. */
 export function makeVoiceWave(seconds = 1): Buffer {
@@ -52,7 +53,7 @@ export async function sendVoiceFixture(page: Page, seconds = 8): Promise<string>
 		},
 		{
 			waveBase64: makeVoiceWave(seconds).toString("base64"),
-			apiUrl: process.env.E2E_API_URL ?? "http://localhost:4100",
+			apiUrl: API_URL,
 		},
 	);
 }

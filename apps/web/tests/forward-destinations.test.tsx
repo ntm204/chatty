@@ -2,9 +2,9 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-li
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { useForwardDestinations } from "@/features/chat/hooks/use-forward-destinations";
-import { ForwardMessagePanel } from "@/features/chat/components/forward-message-panel";
-import { makeConversation, makeMessage } from "./factories";
+import { useForwardDestinations } from "@/features/chat/thread/hooks/use-forward-destinations";
+import { ForwardMessagePanel } from "@/features/chat/thread/components/forward-message-panel";
+import { makeConversation, makeMessage, serverError } from "./factories";
 
 vi.mock("@/api/client", () => ({ api: { searchConversations: vi.fn(), forwardMessage: vi.fn() } }));
 beforeEach(() => vi.resetAllMocks());
@@ -33,7 +33,7 @@ it("ignores an old query response before the new debounce finishes", async () =>
 it("keeps a failed page's existing rows and retries the same cursor", async () => {
 	vi.mocked(api.searchConversations)
 		.mockResolvedValueOnce({ items: [makeConversation({ id: "first" })], hasMore: true })
-		.mockRejectedValueOnce(new Error("Search interrupted"))
+		.mockRejectedValueOnce(serverError("Search interrupted"))
 		.mockResolvedValueOnce({ items: [makeConversation({ id: "second" })], hasMore: false });
 	const { result } = renderHook(useForwardDestinations);
 	await waitFor(() => expect(result.current.items).toHaveLength(1));
@@ -55,7 +55,7 @@ it("retains a forwarding identity on failure and focuses confirmation on success
 		hasMore: false,
 	});
 	vi.mocked(api.forwardMessage)
-		.mockRejectedValueOnce(new Error("Forward interrupted"))
+		.mockRejectedValueOnce(serverError("Forward interrupted"))
 		.mockResolvedValue(makeMessage("forward", "me", "hello"));
 	const onClose = vi.fn();
 	render(<ForwardMessagePanel message={makeMessage("source", "me", "hello")} currentUserId="me" onClose={onClose} />);

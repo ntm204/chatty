@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { useGroupMemberMutations } from "@/features/chat/hooks/use-group-member-mutations";
+import { useGroupMemberMutations } from "@/features/chat/details/hooks/use-group-member-mutations";
 
 it("serializes a person's role/removal writes without blocking another person", async () => {
 	let finish!: () => void;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { easeInOutCubic, paintFlowingGradient } from "@/features/chat/utils";
+import { easeInOutCubic, paintFlowingGradient } from "@/features/chat/theme/utils/flowing-gradient";
 
 function image(width: number, height: number) {
 	return { width, height, data: new Uint8ClampedArray(width * height * 4) } as ImageData;

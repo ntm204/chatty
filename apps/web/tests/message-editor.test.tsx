@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { MessageEditor } from "@/features/chat/components/message-editor";
+import { MessageEditor } from "@/features/chat/thread/components/message-editor";
+import { serverError } from "./factories";
 
 it("does not save on composition Enter or repeated Enter", () => {
 	const save = vi.fn();
@@ -38,7 +39,7 @@ it("keeps the edit after a failed save and blocks repeated submission while pend
 	expect(cancel).not.toHaveBeenCalled();
 	expect(editor).toBeDisabled();
 	await act(async () => {
-		rejectSave(new Error("Edit window expired. Copy your text."));
+		rejectSave(serverError("Edit window expired. Copy your text."));
 	});
 	expect(editor).toHaveValue("important edit");
 	expect(editor).not.toBeDisabled();

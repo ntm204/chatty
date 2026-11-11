@@ -1,0 +1,179 @@
+/* The chat shell, the conversation sidebar and the resize handles between panels. */
+
+.chat-shell {
+	background: var(--color-shell);
+}
+.chat-workspace {
+	gap: 12px;
+	padding: 12px;
+}
+.conversation-sidebar {
+	border: 0;
+	border-radius: 20px;
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--color-brand-navy) 3%, transparent);
+}
+.sidebar-brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 64px;
+	padding: 16px 16px 12px 20px;
+}
+.sidebar-brand .brand {
+	font-size: 24px;
+}
+.sidebar-brand .brand-symbol {
+	width: 28px;
+	height: 23px;
+}
+.sidebar-brand-label {
+	padding: 6px 12px;
+	color: var(--color-accent-ink);
+	background: var(--color-accent);
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+.people-search {
+	border-radius: 28px;
+	background: var(--color-paper);
+	border: 1px solid transparent;
+}
+.people-search:focus-within {
+	border-color: var(--color-heading);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-heading) 9%, transparent);
+}
+.conversation-row {
+	min-height: 64px;
+	border-radius: 12px;
+}
+.conversation-row:hover {
+	background: var(--color-paper);
+}
+
+/* The row's right column (time, ticks, count, pin) is one block. With a pointer
+ * it steps aside as a whole for the actions button, which takes its place; on
+ * touch the button always shows, so the column moves over to give it a lane. */
+.conversation-row-meta {
+	transition: opacity 150ms ease;
+}
+@media (hover: hover) {
+	.conversation-row-item:is(:hover, :focus-within) .conversation-row-meta {
+		opacity: 0;
+	}
+}
+@media (hover: none) {
+	.conversation-row-meta {
+		margin-right: 30px;
+	}
+}
+
+/* The open conversation is marked by its fill alone (and `aria-current`): an
+ * edge bar beside a rounded row read as a stray line. */
+.conversation-row[aria-current="page"],
+.conversation-row[aria-current="page"]:hover {
+	background: var(--color-selection);
+}
+.sidebar-account {
+	margin: 8px;
+	border: 0;
+	background: var(--color-paper);
+	border-radius: 14px;
+	padding-inline: 13px;
+}
+.sidebar-account :is(a, button) {
+	color: var(--color-heading);
+}
+@media (max-width: 1023px) {
+	.chat-shell {
+		position: fixed;
+		top: var(--chat-viewport-top, 0px);
+		inset-inline: 0;
+		height: var(--chat-viewport-height, 100dvh);
+		padding-left: env(safe-area-inset-left);
+		padding-right: env(safe-area-inset-right);
+	}
+	.chat-workspace {
+		padding: 0;
+		gap: 0;
+	}
+	.conversation-sidebar {
+		border-radius: 0;
+		box-shadow: none;
+	}
+	.sidebar-account {
+		margin-bottom: max(8px, env(safe-area-inset-bottom));
+	}
+}
+.sidebar-brand-label:hover {
+	background: var(--color-accent-hover);
+	color: var(--color-accent-ink);
+}
+
+/* The resize handle fills the gutter between panels. At rest it is invisible;
+ * hover reveals a hairline with a small grip, and dragging commits it to the
+ * accent. A short delay keeps it from flashing while the pointer passes over. */
+.panel-resize-handle::before,
+.panel-resize-handle::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	pointer-events: none;
+	opacity: 0;
+	transition:
+		opacity 160ms ease,
+		transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+		background-color 160ms ease,
+		height 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.panel-resize-handle::before {
+	top: 18px;
+	bottom: 18px;
+	width: 1px;
+	background: color-mix(in srgb, var(--color-ink) 22%, transparent);
+	transform: translateX(-50%) scaleY(0.4);
+}
+.panel-resize-handle::after {
+	top: 50%;
+	width: 4px;
+	height: 28px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--color-ink) 38%, transparent);
+	box-shadow: 0 0 0 3px var(--color-paper);
+	transform: translate(-50%, -50%);
+}
+.panel-resize-handle:hover::before,
+.panel-resize-handle:hover::after,
+.panel-resize-handle:focus-visible::before,
+.panel-resize-handle:focus-visible::after {
+	opacity: 1;
+	transition-delay: 120ms;
+}
+.panel-resize-handle:hover::before,
+.panel-resize-handle:focus-visible::before {
+	transform: translateX(-50%) scaleY(1);
+}
+.panel-resize-handle:focus-visible::after {
+	background: var(--color-message-locator);
+}
+.panel-resize-handle[data-dragging]::before,
+.panel-resize-handle[data-dragging]::after {
+	opacity: 1;
+	transition-delay: 0ms;
+}
+.panel-resize-handle[data-dragging]::before {
+	width: 2px;
+	background: color-mix(in srgb, var(--color-message-locator) 70%, transparent);
+	transform: translateX(-50%) scaleY(1);
+}
+.panel-resize-handle[data-dragging]::after {
+	height: 40px;
+	background: var(--color-message-locator);
+}
+@media (prefers-reduced-motion: reduce) {
+	.panel-resize-handle::before,
+	.panel-resize-handle::after {
+		transition: none;
+	}
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("two tabs replay a closed thread's durable text and image outbox without duplicates", async ({ browser }) => {
 	const sender = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
@@ -7,7 +7,7 @@ test("two tabs replay a closed thread's durable text and image outbox without du
 	let isNetworkBlocked = false;
 	// Block the transport, not local file I/O: WebKit's emulated offline mode
 	// rejects both File.arrayBuffer and FileReader even for an in-memory Blob.
-	await sender.route("http://localhost:4100/**", (route) =>
+	await sender.route(`${API_URL}/**`, (route) =>
 		isNetworkBlocked ? route.abort("internetdisconnected") : route.continue(),
 	);
 	try {

@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MessageInput } from "@/features/chat/components/message-input";
-import { makeMessage, makeParticipant } from "./factories";
+import { MessageInput } from "@/features/chat/composer/components/message-input";
+import { makeMessage, makeParticipant, serverError } from "./factories";
 
 /**
  * The composer no longer calls the API. A text message is put on screen before
@@ -12,8 +12,10 @@ import { makeMessage, makeParticipant } from "./factories";
 const onSend = vi.fn();
 
 // The typing notifier talks to a socket, which is not what these tests are about.
-vi.mock("@/features/chat/hooks", () => ({
+vi.mock("@/features/chat/composer/hooks/use-typing-notifier", () => ({
 	useTypingNotifier: () => ({ notifyTyping: vi.fn(), stopTyping: vi.fn() }),
+}));
+vi.mock("@/features/chat/expressions/hooks/use-stickers", () => ({
 	useStickers: () => ({
 		stickers: [],
 		isLoading: false,
@@ -76,7 +78,7 @@ describe("MessageInput", () => {
 		const field = screen.getByLabelText("Message");
 		await typist.type(field, "message A{Enter}");
 		await typist.type(field, "new draft B");
-		rejectSend(new Error("Network unavailable"));
+		rejectSend(serverError("Network unavailable"));
 		await waitFor(() => expect(field).toHaveValue("new draft B"));
 	});
 	it("preserves multiline text with Shift+Enter and sends with Enter", async () => {
@@ -303,7 +305,7 @@ describe("MessageInput", () => {
 		const typist = userEvent.setup();
 		const onSendFile = vi
 			.fn()
-			.mockRejectedValueOnce(new Error("Connection interrupted"))
+			.mockRejectedValueOnce(serverError("Connection interrupted"))
 			.mockResolvedValue(undefined);
 		const { container } = renderInput({ onSendFile });
 		await typist.type(screen.getByLabelText("Message"), "Still drafting");
@@ -346,7 +348,7 @@ describe("MessageInput", () => {
 
 	it("allows a failed file to be removed while keeping the text draft", async () => {
 		const typist = userEvent.setup();
-		const onSendFile = vi.fn().mockRejectedValue(new Error("Connection interrupted"));
+		const onSendFile = vi.fn().mockRejectedValue(serverError("Connection interrupted"));
 		const { container } = renderInput({ onSendFile });
 		await typist.type(screen.getByLabelText("Message"), "Keep this text");
 		await typist.upload(container.querySelector('input[type="file"]:not([multiple])')!, documentFile);
@@ -588,7 +590,7 @@ describe("MessageInput", () => {
 		// news, in a composer the sender has already moved on from, is noise —
 		// and worse, it invites a re-send of a photo that is one click from
 		// being retried where it actually is.
-		onSend.mockRejectedValue(new Error("Network is down"));
+		onSend.mockRejectedValue(serverError("Network is down"));
 		const typist = userEvent.setup();
 		const { container } = renderInput();
 

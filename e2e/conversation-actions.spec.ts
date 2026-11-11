@@ -1,7 +1,7 @@
 import type { ConversationDTO } from "@chatty/shared-types";
 import { expect, test } from "@playwright/test";
 import type { Route } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("the five-pin limit stays actionable and a released slot can be reused", async ({ browser }) => {
 	const context = await browser.newContext();
@@ -18,12 +18,12 @@ test("the five-pin limit stays actionable and a released slot can be reused", as
 		const headers = { Authorization: `Bearer ${token}` };
 		const participantIds: string[] = [];
 		for (const user of [peer, third]) {
-			const response = await page.request.get(`http://localhost:4100/users?query=${user.handle}`, { headers });
+			const response = await page.request.get(`${API_URL}/users?query=${user.handle}`, { headers });
 			expect(response.ok()).toBe(true);
 			participantIds.push(((await response.json()) as { id: string }[])[0]!.id);
 		}
 		for (let number = 1; number <= 6; number++) {
-			const response = await page.request.post("http://localhost:4100/conversations", {
+			const response = await page.request.post(`${API_URL}/conversations`, {
 				headers,
 				data: { participantIds, name: `Pin group ${number}` },
 			});
@@ -32,7 +32,7 @@ test("the five-pin limit stays actionable and a released slot can be reused", as
 			if (number <= 5) {
 				expect(
 					(
-						await page.request.put(`http://localhost:4100/conversations/${conversation.id}/pin`, {
+						await page.request.put(`${API_URL}/conversations/${conversation.id}/pin`, {
 							headers,
 							data: { pinned: true },
 						})
@@ -56,7 +56,7 @@ test("the five-pin limit stays actionable and a released slot can be reused", as
 		await page.getByRole("menuitem", { name: "Pin conversation", exact: true }).click();
 		await expect(page.getByRole("menu")).toHaveCount(0);
 		await expect(page.getByRole("alert")).toHaveCount(0);
-		const response = await page.request.get("http://localhost:4100/conversations", { headers });
+		const response = await page.request.get(`${API_URL}/conversations`, { headers });
 		const { items } = (await response.json()) as { items: ConversationDTO[] };
 		expect(items.filter((conversation) => conversation.isPinned)).toHaveLength(5);
 		expect(items.find((conversation) => conversation.name === "Pin group 6")?.isPinned).toBe(true);
@@ -82,9 +82,9 @@ test("mute expiry updates the sidebar, unread title and details without a reload
 		await expect(listenerPage.getByRole("button", { name: new RegExp(senderUser.displayName) })).toBeVisible();
 		const token = await listenerPage.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}` };
-		const response = await listenerPage.request.get("http://localhost:4100/conversations", { headers });
+		const response = await listenerPage.request.get(`${API_URL}/conversations`, { headers });
 		const { items } = (await response.json()) as { items: ConversationDTO[] };
-		const conversationUrl = `http://localhost:4100/conversations/${items[0]!.id}`;
+		const conversationUrl = `${API_URL}/conversations/${items[0]!.id}`;
 		expect(
 			(
 				await listenerPage.request.put(`${conversationUrl}/mute`, {
@@ -166,7 +166,8 @@ test("mute errors survive closing either menu and deliberate retries do not send
 			contentType: "application/json",
 			body: JSON.stringify({ message: "Mute could not be saved. Try again." }),
 		});
-		await expect(page.getByRole("alert")).toContainText("Mute could not be saved. Try again.");
+		// A 5xx body is never shown; the client's own next-step fallback is.
+		await expect(page.getByRole("alert")).toContainText("The conversation could not be updated. Try again.");
 		await expect(page.getByRole("menu")).toHaveCount(0);
 		await expect(page.getByRole("img", { name: "Muted", exact: true })).toHaveCount(0);
 		await page.getByRole("button", { name: "Conversation actions" }).click();
@@ -194,7 +195,8 @@ test("mute errors survive closing either menu and deliberate retries do not send
 			contentType: "application/json",
 			body: JSON.stringify({ message: "Unmute could not be saved. Try again." }),
 		});
-		await expect(details.getByRole("alert")).toContainText("Unmute could not be saved. Try again.");
+		// A 5xx body is never shown; the client's own next-step fallback is.
+		await expect(details.getByRole("alert")).toContainText("The conversation could not be updated. Try again.");
 		await expect(details.getByRole("menu")).toHaveCount(0);
 		await details.getByRole("button", { name: "Turn notifications back on" }).click();
 		await details.getByRole("menuitem", { name: "Unmute", exact: true }).click();

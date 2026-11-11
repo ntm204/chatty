@@ -1,0 +1,148 @@
+/* Message bubbles and what sits on them: tails, sending motion, voice player, actions. */
+
+.chat-bubble {
+	padding: 8px 14px;
+}
+.chat-bubble.bg-paper-sunken {
+	background: var(--color-paper-sunken);
+}
+.chat-bubble.voice-message {
+	padding: 8px 10px 6px 8px;
+}
+/* The time sits in the duration line here, not floated into a last line of text. */
+.voice-player-time .bubble-meta {
+	top: 0;
+	float: none;
+	margin-left: 0;
+}
+.voice-player-toggle {
+	transition: transform 120ms ease;
+}
+.voice-player-toggle:active {
+	transform: scale(0.94);
+}
+.voice-player-speed {
+	opacity: 0;
+	visibility: hidden;
+	transform: scale(0.9);
+	pointer-events: none;
+	transition:
+		opacity 160ms ease,
+		transform 160ms ease,
+		visibility 160ms;
+}
+.voice-player-meta[data-playing="true"] .voice-player-speed {
+	opacity: 1;
+	/* Visible at once when shown, so Tab right after Play can reach it; it still fades in. */
+	visibility: visible;
+	transform: scale(1);
+	pointer-events: auto;
+	transition:
+		opacity 160ms ease,
+		transform 160ms ease,
+		visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+	.voice-player-toggle,
+	.voice-player-speed {
+		transition: none;
+	}
+}
+
+/* Independent touch targets need layout space. The message actions spread
+ * out; a reaction chip grows to 28px and its hit area reaches 44px tall,
+ * never sideways, so neighbouring chips keep separate targets. The reach is
+ * mostly downward: Chromium snaps a tap to the nearest target, and reaching
+ * up toward the text pulled taps on a short "Hi" onto its chip.
+ */
+@media (pointer: coarse) {
+	.message-actions {
+		gap: 2px;
+	}
+	.message-actions > button,
+	.message-actions [role="menu"] > button {
+		min-width: 44px;
+		min-height: 44px;
+		flex-shrink: 0;
+	}
+	.reaction-chip {
+		position: relative;
+		/* Above the "Sent"/"Seen" caption the reach extends over. */
+		z-index: 1;
+		height: 28px;
+		min-width: 44px;
+	}
+	.reaction-chip::after {
+		content: "";
+		position: absolute;
+		inset: -2px 0 -14px;
+	}
+	.reaction-chip-icon {
+		width: 22px;
+		height: 22px;
+	}
+	.reaction-bar {
+		width: min(336px, calc(100vw - 32px));
+		flex-wrap: wrap;
+		justify-content: center;
+		border-radius: 16px;
+	}
+	.reaction-bar > span {
+		display: none;
+	}
+}
+
+/* ── Telegram bubble: a tail on the last bubble of a run ──
+ * Drawn in the bubble's own colour (`background: inherit`) by a hooked mask,
+ * so it follows every theme and both modes without a colour of its own. */
+.chat-bubble-tail {
+	position: relative;
+}
+
+/* Room for the tail inside the row on every bubble of a run, so the run stays
+ * aligned and a tail at the window edge never makes the thread scroll sideways. */
+.chat-bubble-mine {
+	margin-right: 7px;
+}
+.chat-bubble-theirs {
+	margin-left: 7px;
+}
+.chat-bubble-tail::after {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	width: 10px;
+	height: 16px;
+	background: inherit;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16'%3E%3Cpath d='M0 0v16h10C5 16 1.2 11.5 0 0z'/%3E%3C/svg%3E")
+		no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='16'%3E%3Cpath d='M0 0v16h10C5 16 1.2 11.5 0 0z'/%3E%3C/svg%3E")
+		no-repeat;
+}
+.chat-bubble-tail.chat-bubble-mine {
+	border-bottom-right-radius: 4px;
+}
+.chat-bubble-tail.chat-bubble-mine::after {
+	right: -7px;
+}
+.chat-bubble-tail.chat-bubble-theirs {
+	border-bottom-left-radius: 4px;
+}
+.chat-bubble-tail.chat-bubble-theirs::after {
+	left: -7px;
+	transform: scaleX(-1);
+}
+
+/* ── Sending: your new bubble rises from the composer ── */
+@media (prefers-reduced-motion: no-preference) {
+	.message-just-sent [data-message-surface] {
+		animation: message-send 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+		transform-origin: bottom right;
+	}
+}
+@keyframes message-send {
+	from {
+		opacity: 0;
+		transform: translateY(28px) scale(0.9);
+	}
+}

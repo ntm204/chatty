@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
 
 /** Seed real rows over HTTP into the sender's only conversation. */
 async function seedHistory(page: Page, count: number): Promise<void> {
@@ -20,7 +20,7 @@ async function seedHistory(page: Page, count: number): Promise<void> {
 				if (!sent.ok) throw new Error(`Could not create reading line ${index + 1}: ${sent.status}`);
 			}
 		},
-		{ apiUrl: process.env.E2E_API_URL ?? "http://localhost:4100", count },
+		{ apiUrl: API_URL, count },
 	);
 }
 

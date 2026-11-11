@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { ConversationVaultPanel } from "@/features/chat/components/conversation-vault-panel";
+import { ConversationVaultPanel } from "@/features/chat/details/components/conversation-vault-panel";
 import { makeAttachment, makeConversation, makeParticipant } from "./factories";
 
 const { socketHandlers } = vi.hoisted(() => ({ socketHandlers: new Map<string, (event: unknown) => void>() }));

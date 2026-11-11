@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConversationList } from "@/features/chat/components/conversation-list";
-import { ConversationQuickActions } from "@/features/chat/components/conversation-quick-actions";
+import { ConversationList } from "@/features/chat/sidebar/components/conversation-list";
+import { ConversationQuickActions } from "@/features/chat/details/components/conversation-quick-actions";
 import { useConversationMuted } from "@/features/chat/hooks/use-conversation-muted";
 import { makeConversation } from "./factories";
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { downloadAttachment } from "@/features/chat/utils/download-attachment";
+import { downloadAttachment } from "@/features/chat/media/utils/download-attachment";
 import { makeAttachment } from "./factories";
 
 vi.mock("@/api/client", () => ({ api: { getAttachmentUrls: vi.fn() } }));

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 /**
  * Asks for a reset link.
@@ -33,7 +34,7 @@ export function ForgotPasswordForm() {
 		} catch (requestError) {
 			// Reaches here for a rate limit or a network failure — never for an
 			// unknown address, which the server treats as success.
-			setError((requestError as Error).message);
+			setError(getErrorMessage(requestError, "The reset link could not be sent. Try again."));
 		} finally {
 			setIsSubmitting(false);
 		}

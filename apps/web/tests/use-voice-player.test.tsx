@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useVoicePlayer } from "@/features/chat/hooks/use-voice-player";
+import { useVoicePlayer } from "@/features/chat/media/hooks/use-voice-player";
 
 const animationFrames = new Map<number, FrameRequestCallback>();
 let nextFrameId = 0;

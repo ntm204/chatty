@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAttachmentDisplaySize } from "@/features/chat/utils";
+import { getAttachmentDisplaySize } from "@/features/chat/media/utils";
 
 describe("getAttachmentDisplaySize", () => {
 	it("scales a wide image down to the width cap", () => {

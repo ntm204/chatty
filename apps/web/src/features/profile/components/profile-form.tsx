@@ -9,6 +9,7 @@ import { cn } from "@/utils/cn";
 import { focusField } from "@/utils/focus-field";
 import { getServerErrorField } from "@/utils/server-error-field";
 import { PRESENCE_VISIBILITY_OPTIONS } from "../constants/presence-visibility";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface ProfileFormProps {
 	user: CurrentUserDTO;
@@ -92,7 +93,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		} catch (error) {
 			// "Handle already taken" is the server's to know; it is shown beside the
 			// handle it is about, with the typed value left in place to edit.
-			const message = (error as Error).message;
+			const message = getErrorMessage(error, "Your profile could not be saved. Try again.");
 			const field = getServerErrorField(message, { handle: "handle" });
 			setErrors((current) => ({ ...current, [field ?? "form"]: message }));
 			focusField(form, field);

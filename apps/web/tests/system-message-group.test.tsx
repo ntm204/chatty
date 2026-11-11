@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { SystemMessageGroup } from "@/features/chat/components/system-message-group";
-import { getSystemMessageRuns } from "@/features/chat/utils/system-message-runs";
+import { SystemMessageGroup } from "@/features/chat/thread/components/system-message-group";
+import { getSystemMessageRuns } from "@/features/chat/thread/utils/message-grouping";
 import { makeMessage, makeSystemMessage } from "./factories";
 
 afterEach(cleanup);

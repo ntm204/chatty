@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResetPasswordForm } from "@/features/auth/components/reset-password-form";
+import { serverError } from "./factories";
 
 const resetPassword = vi.fn();
 
@@ -77,7 +78,7 @@ describe("ResetPasswordForm", () => {
 	});
 
 	it("shows the server's message for a spent or expired link", async () => {
-		resetPassword.mockRejectedValue(new Error("That reset link is invalid or has expired"));
+		resetPassword.mockRejectedValue(serverError("That reset link is invalid or has expired"));
 		const typist = userEvent.setup();
 		renderForm();
 

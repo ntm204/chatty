@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useConversationMutation } from "@/features/chat/hooks/use-conversation-mutation";
+import { serverError } from "./factories";
 
 describe("conversation mutation recovery", () => {
 	it("locks synchronously and preserves an actionable failure until dismissed or retried", async () => {
@@ -22,7 +23,7 @@ describe("conversation mutation recovery", () => {
 		expect(result.current.isSaving).toBe(true);
 		expect(await duplicatePromise).toBe(false);
 		await act(async () => {
-			rejectRequest(new Error("Please try again"));
+			rejectRequest(serverError("Please try again"));
 			expect(await firstPromise).toBe(false);
 		});
 		expect(result.current.error).toBe("Please try again");
@@ -54,7 +55,7 @@ describe("conversation mutation recovery", () => {
 		expect(await duplicateAttempt).toBe(false);
 
 		await act(async () => {
-			rejectRequest(new Error("Could not save conversation"));
+			rejectRequest(serverError("Could not save conversation"));
 			expect(await firstAttempt).toBe(false);
 		});
 		expect(sidebar.result.current.error).toBe("Could not save conversation");
@@ -83,7 +84,7 @@ describe("conversation mutation recovery", () => {
 		rerender({ id: "one" });
 		expect(result.current.isSaving).toBe(false);
 		await act(async () => {
-			rejectRequest(new Error("Old conversation request"));
+			rejectRequest(serverError("Old conversation request"));
 			expect(await oldPromise).toBe(false);
 		});
 		expect(result.current.error).toBe("");

@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChangeEmailForm } from "@/features/profile/components/change-email-form";
-import { makeCurrentUser } from "./factories";
+import { makeCurrentUser, serverError } from "./factories";
 
 const requestEmailChange = vi.fn();
 
@@ -50,7 +50,7 @@ describe("ChangeEmailForm", () => {
 	});
 
 	it("shows what the server said when the address is taken", async () => {
-		requestEmailChange.mockRejectedValue(new Error("Email already registered"));
+		requestEmailChange.mockRejectedValue(serverError("Email already registered"));
 		render(<ChangeEmailForm user={user} />);
 
 		await fillAndSubmit();

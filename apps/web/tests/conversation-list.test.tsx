@@ -1,15 +1,19 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { announceDraftPreview } from "@/features/chat/utils/draft-preview";
-import { ConversationList } from "@/features/chat/components/conversation-list";
-import { makeConversation, makeMessage, makeParticipant } from "./factories";
+import { ConversationList } from "@/features/chat/sidebar/components/conversation-list";
+import { useAuth } from "@/hooks/use-auth";
+import { makeConversation, makeCurrentUser, makeMessage, makeParticipant } from "./factories";
 
 const conversation = makeConversation({
 	participants: [makeParticipant("minh", "Minh"), makeParticipant("an", "An")],
 	lastMessage: makeMessage("message-1", "an", "ordinary preview"),
 });
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+	localStorage.clear();
+	useAuth.setState({ currentUser: null });
+});
 
 function renderList(overrides: Partial<React.ComponentProps<typeof ConversationList>> = {}) {
 	render(
@@ -86,7 +90,7 @@ describe("ConversationList", () => {
 		expect(screen.queryByText("ordinary preview")).not.toBeInTheDocument();
 	});
 
-	it("uses one compact @ badge instead of adding a label that crowds the row", () => {
+	it("shows a mention as its own @ badge beside the count, never as a crowding text label", () => {
 		renderList({
 			conversations: [
 				makeConversation({
@@ -97,7 +101,31 @@ describe("ConversationList", () => {
 			],
 		});
 
-		expect(screen.getByLabelText("3 unread messages, including a mention")).toHaveTextContent("@");
+		expect(screen.getByRole("img", { name: "You were mentioned" })).toHaveTextContent("@");
+		expect(screen.getByLabelText("3 unread messages")).toHaveTextContent("3");
 		expect(screen.queryByText("Mention")).not.toBeInTheDocument();
+	});
+
+	it("ticks your last message once when sent and twice once it is read, only while you share receipts", () => {
+		const mine = makeMessage("message-9", "minh", "See you there");
+		const reader = { ...makeParticipant("an", "An"), lastReadMessageId: "message-9" };
+		const read = makeConversation({ participants: [makeParticipant("minh", "Minh"), reader], lastMessage: mine });
+		useAuth.setState({ currentUser: makeCurrentUser({ readReceiptsEnabled: true }) });
+		renderList({ conversations: [read] });
+		expect(screen.getByRole("img", { name: "Read" })).toBeInTheDocument();
+
+		cleanup();
+		useAuth.setState({ currentUser: makeCurrentUser({ readReceiptsEnabled: false }) });
+		renderList({ conversations: [read] });
+		expect(screen.queryByRole("img", { name: "Read" })).toBeNull();
+		expect(screen.getByRole("img", { name: "Sent" })).toBeInTheDocument();
+	});
+
+	it("counts a muted chat in grey and keeps the time out of colour", () => {
+		renderList({
+			conversations: [{ ...conversation, unreadCount: 2, mutedUntil: "9999-12-31T23:59:59.999Z" }],
+		});
+		expect(screen.getByLabelText("2 unread messages")).toHaveClass("bg-ink-faint");
+		expect(screen.getByRole("img", { name: "Muted" })).toBeInTheDocument();
 	});
 });

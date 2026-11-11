@@ -9,14 +9,27 @@ The full shape a feature may grow into (`pages/`, `components/`, `hooks/`, `util
 `pages/chat-page.tsx` is the route component and owns all the state: the conversation list, the
 selected conversation, and the loaded messages. Everything below it is presentational or a hook.
 
-| Folder        | Contents                                                                                                                                                                            |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `components/` | conversation list and its avatar, the message list, the input, the header, the new-conversation panel, the group members panel, the current user's avatar control                   |
-| `hooks/`      | one hook per realtime concern — `use-socket-event`, `use-presence`, `use-typing-notifier`, `use-typing-participants`, `use-mark-read`, `use-message-scroll`, plus `use-user-search` |
-| `utils/`      | pure functions the components call — titles, the direct peer, time formatting, read receipts, the typing sentence                                                                   |
-| `constants/`  | page size, typing timings, the unread-badge cap                                                                                                                                     |
+The root folders hold the **shell** (`chat-page`, `chat-conversation-pane`, `chat-overlays`) and the
+pieces two or more sub-features share: realtime and socket hooks, the message store
+(`use-conversation-messages` and the history / outbox / live-event hooks it composes), the
+conversation-list store, conversation titles and avatars, pins, mute and notification helpers.
 
-`hooks/` and `utils/` each ship an `index.ts`; import through it from outside the folder.
+Each sub-feature is one capability with its own UI, state and helpers:
+
+| Sub-feature    | Contents                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| `thread/`      | the message list, rows and bubbles, scroll and reading position, selection and forwarding      |
+| `composer/`    | the message input, attachments, mentions, drafts, typing notifier, voice recording             |
+| `sidebar/`     | the sidebar, conversation rows and actions, folders, preview peek, bookmarks, new conversation |
+| `details/`     | the details panel: vault tabs, customisation, group members, block and invite controls         |
+| `expressions/` | emoji picker, stickers, reactions, emoji bursts                                                |
+| `media/`       | attachment viewer and gallery, file cards, voice player and waveform                           |
+| `theme/`       | conversation themes, flowing wallpaper, the theme picker and its device preview                |
+| `search/`      | in-conversation and global message search                                                      |
+
+A sub-feature imports chat-root code freely, another sub-feature only through its folder barrel
+(`../../media/components`), and never its constants or types — those move to the root once shared.
+Root code other than the shell never imports a sub-feature.
 
 ## The rules that are not obvious from the code
 

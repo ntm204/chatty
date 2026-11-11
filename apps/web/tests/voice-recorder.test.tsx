@@ -1,8 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { VoiceRecorder } from "@/features/chat/components/voice-recorder";
-import type { VoiceRecorderPhase } from "@/features/chat/types/voice-recorder";
+import { VoiceRecorder } from "@/features/chat/composer/components/voice-recorder";
+import type { VoiceRecorderPhase } from "@/features/chat/composer/types/voice-recorder";
+import { serverError } from "./factories";
 
 const recorder = vi.hoisted(() => ({
 	phase: "preview" as VoiceRecorderPhase,
@@ -27,8 +28,8 @@ const player = vi.hoisted(() => ({
 	togglePlayback: vi.fn(),
 }));
 
-vi.mock("@/features/chat/hooks/use-voice-recorder", () => ({ useVoiceRecorder: () => recorder }));
-vi.mock("@/features/chat/hooks/use-voice-player", () => ({ useVoicePlayer: () => player }));
+vi.mock("@/features/chat/composer/hooks/use-voice-recorder", () => ({ useVoiceRecorder: () => recorder }));
+vi.mock("@/features/chat/media/hooks/use-voice-player", () => ({ useVoicePlayer: () => player }));
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -69,7 +70,7 @@ describe("VoiceRecorder", () => {
 		await act(async () => finish());
 	});
 	it("keeps the recording after an upload failure and retries the same blob", async () => {
-		const onSend = vi.fn().mockRejectedValueOnce(new Error("Upload failed")).mockResolvedValueOnce(undefined);
+		const onSend = vi.fn().mockRejectedValueOnce(serverError("Upload failed")).mockResolvedValueOnce(undefined);
 		const user = userEvent.setup();
 		render(<VoiceRecorder isDisabled={false} onSend={onSend} onActiveChange={vi.fn()} />);
 

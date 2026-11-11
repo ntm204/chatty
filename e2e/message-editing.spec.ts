@@ -41,7 +41,8 @@ test.describe("editing and deleting a message", () => {
 			} else await route.continue();
 		});
 		await alicePage.getByRole("button", { name: "Save", exact: true }).click();
-		await expect(alicePage.getByRole("alert")).toHaveText("Try saving this edit again");
+		// A 5xx body is never shown; the client's own next-step fallback is.
+		await expect(alicePage.getByRole("alert")).toHaveText("The edit could not be saved. Try again.");
 		await expect(alicePage.getByLabel("Edit message")).toHaveValue("meet at 6");
 		await alicePage.unroute("**/conversations/*/messages/*");
 		await alicePage.getByRole("button", { name: "Save", exact: true }).click();

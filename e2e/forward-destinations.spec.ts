@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("finds an archived destination outside loaded pages and retries a committed forward without duplication", async ({
 	browser,
@@ -14,19 +14,19 @@ test("finds an archived destination outside loaded pages and retries a committed
 	await register(await thirdContext.newPage(), third);
 	await register(page, makeUser("ForwardAuthor"));
 	const destinationId = await page.evaluate(
-		async ({ handles }) => {
+		async ({ handles, apiUrl }) => {
 			const headers = {
 				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 				"Content-Type": "application/json",
 			};
 			const ids: string[] = [];
 			for (const handle of handles) {
-				const users = await (await fetch(`http://localhost:4100/users?query=${handle}`, { headers })).json();
+				const users = await (await fetch(`${apiUrl}/users?query=${handle}`, { headers })).json();
 				ids.push(users[0].id);
 			}
 			let target = "";
 			for (let index = 0; index < 23; index++) {
-				const response = await fetch("http://localhost:4100/conversations", {
+				const response = await fetch(`${apiUrl}/conversations`, {
 					method: "POST",
 					headers,
 					body: JSON.stringify({
@@ -38,7 +38,7 @@ test("finds an archived destination outside loaded pages and retries a committed
 				const conversation = await response.json();
 				if (index === 0) target = conversation.id;
 			}
-			const archived = await fetch(`http://localhost:4100/conversations/${target}/archive`, {
+			const archived = await fetch(`${apiUrl}/conversations/${target}/archive`, {
 				method: "PUT",
 				headers,
 				body: JSON.stringify({ archived: true }),
@@ -46,7 +46,7 @@ test("finds an archived destination outside loaded pages and retries a committed
 			if (!archived.ok) throw new Error("Archive failed");
 			return target;
 		},
-		{ handles: [peer.handle, third.handle] },
+		{ handles: [peer.handle, third.handle], apiUrl: API_URL },
 	);
 	await startDirectChat(page, peer);
 	await sendMessage(page, "Forward exactly once");
@@ -83,39 +83,41 @@ test("finds an archived destination outside loaded pages and retries a committed
 	await page.keyboard.press("Shift+Tab");
 	await expect(dialog).toBeFocused();
 	releaseForward();
-	await expect(dialog.getByRole("alert")).toContainText("Forward response lost");
+	// A 5xx body is never shown; the client's own next-step fallback is.
+	await expect(dialog.getByRole("alert")).toContainText("The message could not be forwarded. Try again.");
 	await target.click();
 	await expect(dialog.getByRole("status")).toHaveText("Forwarded to Remote archive destination.");
 	await expect(dialog.getByRole("button", { name: "Done", exact: true })).toBeFocused();
 	await page.keyboard.press("Enter");
 	await expect(dialog).toHaveCount(0);
-	const count = await page.evaluate(async (id) => {
-		const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
-			headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
-		});
-		if (!response.ok) throw new Error("Message lookup failed");
-		const page = await response.json();
-		return page.filter((message: { content: string }) => message.content === "Forward exactly once").length;
-	}, destinationId);
+	const count = await page.evaluate(
+		async ({ id, apiUrl }) => {
+			const response = await fetch(`${apiUrl}/conversations/${id}/messages`, {
+				headers: { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` },
+			});
+			if (!response.ok) throw new Error("Message lookup failed");
+			const page = await response.json();
+			return page.filter((message: { content: string }) => message.content === "Forward exactly once").length;
+		},
+		{ id: destinationId, apiUrl: API_URL },
+	);
 	expect(count).toBe(1);
 	await page.getByLabel("Message actions").click();
 	await page.getByRole("menuitem", { name: "Forward", exact: true }).click();
 	await dialog.getByLabel("Find a conversation to forward to").fill("Remote archive");
 	await expect(target).toBeVisible();
-	await page.evaluate(async () => {
+	await page.evaluate(async (apiUrl) => {
 		const headers = { Authorization: `Bearer ${localStorage.getItem("chatty:token")}` };
-		const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+		const conversations = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 		const direct = conversations.items.find((conversation: { isGroup: boolean }) => !conversation.isGroup);
-		const messages = await (
-			await fetch(`http://localhost:4100/conversations/${direct.id}/messages`, { headers })
-		).json();
+		const messages = await (await fetch(`${apiUrl}/conversations/${direct.id}/messages`, { headers })).json();
 		const source = messages.find((message: { content: string }) => message.content === "Forward exactly once");
-		const response = await fetch(`http://localhost:4100/conversations/${direct.id}/messages/${source.id}`, {
+		const response = await fetch(`${apiUrl}/conversations/${direct.id}/messages/${source.id}`, {
 			method: "DELETE",
 			headers,
 		});
 		if (!response.ok) throw new Error("Retraction failed");
-	});
+	}, API_URL);
 	await target.click();
 	await expect(dialog.getByRole("alert")).toBeVisible();
 	await expect(dialog.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);

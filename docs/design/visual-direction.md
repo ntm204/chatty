@@ -58,8 +58,9 @@ calls to action are not part of this messaging application.
 ## Implementation
 
 `apps/web/src/styles/globals.css` owns paired semantic tokens and existing motion utilities;
-`surfaces.css` contains scoped surface styling and responsive layouts; `fonts.css` declares local
-fonts. Shared Brand and AmbientBackground components keep the visual language aligned
+one stylesheet per screen area (`auth`, `controls`, `sidebar`, `conversation`, `bubbles`,
+`overlays`, `welcome`, `themes`, `palettes`, `stickers`) holds its scoped styling and responsive
+layout; `fonts.css` declares local fonts. Shared Brand and AmbientBackground components keep the visual language aligned
 across authentication and chat without importing across features.
 
 Fontshare's original fonts are obtained from the foundry CDN by

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileForm } from "@/features/profile/components/profile-form";
 import { useAuth } from "@/hooks/use-auth";
-import { makeCurrentUser } from "./factories";
+import { makeCurrentUser, serverError } from "./factories";
 
 const updateProfile = vi.fn();
 
@@ -126,7 +126,7 @@ describe("ProfileForm", () => {
 		expect(nameField).toHaveValue("Minh Nguyen");
 		expect(updateProfile).toHaveBeenCalledTimes(1);
 
-		await act(async () => rejectSave(new Error("The network is unavailable")));
+		await act(async () => rejectSave(serverError("The network is unavailable")));
 
 		expect(await screen.findByRole("alert")).toHaveTextContent("The network is unavailable");
 		expect(form).toHaveAttribute("aria-busy", "false");
@@ -141,7 +141,7 @@ describe("ProfileForm", () => {
 	});
 
 	it("shows the server's message when the handle is taken", async () => {
-		updateProfile.mockRejectedValue(new Error("Handle already taken"));
+		updateProfile.mockRejectedValue(serverError("Handle already taken"));
 		const typist = userEvent.setup();
 		render(<ProfileForm user={user} />);
 

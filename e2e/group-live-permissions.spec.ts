@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationNamed, register, startGroupChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationNamed, register, startGroupChat } from "./helpers.js";
 
 test("live admin changes retain invite choices and invalidate an open removal decision", async ({ browser }) => {
 	const ownerContext = await browser.newContext();
@@ -17,39 +17,39 @@ test("live admin changes retain invite choices and invalidate an open removal de
 		await register(await guestContext.newPage(), guestUser);
 		await register(owner, makeUser("LiveOwner"));
 		await startGroupChat(owner, [memberUser, otherUser], "Live permissions");
-		const ids = await owner.evaluate(async (handle) => {
-			const headers = {
-				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
-				"Content-Type": "application/json",
-			};
-			const { items } = await (await fetch("http://localhost:4100/conversations", { headers })).json();
-			const group = items.find((item: { name: string }) => item.name === "Live permissions");
-			const participant = group.participants.find((person: { handle: string }) => person.handle === handle);
-			const response = await fetch(`http://localhost:4100/conversations/${group.id}/invite-policy`, {
-				method: "PUT",
-				headers,
-				body: JSON.stringify({ invitePolicy: "managers" }),
-			});
-			if (!response.ok) throw new Error("Invite policy failed");
-			return { conversationId: group.id as string, userId: participant.id as string };
-		}, memberUser.handle);
+		const ids = await owner.evaluate(
+			async ({ handle, apiUrl }) => {
+				const headers = {
+					Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
+					"Content-Type": "application/json",
+				};
+				const { items } = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
+				const group = items.find((item: { name: string }) => item.name === "Live permissions");
+				const participant = group.participants.find((person: { handle: string }) => person.handle === handle);
+				const response = await fetch(`${apiUrl}/conversations/${group.id}/invite-policy`, {
+					method: "PUT",
+					headers,
+					body: JSON.stringify({ invitePolicy: "managers" }),
+				});
+				if (!response.ok) throw new Error("Invite policy failed");
+				return { conversationId: group.id as string, userId: participant.id as string };
+			},
+			{ handle: memberUser.handle, apiUrl: API_URL },
+		);
 		async function setRole(role: "member" | "admin") {
 			await owner.evaluate(
-				async ({ conversationId, userId, role }) => {
-					const response = await fetch(
-						`http://localhost:4100/conversations/${conversationId}/members/${userId}/role`,
-						{
-							method: "PUT",
-							headers: {
-								Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ role }),
+				async ({ conversationId, userId, role, apiUrl }) => {
+					const response = await fetch(`${apiUrl}/conversations/${conversationId}/members/${userId}/role`, {
+						method: "PUT",
+						headers: {
+							Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
+							"Content-Type": "application/json",
 						},
-					);
+						body: JSON.stringify({ role }),
+					});
 					if (!response.ok) throw new Error("Role change failed");
 				},
-				{ ...ids, role },
+				{ ...ids, role, apiUrl: API_URL },
 			);
 		}
 		await setRole("admin");

@@ -4,8 +4,17 @@
  */
 @import "./fonts.css";
 @import "tailwindcss";
-@import "./surfaces.css";
-@import "./conversation-themes.css";
+/* One file per screen area. The order is part of the cascade: auth precedes the
+ * shared field rules so focus and invalid states win, and themes come after the
+ * conversation rules they lay the wallpaper over. Add new rules to their area. */
+@import "./auth.css";
+@import "./controls.css";
+@import "./sidebar.css";
+@import "./conversation.css";
+@import "./bubbles.css";
+@import "./overlays.css";
+@import "./welcome.css";
+@import "./themes.css";
 @import "./palettes.css";
 @import "./stickers.css";
 @import "./welcome-intro.css";
@@ -186,9 +195,10 @@
 		background: var(--color-brand-lavender);
 		color: var(--color-brand-navy);
 	}
+	/* One focus indicator everywhere (buttons repeat it in controls.css past their outline-none). */
 	:focus-visible {
-		outline: 2px solid var(--color-block);
-		outline-offset: 4px;
+		outline: 2px solid var(--color-heading);
+		outline-offset: 2px;
 	}
 	* {
 		scrollbar-width: thin;

@@ -7,16 +7,16 @@ import { useBlockedUsers } from "@/hooks/use-blocked-users";
 import type { MessageSearchSession } from "../types/message-search";
 import { getDirectPeer, getTypingMessage } from "../utils";
 import { ConversationHeader } from "./conversation-header";
-import { ConversationMessageSearch } from "./conversation-message-search";
-import { ConversationVaultPanel } from "./conversation-vault-panel";
-import { FlowingWallpaper } from "./flowing-wallpaper";
-import { ForwardMessagePanel } from "./forward-message-panel";
-import { MessageInput } from "./message-input";
-import { MessageList } from "./message-list";
-import { MessageSelectionBar } from "./message-selection-bar";
-import { useMessageSelection } from "../hooks/use-message-selection";
+import { ConversationMessageSearch } from "../search/components";
+import { ConversationVaultPanel } from "../details/components";
+import { FlowingWallpaper } from "../theme/components";
+import { ForwardMessagePanel } from "../thread/components";
+import { MessageInput } from "../composer/components";
+import { MessageList } from "../thread/components";
+import { MessageSelectionBar } from "../thread/components";
+import { useMessageSelection } from "../thread/hooks";
 import { PinnedMessagesBanner } from "./pinned-messages-banner";
-import { ThreadLoadError } from "./thread-load-error";
+import { ThreadLoadError } from "../thread/components";
 
 interface ChatConversationPaneProps {
 	conversation: ConversationDTO;

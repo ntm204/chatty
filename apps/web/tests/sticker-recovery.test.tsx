@@ -1,16 +1,12 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { api } from "@/api/client";
-import { StickerTray } from "@/features/chat/components/sticker-tray";
-import { useComposerStickerSend } from "@/features/chat/hooks/use-composer-sticker-send";
-import { useStickers } from "@/features/chat/hooks/use-stickers";
+import { StickerTray } from "@/features/chat/expressions/components/sticker-tray";
+import { useComposerStickerSend } from "@/features/chat/composer/hooks/use-composer-sticker-send";
+import { useStickers } from "@/features/chat/expressions/hooks/use-stickers";
+import { serverError } from "./factories";
 
 vi.mock("@/api/client", () => ({ api: { listStickers: vi.fn(), addSticker: vi.fn(), removeSticker: vi.fn() } }));
-vi.mock("@/features/chat/hooks", async () => {
-	const actual = await import("@/features/chat/hooks/use-stickers");
-
-	return { useStickers: actual.useStickers };
-});
 
 beforeEach(() => {
 	vi.resetAllMocks();
@@ -44,7 +40,7 @@ it("keeps a sticker available when removal fails and blocks duplicate deletes", 
 	expect(result.current.stickers).toHaveLength(1);
 	expect(result.current.removingIds.has("sticker")).toBe(true);
 	await act(async () => {
-		rejectDelete(new Error("Removal failed"));
+		rejectDelete(serverError("Removal failed"));
 		await removal;
 	});
 	expect(result.current.stickers).toHaveLength(1);
@@ -57,7 +53,7 @@ it("keeps a sticker available when removal fails and blocks duplicate deletes", 
 });
 
 it("keeps the tray open with a retryable sticker when sending fails", async () => {
-	const onPick = vi.fn().mockRejectedValueOnce(new Error("Sticker send interrupted")).mockResolvedValue(undefined);
+	const onPick = vi.fn().mockRejectedValueOnce(serverError("Sticker send interrupted")).mockResolvedValue(undefined);
 	const onClose = vi.fn();
 	render(<StickerTray onPick={onPick} onClose={onClose} />);
 	const send = await screen.findByRole("button", { name: "Send this sticker" });

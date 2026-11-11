@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getReadReceipt } from "@/features/chat/utils/read-receipt";
+import { getReadReceipt } from "@/features/chat/thread/utils/read-receipt";
 import { makeMessage, makeParticipant } from "./factories";
 
 const messages = [

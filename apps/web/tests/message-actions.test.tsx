@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MessageActions } from "@/features/chat/components/message-actions";
+import { MessageActions } from "@/features/chat/thread/components/message-actions";
 
 afterEach(() => {
 	vi.useRealTimers();

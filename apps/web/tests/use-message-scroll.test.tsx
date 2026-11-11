@@ -1,9 +1,9 @@
 import type { MessageDTO } from "@chatty/shared-types";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useMessageScroll } from "@/features/chat/hooks/use-message-scroll";
+import { useMessageScroll } from "@/features/chat/thread/hooks/use-message-scroll";
 import { MESSAGE_NAVIGATION_EVENT } from "@/features/chat/constants/message-navigation";
-import { forgetReadingPositions } from "@/features/chat/utils/reading-positions";
+import { forgetReadingPositions } from "@/features/chat/thread/utils/reading-positions";
 import { makeMessage, makeSystemMessage } from "./factories";
 
 type ScrollOptions = Parameters<typeof useMessageScroll>[0];

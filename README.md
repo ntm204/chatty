@@ -70,7 +70,7 @@ Mail goes to Mailpit at http://localhost:8025, so a reset link arrives as an ema
 | --- | --- | --- | --- |
 | `dev:web` + `dev:server` | `http://localhost:5173` | `http://localhost:4000` | Daily development |
 | Docker production stack | `http://localhost:8080` | `http://localhost:4000` | The built production topology; see [Deployment](docs/DEPLOYMENT.md) |
-| `npm run test:e2e` | `http://localhost:5273` | `http://localhost:4100` | Browser tests against a separate database |
+| `npm run test:e2e` | `http://localhost:5273`, `5274`, … | `http://localhost:4100`, `4101`, … | Browser tests; one server pair and database per worker |
 
 Good to know:
 
@@ -78,8 +78,11 @@ Good to know:
 - The development API and the Docker production gateway both bind port 4000, so run one at a time.
 - Redis is optional in development; set `REDIS_URL` only to exercise the multi-instance path.
 - `MAIL_TRANSPORT` has no default and the server will not boot without it.
-- `npm run seed:demo` adds a large realistic dataset (hundreds of messages and every attachment
-  kind) to the three seeded accounts through the real API, without wiping anything; run the seed first.
+- `npm run seed:demo` adds a short history that shows every feature once, through the real API: photos
+  for User 2 and 3, every message kind (reply, reactions, edit, delete, link, album, file, voice,
+  sticker, pins, bookmark), a group drawn from its members' faces with an unread run, a muted group
+  with its own picture, a pinned chat, an archived chat and private notes. Run `npm run db:seed
+  --workspace apps/server` first; `-- --long` also adds 300 messages for trying long scrolls.
 - In a development build the sign-in form completes a bare `1` to `1@test.com`, so the test
   accounts sign in with `1` / `1`. Production builds send exactly what was typed.
 - Install, generate and migrate are setup steps, not commands to repeat every session.
@@ -94,8 +97,9 @@ npm run test:e2e -- e2e/sending.spec.ts   # one affected flow
 npm run test:e2e        # the full Chromium suite (15 minutes)
 ```
 
-Browser tests need `npm run e2e:install` once. They start their own servers on `:4100`/`:5273`
-against `chatty_e2e`, and a lock refuses overlapping runs. `--config playwright.webkit.config.ts`
+Browser tests need `npm run e2e:install` once. Worker N (from 0) starts its own API on `4100+N`, web
+on `5273+N` and database `chatty_e2e_wN`, cloned from the migrated `chatty_e2e` template;
+`CHATTY_E2E_WORKERS` (default 2, up to 8) sets how many. A lock refuses overlapping runs. `--config playwright.webkit.config.ts`
 covers Safari's engine; `npm run test:e2e:built` checks the production build's CSP, offline shell
 and media. Every command has a time budget, stops at the first failure and cleans up its processes.
 

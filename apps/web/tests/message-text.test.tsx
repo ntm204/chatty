@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MessageText } from "@/features/chat/components/message-text";
+import { MessageText } from "@/features/chat/thread/components/message-text";
 import { makeParticipant } from "./factories";
 
 describe("MessageText", () => {

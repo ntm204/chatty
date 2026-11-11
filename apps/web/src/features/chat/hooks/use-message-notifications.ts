@@ -1,7 +1,7 @@
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef } from "react";
 import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
-import { NOTIFICATION_TAG_PREFIX } from "../constants/notification-tag";
+import { NOTIFICATION_TAG_PREFIX } from "../constants/notifications";
 import { createNotificationTabCoordinator } from "../utils/notification-tab-coordinator";
 import { useMessageAlertPolicy } from "./use-message-alert-policy";
 import { useSocketEvent } from "./use-socket-event";

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatDayLabel, isNewDay } from "@/features/chat/utils/format-day";
+import { formatDayLabel, isNewDay } from "@/features/chat/thread/utils/format-day";
 import { formatMessageTime } from "@/features/chat/utils/format-time";
 
 // "Today" is relative to the clock, so the clock is pinned — otherwise these

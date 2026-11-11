@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { ConversationDTO } from "@chatty/shared-types";
-import { makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, register, sendMessage, startDirectChat } from "./helpers.js";
 
 test("an unloaded archived DM respects mute and restriction while handles remain ordinary text", async ({
 	browser,
@@ -36,11 +36,11 @@ test("an unloaded archived DM respects mute and restriction while handles remain
 		).toBeVisible();
 		const token = await receiverPage.evaluate(() => localStorage.getItem("chatty:token"));
 		const headers = { Authorization: `Bearer ${token}` };
-		const response = await receiverPage.request.get("http://localhost:4100/conversations", { headers });
+		const response = await receiverPage.request.get(`${API_URL}/conversations`, { headers });
 		const { items } = (await response.json()) as { items: ConversationDTO[] };
 		const conversation = items[0]!;
 		const senderId = conversation.participants.find((participant) => participant.handle === senderUser.handle)!.id;
-		const conversationUrl = `http://localhost:4100/conversations/${conversation.id}`;
+		const conversationUrl = `${API_URL}/conversations/${conversation.id}`;
 		expect(
 			(await receiverPage.request.put(`${conversationUrl}/archive`, { headers, data: { archived: true } })).ok(),
 		).toBe(true);
@@ -77,9 +77,7 @@ test("an unloaded archived DM respects mute and restriction while handles remain
 		).toBe(true);
 		await sendMessage(senderPage, `@${receiverUser.handle} please read`);
 		await expect.poll(notifications).toEqual([`@${receiverUser.handle} please read`]);
-		expect(
-			(await receiverPage.request.put(`http://localhost:4100/restrictions/${senderId}`, { headers })).ok(),
-		).toBe(true);
+		expect((await receiverPage.request.put(`${API_URL}/restrictions/${senderId}`, { headers })).ok()).toBe(true);
 		const restrictedLookup = receiverPage.waitForResponse(
 			(reply) => reply.url() === conversationUrl && reply.request().method() === "GET",
 		);

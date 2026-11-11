@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface MutationSnapshot {
 	isSaving: boolean;
@@ -100,7 +101,7 @@ export function useConversationMutation(conversationId: string) {
 				if (coordinators.get(conversationId) === coordinator && coordinator.epoch === epoch) {
 					publish(coordinator, {
 						isSaving: false,
-						error: caught instanceof Error ? caught.message : "Could not update conversation",
+						error: getErrorMessage(caught, "The conversation could not be updated. Try again."),
 					});
 				}
 

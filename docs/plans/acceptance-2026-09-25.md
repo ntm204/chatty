@@ -256,6 +256,94 @@ pinned-messages, conversation-preview, sidebar-organisation, sticker-tray-recove
 scroll-history, reading-position, reply-reading-position, conversation-paging và smoke xanh. Chưa
 chạy full `test:e2e`.
 
+### Rút thời gian kiểm tra — 2026-11-10
+
+`verify:full` từ ~200s xuống ~62s, không bớt test nào (server 513, web 662). Đo từng bước: test server
+150s là nút thắt vì chạy tuần tự trên một DB chung. Sửa: mỗi worker một DB nhân bản từ `chatty_test`
+đã migrate (`CREATE DATABASE … TEMPLATE`, 4 worker) và thư mục upload riêng; bcrypt mức 4 khi
+`NODE_ENV=test` (production giữ 12); test server và test web chạy song song trong `verify`
+(`run-check` hỗ trợ bước `{ parallel }`); web 4 worker. Thử 6 worker server: chỉ nhanh thêm ~3s.
+Lỗi bắt được khi thử: 6 worker dùng chung thư mục upload làm hỏng test ảnh — đã tách theo worker.
+Chạy server 5 lần liên tiếp đều xanh. Giới hạn còn lại trên máy này là CPU/Postgres khi hai bộ chạy
+cùng lúc (~50s).
+
+### Tái cấu trúc để mở rộng — 2026-11-11
+
+Web: `features/chat` tách 8 sub-feature, CSS tách theo khu vực màn hình, API client tách theo tài
+nguyên, hook tin nhắn/danh sách tách theo trách nhiệm. Server: service conversations/messages tách
+theo trách nhiệm, file cũ chỉ còn re-export. E2E chạy song song 2 worker, mỗi worker server/DB/upload
+riêng. macOS, Chromium, máy rảnh:
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npx vitest run` (apps/server) | 40/40 file, 513/513 test, 25s |
+| `npm run verify:full` | Đạt, 52s, audit 0 hit |
+| `npm run test:e2e:smoke` | 7/7, 15s |
+| `npm run test:e2e` | 107/109 lần hai (~5 phút); 2 lỗi còn lại đã sửa và chạy lại riêng đạt |
+| Ảnh chụp dev 1440px và 390px | Đăng nhập, danh sách, thread, popover xem trước hiển thị đúng sau khi tách CSS |
+
+Lỗi tìm ra và đã sửa: fixture voice còn trỏ cứng cổng 4100 (sai khi nhiều worker); menu hội thoại
+trả focus về mục đầu ("Preview") thay vì mục vừa bấm khi thao tác lỗi; spec welcome chọn ô email
+theo `type="email"`, trong khi bản dev dùng `type="text"` để đăng nhập bằng `1`. Còn chập chờn khi
+2 worker cùng chạy (chạy riêng đều đạt): phát voice tới hết bằng bàn phím (audio dừng ở 7.7/8s) và
+pinned-messages một lần. Chưa thêm retry theo quy tắc; ghi lại để theo dõi.
+
+### Thoại, avatar và 10 quy tắc Innovaccer — 2026-11-11
+
+Thoại kiểu Telegram (trong bong bóng, giờ/tick, disc đặc, độ dài theo thời lượng); `AvatarGroup` (≤3 mặt, rồi 2 + "+N"),
+ảnh nhóm ghép 2 mặt thành viên; skeleton trễ 300ms; `TooltipLayer` chung; trạng thái trống theo nguyên nhân;
+`getErrorMessage` (không lộ chữ 5xx/mạng); nút nhảy tới tin chưa đọc; menu có vạch ngăn trước mục nguy hiểm; một
+kiểu focus; số chưa đọc xám khi tắt thông báo; thang cỡ chữ. macOS, Chromium:
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify` | Đạt, 42s, audit 0 hit; web 668 test |
+| `npm run test:e2e` | 107/109; còn pinned-messages chập chờn khi 2 worker (chạy riêng đạt) và scroll-history đã sửa kỳ vọng rồi chạy riêng đạt |
+| Ảnh chụp dev 390/1280px | Thoại trong bong bóng, ảnh nhóm ghép (khe cắt trong suốt), tooltip, trạng thái trống, skeleton, menu tin nhắn |
+
+E2E giả lập 5xx kèm câu tùy ý được đổi sang kỳ vọng câu dự phòng của client — đó chính là hành vi mới cần giữ.
+Chưa kiểm: nút "N new messages" chỉ kiểm bằng tay qua code, chưa có spec riêng.
+
+### Bộ demo tính năng và nút nhảy tin chưa đọc — 2026-11-11
+
+`seed:demo` viết lại thành tour ngắn qua API thật (ảnh User 2/3, mọi loại tin, nhóm ảnh ghép + 13 tin chưa đọc,
+nhóm tắt tiếng có ảnh riêng, chat ghim, lưu trữ, ghi chú); bản dài sau `-- --long`. Chụp dev 1280px với User 1:
+ảnh đại diện, ảnh nhóm ghép, số xám, nút "13 new messages", đủ loại tin trong chat User 2.
+
+Lỗi tìm ra khi chạy thật và đã sửa: (1) nút nhảy tin chưa đọc không bao giờ hiện — thread vẽ ở đầu một nhịp trước
+khi cuộn xuống, nên vạch bị tính là đã thấy; giờ chờ 600ms mới theo dõi. (2) Nút nằm dưới header kính nên không
+bấm được; giờ đặt dưới header và nhãn ngày. (3) Ảnh nhóm vẽ bằng emoji thành khối đen (renderer SVG của server
+không có font emoji); đổi sang hình vẽ. Spec mới `e2e/unread-jump.spec.ts` đạt 3/3.
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify` | Đạt, 41s, audit 0 hit |
+| `npm run test:e2e` | 110/110, 3,5 phút |
+| `pinned-messages` + `keyboard-accessibility` `--repeat-each 4`, kèm tải CPU | 12/12; `pinned-messages --repeat-each 6` 6/6 |
+
+Lỗi vạch định vị ghim đã tìm ra và sửa ở mục rà soát cuối bên dưới; lỗi phát voice tới hết chưa tái hiện lại.
+
+### Bố cục hàng chat sidebar — 2026-11-11
+
+Cột phải một khối (tick + giờ xám / số, "@", ghim), chuông ngay sau tên, ⋯ thay cả cột khi hover, có làn riêng
+trên cảm ứng. Chụp 1280px (thường, hover) và 390px cảm ứng với dữ liệu `seed:demo`. `npm run verify` đạt (39s,
+audit 0); `npm run test:e2e` 110/110 (3,3 phút); thêm 2 unit test (tick đọc theo chia sẻ receipt, số xám khi tắt tiếng).
+
+### Rà soát cuối trước khi đẩy — 2026-11-11
+
+Lỗi chập chờn của `pinned-messages` tái hiện được với `CHATTY_E2E_WORKERS=4` và là lỗi app: nhảy tới tin thứ hai
+khi lần nhảy đầu còn đang tải, phản hồi muộn của lần đầu thay cả cửa sổ và kéo người đọc về. Sửa: nhảy thành công
+trong lúc còn tải sẽ đổi đích (`use-conversation-navigation.ts`), effect lịch sử bỏ phản hồi cũ. Spec tất định mới
+(giữ chậm request context) trượt khi gỡ bản sửa, đạt khi có. Ngưỡng 300 dòng của `chat-page.tsx` bị vượt 1 dòng —
+gom hai handler trùng thành `openMessageIn`.
+
+| Lệnh | Thời gian | Kết quả |
+| --- | --- | --- |
+| `npm run verify:full` | 46s | Đạt — server 513, web 670, audit 0 |
+| `npm run test:e2e:smoke` | 15s | 7/7 |
+| `npm run test:e2e` (2 worker) | 4,0 phút | 111/111 |
+| `CHATTY_E2E_WORKERS=4 npm run test:e2e` | 2,8 phút | 109/110 trước bản sửa — chỉ nhanh hơn ~30s nên giữ mặc định 2 |
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

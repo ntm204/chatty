@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
+import { API_URL, makeUser, openConversationWith, register, sendMessage, startDirectChat } from "./helpers.js";
 import {
 	captureReadingAnchor,
 	expectMessageLocationCue,
@@ -31,32 +31,30 @@ test("reply context returns to the reader's anchor across unloaded history", asy
 			sendMessage(page, "Original context"),
 		]);
 		await expect(page.getByLabel("Message history")).toContainText("Original context");
-		const { originalId, replyId } = await page.evaluate(async () => {
+		const { originalId, replyId } = await page.evaluate(async (apiUrl) => {
 			const headers = {
 				Authorization: `Bearer ${localStorage.getItem("chatty:token")}`,
 				"Content-Type": "application/json",
 			};
-			const conversations = await (await fetch("http://localhost:4100/conversations", { headers })).json();
+			const conversations = await (await fetch(`${apiUrl}/conversations`, { headers })).json();
 			const id = conversations.items[0].id;
-			const messages = await (
-				await fetch(`http://localhost:4100/conversations/${id}/messages`, { headers })
-			).json();
+			const messages = await (await fetch(`${apiUrl}/conversations/${id}/messages`, { headers })).json();
 			for (let index = 0; index < 65; index++) {
-				const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
+				const response = await fetch(`${apiUrl}/conversations/${id}/messages`, {
 					method: "POST",
 					headers,
 					body: JSON.stringify({ content: `History line ${index}` }),
 				});
 				if (!response.ok) throw new Error("Could not seed history");
 			}
-			const response = await fetch(`http://localhost:4100/conversations/${id}/messages`, {
+			const response = await fetch(`${apiUrl}/conversations/${id}/messages`, {
 				method: "POST",
 				headers,
 				body: JSON.stringify({ content: "Reply from today", replyToId: messages[0].id }),
 			});
 			if (!response.ok) throw new Error("Could not seed reply");
 			return { originalId: messages[0].id as string, replyId: (await response.json()).id as string };
-		});
+		}, API_URL);
 		await page.reload();
 		await openConversationWith(page, peer);
 		const reply = page.locator(`#message-${replyId}`);

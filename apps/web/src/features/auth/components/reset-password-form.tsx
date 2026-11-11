@@ -4,6 +4,7 @@ import { api } from "@/api/client";
 import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { MIN_PASSWORD_LENGTH } from "@/constants/validation";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 interface ResetPasswordFormProps {
 	/** Straight from the emailed link's query string. Only the server can judge it. */
@@ -51,7 +52,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 		} catch (resetError) {
 			// "Invalid or has expired" arrives here as one message for all three
 			// reasons — used, expired, never existed. Shown as sent.
-			setErrors((current) => ({ ...current, form: (resetError as Error).message }));
+			setErrors((current) => ({
+				...current,
+				form: getErrorMessage(resetError, "Your password could not be reset. Try again."),
+			}));
 		} finally {
 			setIsSubmitting(false);
 		}

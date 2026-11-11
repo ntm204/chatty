@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { getMessageDraftGeneration } from "@/lib/message-drafts";
 import { api } from "@/api/client";
+import { UserFacingError } from "@/lib/user-facing-error";
 
 interface SendAttempt {
 	clientId: string;
@@ -36,7 +37,7 @@ export function useSessionMessageSends(conversationId: string | null, userId: st
 						useAuth.getState().currentUser?.id !== userId ||
 						getMessageDraftGeneration(userId) !== generation
 					)
-						throw new Error("The account session changed. Open the conversation again.");
+						throw new UserFacingError("The account session changed. Open the conversation again.");
 
 					return request(currentAttempt.clientId);
 				})

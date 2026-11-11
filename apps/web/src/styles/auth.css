@@ -1,0 +1,282 @@
+/* Sign-in, sign-up and recovery screens. */
+
+.auth-world {
+	height: 100dvh;
+	padding: 12px;
+	background: var(--color-paper);
+}
+.auth-stage {
+	position: relative;
+	isolation: isolate;
+	height: 100%;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	border-radius: 20px;
+}
+.auth-masthead {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: 25px;
+	width: 100%;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 23px 32px;
+}
+.auth-masthead .brand {
+	font-size: 29px;
+}
+.auth-masthead .brand-symbol {
+	width: 33px;
+	height: 27px;
+}
+.auth-nav {
+	margin-left: auto;
+	color: var(--color-ink-soft);
+	font-size: 13px;
+}
+.auth-nav > a:hover {
+	color: var(--color-heading);
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+.auth-nav-cta,
+.auth-nav-link {
+	min-height: 36px;
+	border-radius: 24px;
+	padding: 8px 16px;
+	border: 1px solid var(--color-rule);
+	color: var(--color-heading);
+	font-size: 12px;
+}
+.auth-nav-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+.auth-layout {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 1040px;
+	min-height: 0;
+	margin: 0 auto;
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	align-items: center;
+	gap: clamp(35px, 6vw, 100px);
+	padding: 16px 32px;
+}
+.auth-story {
+	padding-bottom: 12px;
+}
+.auth-story-label {
+	color: var(--color-ink-soft);
+	font-size: 13px;
+}
+.auth-story h2 {
+	font-family: var(--font-display);
+	color: var(--color-heading);
+	font-size: clamp(34px, 3.4vw, 48px);
+	line-height: 1.14;
+	font-weight: 700;
+	letter-spacing: -0.015em;
+	margin-top: 18px;
+}
+.auth-story p {
+	margin-top: 22px;
+	color: var(--color-ink-soft);
+	font-size: 14px;
+	line-height: 1.75;
+}
+.auth-story-accent {
+	display: block;
+	width: 40px;
+	height: 4px;
+	border-radius: 4px;
+	margin-top: 29px;
+	background: var(--color-accent);
+}
+
+/* Only the form can scroll when a keyboard, zoom or validation leaves too little
+   room. Normal sign-in/registration fits; document and welcome never scroll. */
+.auth-form-side {
+	min-width: 0;
+	min-height: 0;
+	max-height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	border-radius: 20px;
+	scrollbar-gutter: stable;
+}
+.auth-form-card {
+	padding: 28px;
+	background: var(--color-paper-raised);
+	border: 1px solid var(--color-rule-soft);
+	border-radius: 20px;
+}
+.auth-form-card h1 {
+	color: var(--color-heading);
+	font-family: var(--font-sans);
+	font-size: 27px;
+	line-height: 1.2;
+	font-weight: 600;
+	letter-spacing: -0.035em;
+}
+.auth-description {
+	margin-top: 10px;
+	color: var(--color-ink-soft);
+	font-size: 13px;
+	line-height: 1.5;
+}
+.auth-fields {
+	margin-top: 23px;
+}
+.auth-fields .text-field {
+	min-height: 43px;
+	padding-block: 10px;
+	background: var(--color-paper);
+	border-color: var(--color-rule);
+	border-radius: 10px;
+}
+.auth-fields label {
+	font-family: var(--font-sans);
+	text-transform: none;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0;
+	/* The entry card is sized to fit short laptops and phones without scrolling. */
+	line-height: 1.4;
+	color: var(--color-ink);
+}
+.auth-fields button[type="submit"] {
+	min-height: 43px;
+	border-radius: 24px;
+	font-size: 14px;
+}
+.auth-fields form > a {
+	text-transform: none;
+	font-family: var(--font-sans);
+	font-size: 12px;
+	letter-spacing: 0;
+	color: var(--color-heading);
+}
+.auth-fields > button {
+	margin-top: 16px;
+	border-top: 1px solid var(--color-rule-soft);
+	border-radius: 0;
+	padding: 16px 0 0;
+	font-size: 12px;
+	color: var(--color-ink-soft);
+}
+.auth-footer {
+	position: relative;
+	z-index: 1;
+	text-align: center;
+	padding: 14px;
+	color: var(--color-ink-faint);
+	font-size: 11px;
+}
+@media (max-width: 760px) {
+	.auth-world {
+		padding: 8px;
+	}
+	.auth-stage {
+		border-radius: 16px;
+	}
+	.auth-masthead {
+		padding: 15px 18px;
+		gap: 12px;
+	}
+	.auth-masthead .brand {
+		font-size: 27px;
+	}
+	.auth-nav {
+		display: none;
+	}
+	.auth-nav-cta,
+	.auth-nav-link {
+		margin-left: auto;
+		font-size: 11px;
+		padding-inline: 12px;
+	}
+	.auth-nav-cta svg {
+		display: none;
+	}
+	.auth-layout {
+		grid-template-columns: minmax(0, 1fr);
+		justify-items: center;
+		padding: 12px;
+	}
+	.auth-story {
+		display: none;
+	}
+	.auth-form-side {
+		width: 100%;
+		max-width: 410px;
+		scrollbar-gutter: auto;
+	}
+	.auth-form-card {
+		padding: 24px;
+	}
+	.auth-fields input {
+		font-size: 16px;
+	}
+	.auth-footer {
+		font-size: 10px;
+		padding: 12px;
+	}
+}
+@media (max-height: 700px) {
+	.auth-masthead {
+		padding-block: 12px;
+	}
+	.auth-footer {
+		display: none;
+	}
+	.auth-layout {
+		padding-block: 8px;
+	}
+	.auth-form-card {
+		padding: 20px 24px;
+	}
+	.auth-form-card h1 {
+		font-size: 24px;
+	}
+	.auth-description {
+		margin-top: 8px;
+	}
+	.auth-fields {
+		margin-top: 16px;
+	}
+	.auth-fields form {
+		gap: 12px;
+	}
+	.auth-fields .text-field {
+		min-height: 40px;
+		padding-block: 8px;
+	}
+	.auth-fields > button {
+		margin-top: 12px;
+		padding-top: 12px;
+	}
+}
+@media (max-height: 600px) {
+	.auth-form-card {
+		padding: 16px 20px;
+	}
+	.auth-fields {
+		margin-top: 12px;
+	}
+	.auth-fields form {
+		gap: 8px;
+	}
+	.auth-fields form > div {
+		gap: 4px;
+	}
+	.auth-fields > button {
+		margin-top: 8px;
+		padding-top: 8px;
+	}
+}

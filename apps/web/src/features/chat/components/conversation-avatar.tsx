@@ -20,7 +20,7 @@ interface ConversationAvatarProps {
  * The picture for a conversation row.
  *
  * A 1-1 is the other person's avatar. A group is its own picture, or, until
- * someone sets one, three grey figures (`GroupAvatar`), matching a person's silhouette.
+ * someone sets one, two members' faces or three grey figures (`GroupAvatar`).
  *
  * Sized from the same map the avatar uses rather than a second copy of the
  * numbers: a sidebar mixing groups and direct chats has to keep one column of
@@ -58,7 +58,11 @@ export function ConversationAvatar({
 			);
 		}
 
-		return <GroupAvatar size={size} />;
+		const members = conversation.participants
+			.filter((participant) => participant.id !== currentUserId)
+			.sort((first, second) => Number(Boolean(second.avatarUrl)) - Number(Boolean(first.avatarUrl)));
+
+		return <GroupAvatar size={size} members={members} />;
 	}
 
 	return <Avatar user={peer} size={size} isOnline={onlineUserIds.has(peer.id)} />;

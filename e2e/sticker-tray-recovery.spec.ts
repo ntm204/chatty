@@ -36,7 +36,8 @@ test("a failed sticker send keeps the tray, and separate removal never deletes t
 			else await route.continue();
 		});
 		await tray.getByRole("button", { name: "Send this sticker" }).tap();
-		await expect(tray.getByRole("alert")).toContainText("Sticker send interrupted");
+		// A 5xx body is never shown; the client's own next-step fallback is.
+		await expect(tray.getByRole("alert")).toContainText("The sticker could not be sent. Try again.");
 		await page.unroute("**/conversations/*/messages");
 		await tray.getByRole("button", { name: "Send this sticker" }).tap();
 		await expect(tray).toHaveCount(0);

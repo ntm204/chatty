@@ -6,6 +6,7 @@ import { TextField } from "@/components/text-field";
 import { useAuth } from "@/hooks/use-auth";
 import { focusField } from "@/utils/focus-field";
 import { toLoginEmail } from "../utils/to-login-email";
+import { getErrorMessage } from "@/utils/get-error-message";
 
 export function LoginForm() {
 	const login = useAuth((state) => state.login);
@@ -40,7 +41,10 @@ export function LoginForm() {
 		} catch (error) {
 			// The server returns one message for both a wrong password and an
 			// unknown email; showing it verbatim keeps that indistinguishable.
-			setErrors((current) => ({ ...current, form: (error as Error).message }));
+			setErrors((current) => ({
+				...current,
+				form: getErrorMessage(error, "Sign-in could not finish. Try again."),
+			}));
 		} finally {
 			setIsSubmitting(false);
 		}

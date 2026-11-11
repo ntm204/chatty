@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { EmojiPicker } from "@/features/chat/components/emoji-picker";
-import { RECENT_EMOJI_STORAGE_KEY } from "@/features/chat/constants/recent-emoji";
+import { EmojiPicker } from "@/features/chat/expressions/components/emoji-picker";
+import { RECENT_EMOJI_STORAGE_KEY } from "@/features/chat/expressions/constants/emoji";
 
 it("closes only its own layer on Escape, not during composition", () => {
 	const close = vi.fn();
