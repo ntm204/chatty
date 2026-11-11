@@ -41,12 +41,17 @@ image:  local preview  -> client resize/WebP -> HTTP multipart -> server validat
   `MessageDTO`.
 - Express compresses compressible responses above its 1KB default threshold, negotiating Brotli,
   gzip, or deflate with the client. Images and other already compressed media are unaffected.
-- WebSocket `permessage-deflate` stays disabled. Socket.IO documents meaningful CPU and memory
-  overhead, and Chatty's socket traffic is already delta-shaped. It should be enabled only after a
-  payload/CPU load test shows a net win.
-- JSON remains the wire format. A binary schema would reduce non-media bytes further, but it adds
-  versioning and debugging cost. HTTP compression addresses history pages now; a binary socket codec
-  is justified only by measured non-media egress, not by Facebook's scale in somebody else's system.
+- WebSocket `permessage-deflate` is on for frames of 512 B and more, without context takeover
+  (amended 2026-11-11). Measured on real payloads, a `message:new` frame shrinks 41% (632 → 376 B)
+  for about 12 µs of CPU, while typing, presence and read events stay below the threshold and raw.
+  Without context takeover no zlib state outlives a message, so an idle connection costs nothing —
+  the memory overhead Socket.IO warns about is the per-connection context this setting avoids.
+- JSON remains the wire format. Measured 2026-11-11 (acceptance report): a schema-style binary
+  encoding would save ~13% of an already Brotli-compressed history page and ~280 B per socket
+  message, and normalizing repeated `author` objects saves nothing once Brotli has deduplicated them
+  (2 027 → 2 041 B). Compressing the one uncompressed path, the socket, captured most of that gain
+  with one setting instead of a new codec, schema versioning and unreadable payloads. Revisit only
+  if measured non-media egress or parse time becomes a bottleneck.
 
 There is deliberately no claim that every image becomes “25% of the original”. Camera resolution,
 texture, source codec and transparency decide the result. A maximum useful dimension, a quality

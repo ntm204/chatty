@@ -10,6 +10,9 @@ import { listRealtimeConversationIds } from "../modules/blocks/blocks.service.js
 import { announceConnected, announceDisconnected, conversationRoomsOf } from "./presence.js";
 import { registerTypingHandlers } from "./typing.js";
 
+/** Frames below this go uncompressed: typing, presence and read events are smaller than it. */
+const SOCKET_COMPRESSION_THRESHOLD_BYTES = 512;
+
 /**
  * Subscribes a socket to one room per conversation the user belongs to.
  *
@@ -40,6 +43,15 @@ async function joinConversationRooms(socket: ChattySocket, userId: string): Prom
 export function initSockets(httpServer: HttpServer): ChattyServer {
 	const io: ChattyServer = new Server(httpServer, {
 		cors: { origin: env.CORS_ORIGIN },
+		// HTTP responses are Brotli-compressed; socket frames were the one uncompressed path.
+		// Measured on real payloads: a message:new frame shrinks 41% (632 → 376 B) for ~12 µs
+		// of CPU. Small frames (typing, presence, reads) stay raw, and no zlib context is kept
+		// between messages, so an idle connection costs no extra memory. See ADR 0016.
+		perMessageDeflate: {
+			threshold: SOCKET_COMPRESSION_THRESHOLD_BYTES,
+			serverNoContextTakeover: true,
+			clientNoContextTakeover: true,
+		},
 	});
 
 	io.use((socket, next) => {

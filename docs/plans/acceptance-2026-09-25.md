@@ -344,6 +344,29 @@ gom hai handler trùng thành `openMessageIn`.
 | `npm run test:e2e` (2 worker) | 4,0 phút | 111/111 |
 | `CHATTY_E2E_WORKERS=4 npm run test:e2e` | 2,8 phút | 109/110 trước bản sửa — chỉ nhanh hơn ~30s nên giữ mặc định 2 |
 
+### Giờ khi hover và menu dưới header — 2026-11-11
+
+Khôi phục giờ hiện khi hover bên cạnh bong bóng (bỏ giờ/tick trong bong bóng chữ và thoại; test gốc trước đợt
+Telegram được khôi phục). Menu thao tác tin mở sát header: hàm giữ menu dùng mép trên của vùng cuộn, nhưng header +
+pin nổi phủ lên đó, nên menu nằm dưới header hoặc focus kéo thread đi 302px. Giờ giới hạn bằng
+`getMessageViewportTop` và lật xuống dưới khi không đủ chỗ. Spec mới trong `pinned-messages.spec.ts` trượt với code
+cũ (lệch 302px), đạt với code mới.
+
+### Đo JSON so với binary trước khi đổi định dạng — 2026-11-11
+
+Theo ADR 0016 (binary chỉ khi số đo chứng minh). Dữ liệu `seed:demo`, API dev; "bỏ key" mô phỏng mức một schema
+binary kiểu Kiwi đạt được (chỉ còn giá trị):
+
+| Payload | JSON | gzip | Brotli | Bỏ key | Bỏ key + Brotli |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 tin chữ (socket, không nén) | 616 B | 382 | 320 | 335 | 214 |
+| 1 tin thoại | 1 262 B | 760 | 669 | 877 | 514 |
+| Trang lịch sử 20 tin (HTTP, đã nén) | 15 461 B | 2 356 | 2 027 | 9 400 | 1 767 |
+| Danh sách 5 hội thoại | 9 872 B | 1 935 | 1 637 | 5 575 | 1 316 |
+
+HTTP đã nén Brotli: binary chỉ bớt ~260 B/trang (13%). Socket: bớt ~280 B/tin — 1 000 tin ≈ 280 KB. Phần lớn byte
+là dữ liệu lặp (`author` 27% trang, URL ký của `attachments` 22%), thứ nén đã xử lý. Kết luận: chưa đủ để đổi.
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

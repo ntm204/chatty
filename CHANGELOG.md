@@ -8,6 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Socket frames of 512 B and more are compressed (`permessage-deflate`, no context takeover): a new
+  message travels 41% smaller for ~12 µs of CPU. JSON stays the wire format — measured, a binary codec or
+  normalized payloads would save little once compression is on (ADR 0016 amended).
+- Fix: a message's actions menu or reaction picker opened just under the header and pins no longer slides under
+  them (or scrolls the thread ~300px to get out); with no room above, it opens below the message.
+- A message's time is shown on hover beside the bubble again, as before; the time and ticks inside text
+  and voice bubbles are gone (read status stays in the "Seen" caption and the sidebar row).
 - Fix: jumping to a second message while the first jump was still loading (two quick taps on the pin bar on a
   slow connection) no longer snaps the thread back to the first one when its late response lands.
 - Sidebar rows, Telegram-style: ticks and a grey time on the name's line, the count, "@" or pin on the

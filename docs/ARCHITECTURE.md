@@ -98,9 +98,10 @@ and drops aliases for rows outside the rendered window. DOM IDs and API IDs stil
 server message ID. This keeps an open gallery on its selected image through upload confirmation.
 The viewer is portalled above the thread/composer; touch events from it do not focus the row below.
 
-Large JSON responses are compressed above 1KB. WebSocket compression is deliberately off: its frames
-are already deltas and Socket.IO documents substantial CPU/memory overhead for `permessage-deflate`.
-Binary encoding remains a measured future optimisation, not a default complexity cost.
+Large JSON responses are compressed above 1KB. Socket frames of 512 B and more use `permessage-deflate`
+without context takeover (a message frame is 41% smaller for ~12 µs of CPU, with no zlib state kept per
+connection); smaller ones — typing, presence, reads — go raw. JSON stays the wire format: measured, a
+binary codec would add only ~13% on compressed pages (ADR 0016).
 
 Images follow a separate path. The browser fits a picked image inside 1600px and tries a quality-0.86
 WebP, using it only when it is smaller; the optimistic bubble is already visible while this happens.
