@@ -15,8 +15,7 @@ export function ComposerProtectedNotice({ onTurnOff }: ComposerProtectedNoticePr
 		<div role="status" className="flex items-start gap-2.5 rounded-panel bg-paper-sunken px-3 py-2">
 			<Lock aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-ink-soft" />
 			<p className="note min-w-0 flex-1 text-ink-soft">
-				Protected: hidden until opened, each person can open it once, and it disappears within 24 hours. It
-				can't be copied, forwarded or saved — but Chatty can't stop screenshots.
+				Opens once, gone within 24h, can't be copied or forwarded. Chatty can't block screenshots.
 			</p>
 			<Button
 				variant="ghost"

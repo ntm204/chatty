@@ -189,8 +189,8 @@ describe("sending a protected message", () => {
 
 		await userEvent.type(screen.getByLabelText("Message"), "between us");
 		await userEvent.click(screen.getByRole("button", { name: "Protect this message" }));
-		expect(screen.getByRole("status")).toHaveTextContent("each person can open it once");
-		expect(screen.getByRole("status")).toHaveTextContent("Chatty can't stop screenshots");
+		expect(screen.getByRole("status")).toHaveTextContent("Opens once, gone within 24h");
+		expect(screen.getByRole("status")).toHaveTextContent("Chatty can't block screenshots");
 
 		await userEvent.click(screen.getByRole("button", { name: "Send protected message" }));
 		expect(onSend).toHaveBeenCalledWith("between us", [], null, [], true);

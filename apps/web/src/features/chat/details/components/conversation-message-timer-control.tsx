@@ -45,7 +45,7 @@ export function ConversationMessageTimerControl({
 			<MessageTimerPicker
 				value={timer}
 				onChange={(seconds) => void change(seconds)}
-				isDisabled={!canChange || isSaving}
+				isDisabled={!canChange}
 				labelledBy="conversation-message-timer-label"
 			/>
 			<p className="note text-ink-faint">

@@ -57,7 +57,7 @@ test("disappearing timer and protected messages work across two people, honestly
 		// ── A protected message: the reader gets a cover, never the words ──
 		await author.getByLabel("Message", { exact: true }).fill("Only between us");
 		await author.getByRole("button", { name: "Protect this message" }).click();
-		await expect(author.getByRole("status").filter({ hasText: "each person can open it once" })).toBeVisible();
+		await expect(author.getByRole("status").filter({ hasText: "Opens once, gone within 24h" })).toBeVisible();
 		await author.getByRole("button", { name: "Send protected message" }).click();
 		await expect(history(author).getByText("Only between us")).toBeVisible();
 		await expect(history(author).getByText(/Protected · Not opened yet/)).toBeVisible();

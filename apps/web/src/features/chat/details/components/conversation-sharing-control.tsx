@@ -42,7 +42,7 @@ export function ConversationSharingControl({
 				<Switch
 					label="Allow forwarding in this chat"
 					isOn={!isRestricted}
-					isDisabled={!canChange || isSaving}
+					isDisabled={!canChange}
 					onChange={(isAllowed) => void change(!isAllowed)}
 				/>
 			</div>
