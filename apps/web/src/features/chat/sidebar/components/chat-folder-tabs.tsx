@@ -5,12 +5,19 @@ import type { ChatFolder } from "../types/conversation-list";
 
 interface ChatFolderTabsProps {
 	folder: ChatFolder;
-	/** How many chats have unread messages, shown on the Unread tab. */
+	/** How many chats have unread messages: a dot on the Unread tab, the number for screen readers. */
 	unreadCount: number;
 	onChange: (folder: ChatFolder) => void;
 }
 
-/** The sidebar's folder tabs: a quiet underlined row, Telegram-style. */
+/**
+ * The sidebar's folder tabs: a quiet underlined row, Telegram-style.
+ *
+ * Unread is a dot, not a count. A number widened one tab and pulled the row off
+ * balance, and it repeated what every row's own badge already says; the dot sits
+ * outside the label's box, so all four tabs keep the same rhythm whether or not
+ * anything is unread.
+ */
 export function ChatFolderTabs({ folder, unreadCount, onChange }: ChatFolderTabsProps) {
 	return (
 		<div role="tablist" aria-label="Chat folders" className="flex shrink-0 gap-1 border-b border-rule-soft px-3">
@@ -29,12 +36,18 @@ export function ChatFolderTabs({ folder, unreadCount, onChange }: ChatFolderTabs
 							isSelected ? "font-semibold text-heading" : "font-medium text-ink-faint hover:text-ink",
 						)}
 					>
-						{option.label}
-						{option.id === "unread" && unreadCount > 0 && (
-							<span className="rounded-full bg-paper-sunken px-1.5 text-[11px] tabular-nums text-ink-soft">
-								{unreadCount}
-							</span>
-						)}
+						<span className="relative">
+							{option.label}
+							{option.id === "unread" && unreadCount > 0 && (
+								<>
+									<span
+										aria-hidden="true"
+										className="absolute -top-0.5 -right-2 size-1.5 rounded-full bg-signal"
+									/>
+									<span className="sr-only">, {unreadCount} chats</span>
+								</>
+							)}
+						</span>
 						{isSelected && (
 							<span
 								aria-hidden="true"
