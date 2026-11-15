@@ -8,7 +8,6 @@ import type {
 	ConversationDTO,
 	MessageTimerSeconds,
 	ConversationRole,
-	ConversationTheme,
 	ConversationUpdatedEvent,
 	GroupInvitePolicy,
 	MessageDTO,
@@ -21,6 +20,7 @@ import type {
 	ConversationTheme as DbConversationTheme,
 } from "@prisma/client";
 import { buildConversationAvatarUrl } from "../../lib/conversation-avatar-storage.js";
+import { themeToWire } from "../../lib/theme-wire.js";
 import { unexpiredMessageWhere } from "../messages/messages.lifecycle.js";
 import { messageSelect, toMessageDTO, type MessageRow } from "../messages/messages.mapper.js";
 import { toUserDTO, userSelect, type UserRow } from "../users/users.mapper.js";
@@ -109,28 +109,6 @@ const invitePolicyByDatabaseValue: Record<DbConversationInvitePolicy, GroupInvit
 	MANAGERS: "managers",
 };
 
-const themeByDatabaseValue: Record<DbConversationTheme, ConversationTheme> = {
-	AZURE: "azure",
-	AMBER: "amber",
-	MOSS: "moss",
-	PLUM: "plum",
-	CLAY: "clay",
-	TEAL: "teal",
-	IRIS: "iris",
-	FERN: "fern",
-};
-
-export const themeByWireValue: Record<ConversationTheme, DbConversationTheme> = {
-	azure: "AZURE",
-	amber: "AMBER",
-	moss: "MOSS",
-	plum: "PLUM",
-	clay: "CLAY",
-	teal: "TEAL",
-	iris: "IRIS",
-	fern: "FERN",
-};
-
 /**
  * Narrows the stored integer to the wire's preset union. The database's check
  * constraint already admits only these values; this is the type's half.
@@ -179,7 +157,7 @@ export function toConversationDTO(row: ConversationRow, unreadCount: number, vie
 		name: row.name,
 		invitePolicy: invitePolicyByDatabaseValue[row.invitePolicy],
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
-		themeColor: row.themeColor ? themeByDatabaseValue[row.themeColor] : null,
+		themeColor: row.themeColor ? themeToWire(row.themeColor) : null,
 		quickReactionEmoji: row.quickReactionEmoji,
 		messageTimerSeconds: toMessageTimer(row.messageTimerSeconds),
 		isSharingRestricted: row.restrictSharing,
@@ -213,7 +191,7 @@ export function toConversationUpdatedEvent(row: ConversationRow): ConversationUp
 		name: row.name,
 		invitePolicy: invitePolicyByDatabaseValue[row.invitePolicy],
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
-		themeColor: row.themeColor ? themeByDatabaseValue[row.themeColor] : null,
+		themeColor: row.themeColor ? themeToWire(row.themeColor) : null,
 		quickReactionEmoji: row.quickReactionEmoji,
 		messageTimerSeconds: toMessageTimer(row.messageTimerSeconds),
 		isSharingRestricted: row.restrictSharing,

@@ -18,6 +18,53 @@ bản web build với CSP production, các đường phục hồi và quyền li
 Đợt nghiệm thu ban đầu không commit/push; đợt tiếp nối có yêu cầu đẩy code.
 Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
 
+## Cập nhật 2026-11-15: rà giao diện cuối (sáng/tối, desktop/điện thoại)
+
+Chụp 54 ảnh qua mọi màn hình mới ở 4 tổ hợp (sáng/tối × 1440×900/390×844). Sửa: trình xem story mất chữ và
+nút ở chế độ tối (dùng `paper-raised` đổi màu theo theme; chuyển sang `on-media` cố định); ô chữ khung đăng
+story bị ép thấp trên điện thoại; trình xem chưa chừa vùng an toàn tai thỏ/thanh home; nhóm nút hẹn giờ, chặn
+chia sẻ và đối tượng story nhấp nháy mờ khi lưu; danh sách người xem và hộp đối tượng thiếu trạng thái đang tải;
+khung story trên desktop thiếu đường viền; dòng giải thích tin bảo vệ rút còn 2 dòng; helper e2e
+`openConversationWith` nhập nhằng với vòng story cùng tên. Sau sửa: `verify:full` đạt (server 562, web 717,
+audit 0 hit), `test:e2e` toàn bộ 116/116, WebKit các spec mới 4/4.
+
+## Cập nhật 2026-11-15: Story video, thời hạn tuỳ chọn, chấm Unread (ADR 0025 đợt 2)
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt: server 562 test, web 717 test, lint, audit 0 hit |
+| `npm run test:e2e` (toàn bộ) | Đạt 116/116 |
+| `npx playwright test --config playwright.webkit.config.ts e2e/stories.spec.ts` (+ 2 spec quyền riêng tư) | Đạt trên WebKit (stories 2/2 sau khi sửa locator; 2 spec còn lại 2/2) |
+
+Đã kiểm chứng: video điện thoại 1080×1920, 20 giây được chuyển thành MP4 720×1280, cắt còn 15 giây, có ảnh bìa
+và thumbnail; route trả `video/mp4` có Range, ảnh bìa và thumbnail trả ảnh; xoá story xoá cả video và ảnh bìa;
+file không phải video bị từ chối. Thời hạn 6/12/24/48 giờ đúng; 72 giờ bị Zod và ràng buộc DB từ chối. Trình
+duyệt: tải video thật, người xem phát được (thời gian phát tăng, độ rộng đúng), thời hạn 6 giờ giữ đúng. Đo
+dung lượng (pipeline thật, 15 giây dọc): nguồn sạch 37,7 MB → 1,8 MB (0,96 Mbit/s, 0,7 s xử lý); nguồn nhiễu
+mạnh → 3,7 MB (1,97 Mbit/s, chạm trần, 3,1 s). Tag Unread chỉ còn chấm, đọc số cho trình đọc màn hình.
+
+Lỗi phát hiện và đã sửa: ràng buộc `expiresAt > createdAt` chặn thao tác cho hết hạn (bỏ vế dưới bằng
+migration tiếp theo); spec trên WebKit nhập nhằng locator "An". Giới hạn: xử lý video chạy trên tiến trình API
+(tối đa 90 s mỗi lần); thiết bị thật chưa thử theo quyết định của chủ dự án ngày 2026-11-05.
+
+## Cập nhật 2026-11-15: Stories 24 giờ, đợt 1 (ADR 0025)
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt: server 559 test, web 712 test, audit 0 hit |
+| `npm run test:e2e` (toàn bộ) | Đạt 115/115 |
+| `npx playwright test --config playwright.webkit.config.ts e2e/stories.spec.ts e2e/sharing-and-typing-privacy.spec.ts e2e/protected-and-disappearing.spec.ts` | Đạt 3/3 trên WebKit |
+
+Đã kiểm chứng: chỉ người có trò chuyện thấy story; chặn (hai chiều), hạn chế, danh sách ẩn và story bạn thân
+được tôn trọng; hết 24 giờ biến mất trước cả khi bộ quét chạy, bộ quét xoá cả ảnh; người xem chỉ được ghi một
+lần và chỉ hiện khi người xem bật "đã xem", tác giả tắt "đã xem" thì không có danh sách; trả lời thành tin nhắn
+riêng (tự tạo chat 1-1 nếu cần, bị chặn thì từ chối) và trích dẫn thành "Story expired" khi story hết hạn; ảnh
+chỉ phục vụ bằng token khi story còn sống, `no-store`; bộ dọn file mồ côi không xoá ảnh story. Trình duyệt:
+đăng chữ và ảnh, người lạ không thấy, xem lần lượt, trả lời, tác giả xem danh sách người xem và xoá.
+
+E2E phát hiện và đã sửa: xoá story đầu trong nhiều story làm trình xem nhảy cóc; hàng stories dùng
+`listitem` làm lệch đếm danh sách chat (đổi sang nhóm nút); spec Stories có race vì lần làm mới bị gộp.
+
 ## Cập nhật 2026-11-15 (tiếp): chặn chia sẻ theo chat, cập nhật realtime, tối ưu
 
 | Lệnh | Kết quả |

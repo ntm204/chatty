@@ -63,11 +63,16 @@ export async function sweepOrphanedAttachments(): Promise<number> {
 	const candidates = (await listStoredAttachments()).filter((file) => file.modifiedAt < cutoff);
 	if (candidates.length === 0) return 0;
 
-	const referenced = await prisma.attachment.findMany({
-		where: { id: { in: candidates.map((candidate) => candidate.id) } },
-		select: { id: true },
-	});
-	const referencedIds = new Set(referenced.map((attachment) => attachment.id));
+	const candidateIds = candidates.map((candidate) => candidate.id);
+	// Story photos share this directory (ADR 0025); a story row references one as surely as an attachment row.
+	const [referenced, stories] = await Promise.all([
+		prisma.attachment.findMany({ where: { id: { in: candidateIds } }, select: { id: true } }),
+		prisma.story.findMany({ where: { mediaId: { in: candidateIds } }, select: { mediaId: true } }),
+	]);
+	const referencedIds = new Set([
+		...referenced.map((attachment) => attachment.id),
+		...stories.flatMap((story) => (story.mediaId ? [story.mediaId] : [])),
+	]);
 
 	const orphans = candidates.filter((candidate) => !referencedIds.has(candidate.id));
 	let deletedCount = 0;

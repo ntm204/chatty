@@ -21,6 +21,8 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_VOICE_UPLOAD_BYTES = 16 * 1024 * 1024;
+/** A phone's 15-second clip at its own bitrate, before the server re-encodes it to 720p. See ADR 0025. */
+export const MAX_STORY_VIDEO_BYTES = 50 * 1024 * 1024;
 
 /**
  * How many images one message may carry.
@@ -178,6 +180,7 @@ export const uploadAvatar = createImageUpload({
 });
 
 /** Same shape as a user avatar upload — see ADR 0022. */
+
 export const uploadConversationAvatar = createImageUpload({
 	field: "avatar",
 	maxBytes: MAX_AVATAR_BYTES,
@@ -206,7 +209,8 @@ function getExtension(fileName: string): string {
 }
 
 function uploadLimitFor(fieldName: string): number {
-	if (fieldName === "attachment") return MAX_ATTACHMENT_BYTES;
+	if (fieldName === "attachment" || fieldName === "photo") return MAX_ATTACHMENT_BYTES;
+	if (fieldName === "video") return MAX_STORY_VIDEO_BYTES;
 	if (fieldName === "voice") return MAX_VOICE_UPLOAD_BYTES;
 
 	return MAX_FILE_BYTES;
@@ -340,6 +344,59 @@ export function uploadMessageAttachments(req: Request, res: Response, next: Next
 			return;
 		}
 
+		next(error);
+	});
+}
+
+/**
+ * A story's media (ADR 0025): one photo in "photo" or one video in "video", or
+ * neither for a text story — multer passes a JSON body straight through. Each
+ * field is capped while it streams, so a 50MB "photo" is refused at 10MB.
+ */
+const storyUpload = multer({
+	storage: fieldBoundedMemoryStorage,
+	limits: { files: 1 },
+	fileFilter: (req, file, next) => {
+		const expected = file.fieldname === "video" ? "video/" : "image/";
+		if (!file.mimetype.startsWith(expected)) {
+			fileRejection.set(
+				req,
+				new ValidationError(file.fieldname === "video" ? "Video must be a video" : "Photo must be an image"),
+			);
+			next(null, false);
+
+			return;
+		}
+		next(null, true);
+	},
+}).fields([
+	{ name: "photo", maxCount: 1 },
+	{ name: "video", maxCount: 1 },
+]);
+
+export function uploadStoryMedia(req: Request, res: Response, next: NextFunction): void {
+	storyUpload(req, res, (error: unknown) => {
+		if (error instanceof MulterError) {
+			if (error.code === "LIMIT_FILE_SIZE") {
+				next(
+					new ValidationError(
+						error.field === "video"
+							? `Video must be smaller than ${MAX_STORY_VIDEO_BYTES / 1024 / 1024}MB`
+							: `Photo must be smaller than ${MAX_ATTACHMENT_BYTES / 1024 / 1024}MB`,
+					),
+				);
+
+				return;
+			}
+			next(new ValidationError("Send one photo or one video for a story"));
+
+			return;
+		}
+		if (!error && fileRejection.has(req)) {
+			next(fileRejection.get(req));
+
+			return;
+		}
 		next(error);
 	});
 }

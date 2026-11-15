@@ -15,6 +15,7 @@ import { useState } from "react";
 import type { ChatFolder } from "../types/conversation-list";
 import { isInFolder } from "../utils/filter-by-folder";
 import { ChatFolderTabs } from "./chat-folder-tabs";
+import { StoriesBar } from "../../stories/components";
 import { ARCHIVE_EMPTY_STATE, FOLDER_EMPTY_STATES } from "../constants/conversation-list";
 
 interface ConversationSidebarProps {
@@ -110,6 +111,7 @@ export function ConversationSidebar({
 				onOpenMessageSearch={onOpenMessageSearch}
 			/>
 
+			{!isShowingArchived && <StoriesBar currentUser={currentUser} />}
 			{!isShowingArchived && (
 				<ChatFolderTabs
 					folder={folder}

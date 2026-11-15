@@ -275,6 +275,8 @@ export const ATTACHMENT_FIELD = "attachment";
 export const FILE_FIELD = "file";
 export const VOICE_FIELD = "voice";
 export const STICKER_FIELD = "sticker";
+export const STORY_PHOTO_FIELD = "photo";
+export const STORY_VIDEO_FIELD = "video";
 
 /** No upload or response bytes for this long means the connection has stalled. */
 const UPLOAD_STALL_MS = 60_000;

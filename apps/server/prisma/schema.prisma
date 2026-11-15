@@ -76,6 +76,12 @@ model User {
   mentions            MessageMention[]
   pinnedMessages      PinnedMessage[]
   messageViews        MessageView[]
+  stories             Story[]
+  storyViews          StoryView[]
+  closeFriends        CloseFriend[]             @relation("CloseFriendsOf")
+  closeFriendOf       CloseFriend[]             @relation("CloseFriendOn")
+  storyHiddenFrom     StoryHiddenFrom[]         @relation("StoryHidesFrom")
+  hiddenFromStories   StoryHiddenFrom[]         @relation("StoryHiddenFor")
   blocksMade          UserBlock[]               @relation("BlocksMade")
   blocksReceived      UserBlock[]               @relation("BlocksReceived")
   restrictionsMade    UserRestriction[]         @relation("RestrictionsMade")
@@ -592,20 +598,25 @@ model Message {
   /// `Attachment.messageId` carried a unique — the relation was always
   /// one-to-many underneath, and dropping that unique is what let a message
   /// carry a gallery.
-  attachments Attachment[]
-  edits       MessageEdit[]
-  hiddenFor   MessageHiddenFor[]
-  reactions   MessageReaction[]
-  links       MessageLink[]
-  stars       MessageStar[]
-  mentions    MessageMention[]
-  pinnedIn    PinnedMessage[]
-  views       MessageView[]
+  attachments    Attachment[]
+  edits          MessageEdit[]
+  hiddenFor      MessageHiddenFor[]
+  reactions      MessageReaction[]
+  links          MessageLink[]
+  stars          MessageStar[]
+  mentions       MessageMention[]
+  pinnedIn       PinnedMessage[]
+  views          MessageView[]
+  /// The story this message answers, while it still exists. SetNull when the story
+  /// expires; `isStoryReply` keeps saying it was one. See ADR 0025.
+  replyToStoryId String?
+  replyToStory   Story?             @relation("StoryReplies", fields: [replyToStoryId], references: [id], onDelete: SetNull)
+  isStoryReply   Boolean            @default(false)
   // SetNull, not Cascade: a reply outlives the message it answers. Messages are
   // never hard-deleted anyway (see `deletedAt`), so this only fires when a whole
   // conversation goes — and then the reply is going with it regardless.
-  replyTo     Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies     Message[]          @relation("MessageReplies")
+  replyTo        Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]          @relation("MessageReplies")
   // The GIN index on `searchVector` lives in the phase 12 migration: Prisma
   // cannot express an index method, and an `@@index` here would create a second,
   // useless btree one alongside it.
@@ -806,4 +817,92 @@ model PinnedMessage {
 
   @@id([conversationId, messageId])
   @@index([conversationId, pinnedAt])
+}
+
+/// What a story is: a photo or a short video with an optional caption, or text on a colour.
+enum StoryKind {
+  PHOTO
+  TEXT
+  VIDEO
+}
+
+/// Who may see a story, besides the always-excluded blocked, restricted and hidden people.
+enum StoryAudience {
+  /// Everyone who shares a conversation with the author.
+  CONTACTS
+  /// Only the author's close friends.
+  CLOSE_FRIENDS
+}
+
+/// A story that lasts 6, 12, 24 or 48 hours, chosen when it is posted. Hard-deleted
+/// at `expiresAt` by the story sweep, its files with it — nothing is archived.
+/// See ADR 0025.
+model Story {
+  id              String             @id @default(cuid())
+  authorId        String
+  kind            StoryKind
+  /// The caption of a photo, or the whole of a text story.
+  text            String             @default("")
+  /// The colour behind a text story; null on a photo.
+  background      ConversationTheme?
+  /// Storage key of the photo — the same pipeline as attachments, served by its
+  /// own token-checked route so the attachment endpoint never serves it.
+  mediaId         String?            @unique
+  mediaWidth      Int?
+  mediaHeight     Int?
+  /// A video's length after trimming to 15 seconds; null on photos and text.
+  mediaDurationMs Int?
+  /// The stored media's size, kept so storage per story can be measured (ADR 0016).
+  mediaByteSize   Int?
+  /// Changeable while the story is live.
+  audience        StoryAudience      @default(CONTACTS)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  expiresAt       DateTime           @db.Timestamptz(3)
+
+  author  User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views   StoryView[]
+  replies Message[]   @relation("StoryReplies")
+
+  @@index([authorId, expiresAt])
+  @@index([expiresAt])
+}
+
+/// One viewer having seen one story. `isShared` is the viewer's read-receipt
+/// choice at the time: only shared views appear in the author's viewers list.
+model StoryView {
+  storyId  String
+  viewerId String
+  isShared Boolean  @default(true)
+  viewedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  story  Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewer User  @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, viewerId])
+}
+
+/// One person on someone's close-friends list. Private to the list's owner.
+model CloseFriend {
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user   User @relation("CloseFriendsOf", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("CloseFriendOn", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId])
+}
+
+/// Someone a person never shows their stories to, whatever the audience.
+model StoryHiddenFrom {
+  userId       String
+  hiddenUserId String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  user       User @relation("StoryHidesFrom", fields: [userId], references: [id], onDelete: Cascade)
+  hiddenUser User @relation("StoryHiddenFor", fields: [hiddenUserId], references: [id], onDelete: Cascade)
+
+  @@id([userId, hiddenUserId])
+  @@index([hiddenUserId])
 }

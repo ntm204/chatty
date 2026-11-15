@@ -131,7 +131,9 @@ time and memory are costs too.
    no-history-by-default enrollment, client-encrypted attachments and recovery-key backups. Current
    browser libraries do not yet clear Chatty's support/audit gate, so E2EE implementation and every
    encryption badge remain unavailable; see [ADR 0020](adr/0020-e2ee-readiness-boundary.md).
-5. **Channels/communities only from evidence.** Add them when real groups need separated topics and
+5. **Stories, relationship-first — done (batch 1).** Only people you chat with, in time order, finite;
+   replies continue a direct conversation. See [ADR 0025](adr/0025-stories.md).
+6. **Channels/communities only from evidence.** Add them when real groups need separated topics and
    moderation, not because Discord has them.
 
 ## Explicit non-goals for now

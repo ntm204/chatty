@@ -410,6 +410,21 @@ export interface MessageProtectionDTO {
 	hasText: boolean;
 }
 
+/**
+ * The story a message answers, as it stands now. The story itself lasts 24
+ * hours; the reply outlives it and then says only that it answered one.
+ */
+export interface StoryReplyDTO {
+	/** Null once the story has expired or been deleted. */
+	storyId: string | null;
+	isExpired: boolean;
+	/** A signed thumbnail of a photo story while it lives; null otherwise. */
+	thumbUrl: string | null;
+	/** The words of a text story while it lives, shortened; empty otherwise. */
+	text: string;
+	background: ConversationTheme | null;
+}
+
 /** What `POST .../messages/:id/open` hands the one recipient opening a protected message. */
 export interface ProtectedMessageContentDTO {
 	content: string;
@@ -522,6 +537,8 @@ export interface MessageDTO {
 	reactions: ReactionDTO[];
 	/** The message this one answers, or null. */
 	replyTo: MessageReplyDTO | null;
+	/** Set when this message answers a story — see `StoryReplyDTO`. */
+	storyReply: StoryReplyDTO | null;
 	/**
 	 * The `clientId` the sender asked for — see `SendMessageRequest.clientId`.
 	 * Stored as that sender's idempotency key, but exposed only on the immediate
@@ -1028,6 +1045,8 @@ export interface ServerToClientEvents {
 	 * messages. Patch `isForwardable` on their messages already held. See ADR 0024.
 	 */
 	"user:forwarding-changed": (event: { userId: string; allowMessageForwarding: boolean }) => void;
+	/** The stories row changed for this person — sent to each audience member's own room. */
+	"story:changed": (event: StoryChangedEvent) => void;
 	/**
 	 * A message already on screen changed — its author edited it, or deleted it.
 	 *
@@ -1093,3 +1112,96 @@ export interface ClientToServerEvents {
  */
 export const BUILTIN_STICKER_KEYS = ["wave", "love", "lol", "wow", "sad", "sleep", "party", "ok"] as const;
 export type BuiltinStickerKey = (typeof BUILTIN_STICKER_KEYS)[number];
+
+// ---- Stories (ADR 0025) ----
+
+export type StoryKind = "photo" | "text" | "video";
+export type StoryAudience = "contacts" | "close_friends";
+
+/** How long a story lasts unless its author chooses otherwise. */
+export const STORY_LIFETIME_SECONDS = 86_400;
+/** The lifetimes a story can be given, in hours (Telegram's set). The server accepts exactly these. */
+export const STORY_DURATION_HOURS = [6, 12, 24, 48] as const;
+export type StoryDurationHours = (typeof STORY_DURATION_HOURS)[number];
+/** A video story is trimmed to this length on the server. */
+export const STORY_VIDEO_MAX_SECONDS = 15;
+/** The longest caption or text story. */
+export const STORY_TEXT_MAX_LENGTH = 500;
+
+export interface StoryMediaDTO {
+	/** The photo, or the video file (H.264/AAC MP4). */
+	url: string;
+	thumbUrl: string | null;
+	/** A video's first frame at full size, shown until it plays; null on photos. */
+	posterUrl: string | null;
+	width: number | null;
+	height: number | null;
+	/** A video's length; null on photos. */
+	durationMs: number | null;
+}
+
+export interface StoryDTO {
+	id: string;
+	author: UserDTO;
+	kind: StoryKind;
+	/** The caption of a photo, or the whole of a text story. */
+	text: string;
+	/** The colour behind a text story; null on a photo. */
+	background: ConversationTheme | null;
+	media: StoryMediaDTO | null;
+	createdAt: string;
+	expiresAt: string;
+	/** Whether the person asking has already seen it. */
+	isViewed: boolean;
+	/** Whether the person asking may save its photo — false when its author turned forwarding off. */
+	isSaveAllowed: boolean;
+	/** Only on your own stories: who it is shown to. */
+	audience?: StoryAudience;
+	/** Only on your own stories: how many people opened it and shared that they did. */
+	viewCount?: number;
+}
+
+/** One person's live stories, oldest first so they play in the order they were posted. */
+export interface StoryAuthorDTO {
+	author: UserDTO;
+	stories: StoryDTO[];
+	hasUnseen: boolean;
+}
+
+/** The stories row: yours, then everyone else's — unseen first, then most recent. */
+export interface StoryFeedDTO {
+	mine: StoryDTO[];
+	authors: StoryAuthorDTO[];
+}
+
+export interface StoryViewerDTO {
+	user: UserDTO;
+	viewedAt: string;
+}
+
+/**
+ * Who your stories reach. `contacts` is everyone you share a conversation with;
+ * the two id lists are subsets of it. Private to you.
+ */
+export interface StoryAudienceSettingsDTO {
+	contacts: UserDTO[];
+	closeFriendIds: string[];
+	hiddenIds: string[];
+}
+
+export interface SetStoryAudienceRequest {
+	audience: StoryAudience;
+}
+
+export interface SetStoryPeopleRequest {
+	userIds: string[];
+}
+
+export interface ReplyToStoryRequest {
+	content: string;
+}
+
+/** Someone whose stories you may see posted, removed or re-targeted one: refetch the row. */
+export interface StoryChangedEvent {
+	authorId: string;
+}

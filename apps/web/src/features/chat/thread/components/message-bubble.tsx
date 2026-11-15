@@ -12,6 +12,7 @@ import { isBuiltinStickerKey } from "../../expressions/utils";
 import { MessageGallery } from "../../media/components";
 import { MessageFileCard } from "../../media/components";
 import { MessageReplyQuote } from "./message-reply-quote";
+import { MessageStoryQuote } from "./message-story-quote";
 import { MessageText } from "./message-text";
 import { ProtectedMessageLabel } from "./protected-message-label";
 import { VoicePlayer } from "../../media/components";
@@ -87,6 +88,7 @@ export function MessageBubble({
 		message.content,
 		message.attachments.length === 0 &&
 			!message.protection &&
+			!message.storyReply &&
 			!message.replyTo &&
 			!message.isForwarded &&
 			message.mentionedUserIds.length === 0 &&
@@ -233,6 +235,7 @@ export function MessageBubble({
 			{message.protection && (
 				<ProtectedMessageLabel protection={message.protection} participantCount={participants.length} />
 			)}
+			{message.storyReply && <MessageStoryQuote storyReply={message.storyReply} isMine={isMine} />}
 			{message.replyTo && (
 				<MessageReplyQuote replyTo={message.replyTo} isMine={isMine} onJumpToOriginal={onJumpToReplyOriginal} />
 			)}

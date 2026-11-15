@@ -68,6 +68,9 @@ The next architecture is not blocked by code complexity, but it needs evidence o
   At that point the client uploads bytes to the blob store and sends only the resulting key to the
   message command; the server must still arrange trusted normalization rather than accepting an
   arbitrary client object as safe.
+  Story video (ADR 0025, measured 2026-11-15) is the heaviest media so far: 2–4 MB stored per 15-second
+  story, re-encoded on the API process in under 4 s. It lives at most 48 hours, so its storage is bounded
+  by posting rate rather than by history, but it is the first thing to move to a worker or blob store.
 - **Durable snapshot + delta cursor:** add an append-only, monotonically ordered event stream when
   reconnect gaps commonly exceed the newest 50-message repair page, offline use becomes a product
   requirement, or multi-region delivery needs independent consumer positions. Until then, the

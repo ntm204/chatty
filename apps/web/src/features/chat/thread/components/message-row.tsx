@@ -119,7 +119,9 @@ export const MessageRow = memo(function MessageRow({
 	// A few emoji standing alone are drawn large and bare; a reply, caption or
 	// quote makes them part of something else.
 	const jumboCount =
-		!isDeleted && !hasImages && !message.replyTo && !isProtected ? countJumboEmoji(message.content) : 0;
+		!isDeleted && !hasImages && !message.replyTo && !message.storyReply && !isProtected
+			? countJumboEmoji(message.content)
+			: 0;
 	const hasReactions = message.reactions.length > 0;
 	// One per person, so this is an emoji and not a list — see `MessageReaction`.
 	const myReaction = findMyReaction(message.reactions, currentUserId);

@@ -79,6 +79,7 @@ export function buildDraftMessage(
 		deletedAt: null,
 		reactions: [],
 		replyTo,
+		storyReply: null,
 		deliveryState: "pending",
 	};
 }

@@ -82,6 +82,7 @@ export function restoreLocalOutboxMessage(record: LocalOutboxMessage): {
 			deletedAt: null,
 			reactions: [],
 			replyTo: record.replyTo,
+			storyReply: null,
 			deliveryState: "pending",
 		},
 	};

@@ -10,7 +10,8 @@ import {
 	findConversationAvatarPath,
 	saveConversationAvatar,
 } from "../../lib/conversation-avatar-storage.js";
-import { themeByWireValue, toConversationDTO, toConversationUpdatedEvent } from "./conversations.mapper.js";
+import { themeFromWire } from "../../lib/theme-wire.js";
+import { toConversationDTO, toConversationUpdatedEvent } from "./conversations.mapper.js";
 import type {
 	SetMessageTimerInput,
 	SetNicknameInput,
@@ -96,7 +97,7 @@ export async function setConversationTheme(
 	input: SetThemeInput,
 ): Promise<ConversationDTO> {
 	await assertParticipant(currentUserId, conversationId);
-	const nextTheme = input.theme ? themeByWireValue[input.theme] : null;
+	const nextTheme = input.theme ? themeFromWire(input.theme) : null;
 
 	const { didChange, updated } = await prisma.$transaction(async (transaction) => {
 		const conversation = await transaction.conversation.findUniqueOrThrow({

@@ -100,6 +100,7 @@ export function makeMessage(
 		deletedAt: null,
 		reactions: [],
 		replyTo: null,
+		storyReply: null,
 		...overrides,
 	};
 }
@@ -135,6 +136,7 @@ export function makeSystemMessage(id: string, content: string): MessageDTO {
 		// refuses both — so these are flat empties rather than overridable.
 		reactions: [],
 		replyTo: null,
+		storyReply: null,
 	};
 }
 

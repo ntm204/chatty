@@ -9,6 +9,7 @@ import { observeHttp } from "./middlewares/observe-http.js";
 import { checkReadiness } from "./lib/readiness.js";
 import { attachmentsRouter } from "./modules/attachments/attachments.routes.js";
 import { stickersRouter } from "./modules/stickers/stickers.routes.js";
+import { storiesRouter } from "./modules/stories/stories.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { blocksRouter } from "./modules/blocks/blocks.routes.js";
 import { conversationsRouter } from "./modules/conversations/conversations.routes.js";
@@ -99,6 +100,7 @@ export function createApp() {
 	app.use("/auth", authRouter);
 	app.use("/attachments", attachmentsRouter);
 	app.use("/stickers", stickersRouter);
+	app.use("/stories", storiesRouter);
 	app.use("/users", usersRouter);
 	app.use("/search", searchRouter);
 	app.use("/blocks", blocksRouter);

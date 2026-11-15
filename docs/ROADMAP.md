@@ -58,7 +58,11 @@ The conversation background remains unchanged. The header and pin bar float over
 a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
-## Next — 24-hour stories — `planned`
+## November 15 — Stories — `done`
+
+Batch 1 built as designed below ([ADR 0025](adr/0025-stories.md)). Batch 2, the same day: video stories
+(≤15 s, re-encoded to 720p H.264 with a poster; measured 2–4 MB per story) and a lifetime of 6, 12, 24
+or 48 hours. The sidebar's Unread tab shows a dot instead of a count, so the tabs keep one rhythm.
 
 Researched 2026-11-15 against Telegram Stories, WhatsApp Status and Instagram Stories. It fits the
 product contract only in this shape: **people you talk to, in time order, finite, and every
@@ -83,8 +87,6 @@ interaction lands in a conversation** — no algorithm, no public discovery, no 
 - **Data**: `Story`, `StoryView` (unique per viewer), `CloseFriend`, `StoryHiddenFrom`; realtime
   `story:new` / `story:expired` to each audience member's personal room, never a broadcast.
 
-Open decisions for the owner before building: name (Stories vs Moments), whether batch 1 includes
-video, and whether lifetimes other than 24 hours (Telegram's 6/12/48) are worth a choice.
 
 ## November 15 — Privacy settings: sharing and typing — `done`
 

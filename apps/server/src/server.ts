@@ -8,6 +8,7 @@ import { startOutboxWorker } from "./lib/outbox.js";
 import { redis } from "./lib/redis.js";
 import { getIO } from "./lib/socket-bus.js";
 import { startMessageExpirySweeper } from "./modules/messages/messages.expiry.service.js";
+import { startStoryExpirySweeper } from "./modules/stories/stories.service.js";
 import { initSockets } from "./sockets/index.js";
 
 const app = createApp();
@@ -52,6 +53,8 @@ startOrphanedUploadSweeper();
 // this one keeps a promise people rely on — disappearing messages — so it runs
 // every few seconds rather than every few hours. See ADR 0023.
 startMessageExpirySweeper();
+// Stories end at 24 hours the same way (ADR 0025); every read hides them first.
+startStoryExpirySweeper();
 
 httpServer.listen(env.PORT, () => {
 	logger.info(`chatty server listening on :${env.PORT}`);

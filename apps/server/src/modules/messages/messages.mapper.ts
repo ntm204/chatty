@@ -5,8 +5,15 @@ import type {
 	ProtectedMessageContentDTO,
 	ReactionDTO,
 	ReactionEmoji,
+	StoryReplyDTO,
 } from "@chatty/shared-types";
-import type { AttachmentKind as PrismaAttachmentKind, MessageKind } from "@prisma/client";
+import type {
+	ConversationTheme as DbConversationTheme,
+	AttachmentKind as PrismaAttachmentKind,
+	MessageKind,
+} from "@prisma/client";
+import { buildStoryMediaUrls } from "../../lib/story-media.js";
+import { themeToWire } from "../../lib/theme-wire.js";
 import { buildAttachmentUrl, buildAttachmentUrls } from "../../lib/attachment-storage.js";
 import { toUserDTO, userSelect, type UserRow } from "../users/users.mapper.js";
 import { MESSAGE_AUTHOR_ACTION_WINDOW_MS } from "./messages.constants.js";
@@ -88,6 +95,17 @@ export interface MessageRow {
 	/** Recipients who opened a protected message; empty on every other message. */
 	views: { userId: string }[];
 	replyTo: ReplyParentRow | null;
+	isStoryReply: boolean;
+	replyToStory: StoryParentRow | null;
+}
+
+/** The story a reply answers, read shallowly — only what its quote shows. */
+interface StoryParentRow {
+	id: string;
+	text: string;
+	background: DbConversationTheme | null;
+	mediaId: string | null;
+	expiresAt: Date;
 }
 
 export const messageSelect = {
@@ -136,6 +154,8 @@ export const messageSelect = {
 	reactions: { select: { userId: true, emoji: true }, orderBy: { createdAt: "asc" } },
 	mentions: { select: { userId: true } },
 	views: { select: { userId: true }, orderBy: { openedAt: "asc" } },
+	isStoryReply: true,
+	replyToStory: { select: { id: true, text: true, background: true, mediaId: true, expiresAt: true } },
 	// One level deep. See `ReplyParentRow`.
 	replyTo: {
 		select: {
@@ -198,6 +218,24 @@ function toReplyDTO(row: ReplyParentRow): MessageReplyDTO {
 		attachmentUrl: firstImage ? buildAttachmentUrl(firstImage.id) : null,
 		isDeleted,
 		isProtected: row.isProtected,
+	};
+}
+
+/**
+ * Quotes the story a reply answers while it lives. Expiry is decided here as
+ * well as by the sweep, so a quote never shows a story past its 24 hours.
+ */
+function toStoryReplyDTO(story: StoryParentRow | null): StoryReplyDTO {
+	if (!story || story.expiresAt.getTime() <= Date.now()) {
+		return { storyId: null, isExpired: true, thumbUrl: null, text: "", background: null };
+	}
+
+	return {
+		storyId: story.id,
+		isExpired: false,
+		thumbUrl: story.mediaId ? buildStoryMediaUrls(story.mediaId).thumbUrl : null,
+		text: story.text.slice(0, 120),
+		background: story.background ? themeToWire(story.background) : null,
 	};
 }
 
@@ -272,5 +310,6 @@ export function toMessageDTO(row: MessageRow, viewerId?: string): MessageDTO {
 		// "This message was deleted" reads as approval of the deletion.
 		reactions: row.deletedAt ? [] : toReactionDTOs(row.reactions),
 		replyTo: row.replyTo ? toReplyDTO(row.replyTo) : null,
+		storyReply: row.isStoryReply ? toStoryReplyDTO(row.replyToStory) : null,
 	};
 }

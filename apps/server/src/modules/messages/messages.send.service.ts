@@ -48,6 +48,11 @@ export interface SendMessageArgs {
 	clientId?: string | undefined;
 	/** Text and/or images withheld from recipients until each opens them once. See ADR 0023. */
 	isProtected?: boolean | undefined;
+	/**
+	 * The story this message answers. Set only by `replyToStory`, which has
+	 * already checked the sender may see it; re-checked here under the lock.
+	 */
+	storyReplyId?: string | undefined;
 }
 
 interface StoredMessageAttachment {
@@ -404,6 +409,15 @@ export async function sendMessage(
 					},
 				});
 				const participantIds = new Set(conversation.participants.map((participant) => participant.userId));
+				if (input.storyReplyId) {
+					const story = await transaction.story.findFirst({
+						where: { id: input.storyReplyId, expiresAt: { gt: new Date() } },
+						select: { authorId: true },
+					});
+					if (!story || story.authorId === currentUserId || !participantIds.has(story.authorId)) {
+						throw new NotFoundError("Story not found");
+					}
+				}
 				if (isProtected && participantIds.size < 2) {
 					throw new ValidationError("A protected message needs someone to send it to");
 				}
@@ -443,6 +457,7 @@ export async function sendMessage(
 						content,
 						...(expiresAt ? { expiresAt } : {}),
 						...(isProtected ? { isProtected: true } : {}),
+						...(input.storyReplyId ? { replyToStoryId: input.storyReplyId, isStoryReply: true } : {}),
 						...(input.replyToId ? { replyToId: input.replyToId } : {}),
 						...(input.stickerId || forwardedSource?.isSticker ? { isSticker: true } : {}),
 						...(input.stickerKey || forwardedSource?.stickerKey

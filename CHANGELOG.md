@@ -8,6 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Video stories: up to 15 seconds, re-encoded to 720p with a poster, playing as soon as they start to load;
+  mute and pause follow the story. Any story can last 6, 12, 24 or 48 hours.
+- The sidebar's Unread tab shows a small dot instead of a count, keeping the tabs evenly sized.
+- Stories (ADR 0025): post a photo or text story for 24 hours from the row above your chats, to everyone you
+  chat with or to close friends, with a private "hide from" list. Watch the row person by person; reply or
+  react and it arrives as a direct message quoting the story. See who viewed yours (when receipts are on),
+  change its audience while it is live, or delete it.
 - A chat can turn forwarding off for everyone in it (details → Privacy & support), announced by name;
   forward and photo save disappear on screen immediately, and the server refuses the forward.
 - Faster: the expiry sweep uses a partial index of pending messages only; every "time left" label shares one
