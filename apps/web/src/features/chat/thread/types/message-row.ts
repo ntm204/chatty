@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ReactionEmoji } from "@chatty/shared-types";
 import type { ThreadMessage } from "../../types/thread-message";
 
@@ -40,3 +41,9 @@ export interface MessageRowActions {
  * up with both drawn on top of each other after a fast click.
  */
 export type OpenMessagePanel = "menu" | "reactions" | null;
+
+/** One calendar day of the thread: its own block, so its sticky label stays inside it. */
+export interface DayBlock {
+	key: string;
+	rows: ReactNode[];
+}

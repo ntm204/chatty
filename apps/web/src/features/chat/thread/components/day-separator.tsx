@@ -8,7 +8,7 @@ interface DaySeparatorProps {
 /** The centered pill that names the day the messages under it were sent. */
 export function DaySeparator({ isoTimestamp }: DaySeparatorProps) {
 	return (
-		<div className="day-separator flex justify-center pt-7 first:pt-0">
+		<div className="day-separator flex justify-center pt-7">
 			<span className="day-label wallpaper-pill eyebrow rounded-full bg-paper-sunken px-3 py-1 text-ink-faint">
 				{formatDayLabel(isoTimestamp)}
 			</span>

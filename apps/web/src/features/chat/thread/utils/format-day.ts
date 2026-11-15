@@ -32,3 +32,8 @@ export function isNewDay(isoTimestamp: string, previousIsoTimestamp: string | un
 
 	return new Date(isoTimestamp).toDateString() !== new Date(previousIsoTimestamp).toDateString();
 }
+
+/** A stable identity for the reader's calendar day, for keying per-day blocks. */
+export function getDayKey(isoTimestamp: string): string {
+	return new Date(isoTimestamp).toDateString();
+}

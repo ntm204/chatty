@@ -232,6 +232,25 @@
 	z-index: 5;
 	pointer-events: none;
 }
+/* Only the thread's very first label sits flush with the top. */
+.day-group:first-child > .day-separator:first-child {
+	padding-top: 0;
+}
+/* A "resumed at" time scrolling up would slide under the stuck day label and
+ * show through its frosted pill; it fades out over the last stretch before it
+ * gets there. The inset puts the view's top edge just below that label. */
+@supports (animation-timeline: view()) {
+	.conversation-pane .time-separator > time {
+		animation: fade-before-day-label linear both;
+		animation-timeline: view(block calc(var(--conversation-chrome-height, 0px) + 96px) 0px);
+		animation-range: exit 0% exit 100%;
+	}
+}
+@keyframes fade-before-day-label {
+	to {
+		opacity: 0;
+	}
+}
 
 /* A picked message while selecting: a flat band across the thread's width, as
  * in Telegram — square, so stacked picks read as one continuous selection. */

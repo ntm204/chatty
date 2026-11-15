@@ -1,10 +1,10 @@
 import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
-import { Fragment, memo } from "react";
-import type { MessageRowActions } from "../types/message-row";
+import { Fragment, memo, type ReactNode } from "react";
+import type { DayBlock, MessageRowActions } from "../types/message-row";
 import type { ThreadMessage } from "../../types/thread-message";
 import type { ReadReceipt } from "../utils/read-receipt";
 import { getClusterPosition, hasMessageTimeGap, isWithinMessageBurst } from "../utils/message-grouping";
-import { isNewDay } from "../utils/format-day";
+import { getDayKey, isNewDay } from "../utils/format-day";
 import { DaySeparator } from "./day-separator";
 import { MessageRow } from "./message-row";
 import { MessageTimeSeparator } from "./message-time-separator";
@@ -47,7 +47,25 @@ export const MessageRows = memo(function MessageRows({
 	const rowKeys = useMessageRowKeys(messages, currentUserId);
 	const systemRuns = getSystemMessageRuns(messages, unreadDividerMessageId);
 
-	return messages.map((message, index) => {
+	// Each day is its own block so its sticky label is confined to that day: the
+	// next day's label pushes it out instead of stacking on top of it.
+	const days: DayBlock[] = [];
+	messages.forEach((message, index) => {
+		let day = days.at(-1);
+		if (!day || isNewDay(message.createdAt, messages[index - 1]?.createdAt)) {
+			day = { key: getDayKey(message.createdAt), rows: [] };
+			days.push(day);
+		}
+		day.rows.push(renderRow(message, index));
+	});
+
+	return days.map((day) => (
+		<section key={day.key} className="day-group flex flex-col">
+			{day.rows}
+		</section>
+	));
+
+	function renderRow(message: ThreadMessage, index: number): ReactNode {
 		const previous = messages[index - 1];
 		const isFirstOfDay = isNewDay(message.createdAt, previous?.createdAt);
 		const hasLongPause = !isFirstOfDay && hasMessageTimeGap(message.createdAt, previous?.createdAt);
@@ -118,5 +136,5 @@ export const MessageRows = memo(function MessageRows({
 				/>
 			</Fragment>
 		);
-	});
+	}
 });

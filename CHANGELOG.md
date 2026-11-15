@@ -8,6 +8,8 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Fix: day labels in the thread no longer stack on top of each other while scrolling, and the "resumed at"
+  time fades out before it reaches the pinned "Today" label instead of showing through it.
 - Socket frames of 512 B and more are compressed (`permessage-deflate`, no context takeover): a new
   message travels 41% smaller for ~12 µs of CPU. JSON stays the wire format — measured, a binary codec or
   normalized payloads would save little once compression is on (ADR 0016 amended).
