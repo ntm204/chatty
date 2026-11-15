@@ -16,6 +16,8 @@ import {
 	removeParticipantController,
 	renameConversationController,
 	setInvitePolicyController,
+	setMessageTimerController,
+	setSharingRestrictionController,
 	setNicknameController,
 	setParticipantRoleController,
 	setQuickReactionController,
@@ -51,6 +53,10 @@ conversationsRouter.put("/:conversationId/mute", muteConversationController);
 conversationsRouter.put("/:conversationId/members/:userId/nickname", setNicknameController);
 conversationsRouter.put("/:conversationId/theme", setThemeController);
 conversationsRouter.put("/:conversationId/quick-reaction", setQuickReactionController);
+// Not with the cosmetic routes above in spirit: admin-gated in a group, and
+// every change is announced in the chat. See ADR 0023.
+conversationsRouter.put("/:conversationId/message-timer", setMessageTimerController);
+conversationsRouter.put("/:conversationId/sharing", setSharingRestrictionController);
 conversationsRouter.post("/:conversationId/members", addParticipantController);
 // Also how you leave: DELETE .../members/:userId with your own id as the
 // target. Removing yourself and being removed are the same operation on the

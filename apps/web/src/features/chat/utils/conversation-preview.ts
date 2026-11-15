@@ -1,5 +1,6 @@
 import type { MessageDTO } from "@chatty/shared-types";
-import { DELETED_MESSAGE_TEXT, EMPTY_CONVERSATION_TEXT } from "../constants/message";
+import { isExpiredMessage } from "@/utils/is-expired-message";
+import { DELETED_MESSAGE_TEXT, EMPTY_CONVERSATION_TEXT, PROTECTED_MESSAGE_TEXT } from "../constants/message";
 import { getAttachmentPreviewText } from "./attachment-preview-text";
 
 /**
@@ -11,8 +12,10 @@ import { getAttachmentPreviewText } from "./attachment-preview-text";
  * sentence the thread shows, rather than the empty string the server left behind.
  */
 export function getConversationPreview(lastMessage: MessageDTO | null): string {
-	if (!lastMessage) return EMPTY_CONVERSATION_TEXT;
+	// An expired preview reads as an empty thread until the sidebar reloads.
+	if (!lastMessage || isExpiredMessage(lastMessage)) return EMPTY_CONVERSATION_TEXT;
 	if (lastMessage.deletedAt) return DELETED_MESSAGE_TEXT;
+	if (lastMessage.protection) return PROTECTED_MESSAGE_TEXT;
 	if (lastMessage.stickerKey) return "Sticker";
 	if (lastMessage.content) return lastMessage.content;
 	if (lastMessage.attachments.length > 0) return getAttachmentPreviewText(lastMessage.attachments);

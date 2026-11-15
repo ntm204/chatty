@@ -18,6 +18,70 @@ bản web build với CSP production, các đường phục hồi và quyền li
 Đợt nghiệm thu ban đầu không commit/push; đợt tiếp nối có yêu cầu đẩy code.
 Đây không phải kiểm toán bảo mật độc lập hoặc chứng nhận không còn lỗi.
 
+## Cập nhật 2026-11-15 (tiếp): chặn chia sẻ theo chat, cập nhật realtime, tối ưu
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt: server 543 test, web 698 test, audit 0 hit |
+| `npm run test:e2e` (toàn bộ) | Đạt 114/114 |
+
+Thêm: công tắc "Allow forwarding" cho từng chat (admin trong nhóm, ai cũng được trong chat 1-1, luôn có
+dòng thông báo tên người đổi); server từ chối chuyển tiếp mọi tin trong chat đó; ẩn nút lưu ảnh với ảnh bị
+hạn chế. E2E phát hiện hai lỗi thật và đã sửa: tin đang hiển thị vẫn còn "Forward" tới khi tải lại, cả khi
+đổi cài đặt cá nhân lẫn cài đặt chat. Giờ cài đặt chat đọc trực tiếp từ trạng thái cuộc trò chuyện, còn cài
+đặt cá nhân phát `user:forwarding-changed`; spec đã bỏ bước tải lại để chứng minh cập nhật tức thì. Tối ưu:
+bộ quét tự xoá dùng chỉ mục từng phần (EXPLAIN xác nhận dùng `Message_pending_expiry_idx`); mọi nhãn thời
+gian còn lại dùng chung một đồng hồ.
+
+## Cập nhật 2026-11-15: mục Privacy, chặn chuyển tiếp, ẩn đang gõ (ADR 0024)
+
+Môi trường như mục 2026-11-14. Migration `20261114090000_sharing_and_typing_privacy` chỉ thêm 2 cột.
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt: server 541 test, web 694 test, typecheck, lint, format, audit 0 hit |
+| `npm run test:e2e -- e2e/sharing-and-typing-privacy.spec.ts e2e/protected-and-disappearing.spec.ts e2e/profile-recovery.spec.ts e2e/account.spec.ts e2e/group-live-permissions.spec.ts` | Đạt 10/10 |
+| `npx playwright test --config playwright.webkit.config.ts e2e/protected-and-disappearing.spec.ts e2e/sharing-and-typing-privacy.spec.ts` | Đạt 2/2 trên WebKit |
+| `npm run test:e2e` (toàn bộ) | Đạt 114/114 (chạy riêng, không có tải song song) |
+
+Đã kiểm chứng: server từ chối chuyển tiếp tin của người đã tắt "Allow forwarding", kể cả tin gửi trước khi
+tắt, nhưng vẫn cho chuyển tiếp tin của chính mình; `isForwardable` sai cho tin bảo vệ và tin hệ thống; server
+không chuyển "typing:start" của người đã tắt nhưng vẫn chuyển "typing:stop"; client không gửi và không hiển
+thị trạng thái gõ khi tắt. Trình duyệt: hai người, menu mất "Forward" sau khi tác giả tắt, trạng thái gõ ẩn
+cả hai chiều. Giao diện: lưu ngay không cần Save, các nút vẫn dùng được khi đang lưu, lưu nối tiếp theo thứ tự
+bấm, lỗi thì hoàn tác và báo lý do. Bản nháp tin bảo vệ hiện "Protected message" ở sidebar; tin tự xoá hiện
+thời gian còn lại khi rê chuột.
+
+Một lượt e2e trước đó bị treo/lỗi vì máy ngủ (Docker/OrbStack không phản hồi, test web dài ~946 s); chạy
+lại sau khi máy thức thì đạt. Giới hạn: chặn chuyển tiếp không ngăn được chụp màn hình hay chọn chữ qua
+công cụ dev; cài đặt áp dụng cho cả tài khoản, chưa có ngoại lệ theo cuộc trò chuyện.
+
+## Cập nhật 2026-11-14: tin tự xoá và tin bảo vệ (ADR 0023)
+
+Môi trường: macOS, Node 26, PostgreSQL Docker local, Chromium (Playwright). Migration
+`20261113090000_disappearing_and_protected_messages` chỉ thêm cột/bảng; đã áp vào DB dev và DB e2e.
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `npm run verify:full` | Đạt: server 537 test (41 file), web 684 test (106 file), typecheck, lint, format, audit |
+| `npm run test:e2e -- e2e/protected-and-disappearing.spec.ts` | Đạt 1/1, hai trình duyệt thật |
+| `npm run test:e2e` (toàn bộ) | 111 đạt, 2 lỗi ở bước đăng ký (`Find someone` không hiện trong 15 s) khi bộ test server chạy song song trên cùng Postgres; chạy lại riêng `reactions-and-replies` + `reading-position` đạt 7/7 |
+
+Đã kiểm chứng bằng test: hẹn giờ chỉ nhận 24 giờ/7 ngày/90 ngày (Zod + check constraint), không hồi tố,
+mọi thay đổi có dòng hệ thống ghi tên người đổi; nhóm chỉ admin đổi được; mặc định cho cuộc trò chuyện
+mới áp vào chat 1-1 và nhóm do mình tạo, không áp vào Saved, chat có sẵn hay chat người khác tạo.
+Tin hết hạn biến mất khỏi lịch sử, context, sidebar, tìm kiếm, số chưa đọc ngay tại thời điểm hết hạn;
+mọi thao tác trên tin hết hạn bị từ chối; phân trang không mất tin khi tin làm mốc vừa hết hạn; bộ quét
+xoá nội dung, file, link, reaction, bookmark, pin rồi phát `message:expired`. Tin bảo vệ: nội dung không
+có trong broadcast tới phòng, lịch sử hay sidebar của người nhận; mở được đúng một lần; sau khi mọi người
+mở thì hết hạn trong 60 giây; không sửa/chuyển tiếp/lưu/ghim/tìm kiếm/hiện trong kho được; không cấp lại
+URL ảnh cho người nhận. Trình duyệt: người nhận chỉ thấy lớp phủ, mở ra có tên người xem in chéo, chặn
+copy, tự che khi cửa sổ mất focus, sau khi đóng chỉ còn "Opened" kể cả khi tải lại trang.
+
+Giới hạn giữ nguyên: không chặn hay phát hiện được chụp màn hình/chụp bằng máy khác (giao diện nói rõ);
+server không mã hoá đầu-cuối nên đọc được tin tới khi hết hạn; thiết bị offline giữ bản cache tới lần mở
+app kế tiếp (từ 2026-11-15: dọn ngay khi đăng nhập). Hai điểm bản nháp và WebKit đã xử lý ở mục 2026-11-15.
+
 ## Cập nhật 2026-11-05: hoàn thiện phần mềm còn lại và đối chiếu cả 60 XP
 
 Chủ dự án xác nhận **chưa có thiết bị thật để kiểm tra**. Giữ nguyên tiêu chí gốc,

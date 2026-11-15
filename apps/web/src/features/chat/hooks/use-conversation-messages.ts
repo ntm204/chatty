@@ -6,6 +6,7 @@ import type { LoadingMessageChanges, PendingUpload } from "../types/conversation
 import type { ThreadMessage } from "../types/thread-message";
 import { useLiveMessageEvents } from "./use-live-message-events";
 import { useMessageActions } from "./use-message-actions";
+import { useMessageExpiry } from "./use-message-expiry";
 import { useMessageHistory } from "./use-message-history";
 import { useMessageOutbox } from "./use-message-outbox";
 import { useSessionMessageSends } from "./use-session-message-sends";
@@ -40,6 +41,7 @@ interface ConversationMessages {
 		attachments: File[],
 		replyTo: MessageDTO | null,
 		mentionedUserIds?: string[],
+		isProtected?: boolean,
 	) => Promise<void>;
 	/**
 	 * Sends a saved sticker. Not optimistic: a sticker's picture has dimensions
@@ -145,6 +147,7 @@ export function useConversationMessages(
 	});
 
 	useLiveMessageEvents({ ...store, conversationId, currentUserId, onConversationsChanged });
+	useMessageExpiry(messages, setMessages);
 
 	return {
 		...history,

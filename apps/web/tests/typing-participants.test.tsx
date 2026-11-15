@@ -64,3 +64,16 @@ it("clears stop events and disconnects, and releases timers on unmount", () => {
 	expect(vi.getTimerCount()).toBe(0);
 	expect(listeners.size).toBe(0);
 });
+
+it("shows nobody typing while you have stopped sharing your own typing", async () => {
+	const { useAuth } = await import("@/hooks/use-auth");
+	const { makeCurrentUser } = await import("./factories");
+	useAuth.setState({ currentUser: makeCurrentUser({ typingIndicatorsEnabled: false }) });
+	const view = renderHook(() => useTypingParticipants("one"));
+	type("an");
+	expect(view.result.current.activeUserIds).toEqual([]);
+
+	act(() => useAuth.setState({ currentUser: makeCurrentUser({ typingIndicatorsEnabled: true }) }));
+	type("an");
+	expect(view.result.current.activeUserIds).toEqual(["an"]);
+});

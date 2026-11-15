@@ -5,9 +5,12 @@ import type { MessageDeliveryState, ThreadMessage } from "../../types/thread-mes
 import type { ReadReceipt } from "../utils/read-receipt";
 import { formatMessageTime } from "../../utils";
 import { MessageDeliveryStatus } from "./message-delivery-status";
+import { MessageExpiryHint } from "./message-expiry-hint";
 
 interface MessageMetaProps {
 	createdAt: string;
+	/** Set on a disappearing message: the gutter adds how long it has left. */
+	expiresAt: string | null;
 	isMine: boolean;
 	isEdited: boolean;
 	/**
@@ -39,6 +42,7 @@ interface MessageMetaProps {
  */
 export function MessageMeta({
 	createdAt,
+	expiresAt,
 	isMine,
 	isEdited,
 	hasTimeOnMedia,
@@ -79,9 +83,10 @@ export function MessageMeta({
 					onRetry={onRetrySend}
 					onDiscard={onDiscardDraft}
 				/>
-			) : hasTimeOnMedia ? null : (
-				<span className="meta text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-					{formatMessageTime(createdAt)}
+			) : hasTimeOnMedia && !expiresAt ? null : (
+				<span className="meta flex items-center gap-1.5 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+					{!hasTimeOnMedia && formatMessageTime(createdAt)}
+					{expiresAt && <MessageExpiryHint expiresAt={expiresAt} />}
 				</span>
 			)}
 		</div>

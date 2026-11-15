@@ -28,7 +28,9 @@ require a public deployment. The foundations below remain context for future dec
    disconnected or failed state.
 3. **Private by default, honest about guarantees.** Blocking, restriction, session revocation and
    signed media are enforced server-side. Chatty will not claim end-to-end encryption until a
-   reviewed protocol, multi-device key model and recovery story exist.
+   reviewed protocol, multi-device key model and recovery story exist. Disappearing and protected
+   messages are visible to everyone they affect — no hidden mode — and never promise to stop
+   screenshots, which a browser cannot do ([ADR 0023](adr/0023-disappearing-and-protected-messages.md)).
 4. **Useful on ordinary phones and networks.** Delta delivery, bounded history, thumbnails and
    client-side image reduction are product behaviour, not deployment trivia.
 5. **Zero recurring vendor bill first.** The first public version may require a domain and free

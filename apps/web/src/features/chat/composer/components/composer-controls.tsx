@@ -1,4 +1,4 @@
-import { ArrowUp, Smile } from "lucide-react";
+import { ArrowUp, Lock, LockOpen, Smile } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
@@ -14,6 +14,10 @@ interface ComposerControlsProps {
 	isFull: boolean;
 	canSend: boolean;
 	isSendBlocked?: boolean;
+	/** Whether the next send may be protected — there is someone to send it to, and it is text or photos. */
+	canProtect: boolean;
+	isProtected: boolean;
+	onToggleProtected: () => void;
 	isEmojiPickerOpen: boolean;
 	isStickerTrayOpen: boolean;
 	onToggleEmojiPicker: () => void;
@@ -43,6 +47,9 @@ export function ComposerControls({
 	isFull,
 	canSend,
 	isSendBlocked = false,
+	canProtect,
+	isProtected,
+	onToggleProtected,
 	isEmojiPickerOpen,
 	isStickerTrayOpen,
 	onToggleEmojiPicker,
@@ -94,6 +101,26 @@ export function ComposerControls({
 				)}
 			>
 				{field}
+				{/* Beside the field, only once there is something to protect: one more
+				    icon while typing, none in an empty composer. */}
+				{canProtect && canSend && (
+					<Button
+						variant="ghost"
+						onClick={onToggleProtected}
+						disabled={isDisabled || isSending}
+						aria-label="Protect this message"
+						aria-pressed={isProtected}
+						data-tooltip={
+							isProtected ? "Protected — click to send normally" : "Protect: opens once, then disappears"
+						}
+						className={cn(
+							"size-8 shrink-0 rounded-full p-0 hover:bg-transparent",
+							isProtected ? "text-ink" : "text-ink-faint hover:text-ink",
+						)}
+					>
+						{isProtected ? <Lock className="size-[16px]" /> : <LockOpen className="size-[16px]" />}
+					</Button>
+				)}
 				<Button
 					variant="ghost"
 					onClick={onToggleEmojiPicker}
@@ -112,7 +139,7 @@ export function ComposerControls({
 				<Button
 					type="submit"
 					disabled={isDisabled || isSending || isSendBlocked}
-					aria-label="Send message"
+					aria-label={isProtected ? "Send protected message" : "Send message"}
 					className="size-9 shrink-0 rounded-bubble p-0"
 				>
 					<ArrowUp className="size-4" />

@@ -11,17 +11,17 @@ datasource db {
 }
 
 model User {
-  id                  String             @id @default(cuid())
-  email               String             @unique
+  id                         String             @id @default(cuid())
+  email                      String             @unique
   // Public, unique identifier used to find someone. Display names are not
   // unique — two people called "Minh" are indistinguishable in search results —
   // and email is deliberately never returned by search, so without a handle
   // there is no safe way to tell two accounts apart.
   // Always stored lowercase: Postgres unique indexes are case-sensitive, so
   // normalising on write is what makes "Minh" and "minh" the same handle.
-  handle              String             @unique
-  passwordHash        String
-  displayName         String
+  handle                     String             @unique
+  passwordHash               String
+  displayName                String
   // When the avatar was last replaced — null means there is no picture.
   //
   // Not a URL. The file lives under one key derived from the user id, and the
@@ -30,14 +30,14 @@ model User {
   // rewriting every row to move the files to S3, or keeping the old picture
   // cached in browsers after an upload — the same reason Mattermost stores
   // `last_picture_update` and Rocket.Chat an avatar etag.
-  avatarUpdatedAt     DateTime?          @db.Timestamptz(3)
+  avatarUpdatedAt            DateTime?          @db.Timestamptz(3)
   /// When the password was last replaced, or null if it never has been.
   ///
   /// Read by `requireAuth` and by the socket handshake on every request: a JWT
   /// issued before this moment is refused. Without it, changing or resetting a
   /// password would leave every session opened beforehand working until the
   /// token expired — which is exactly the case a reset is reached for.
-  passwordChangedAt   DateTime?          @db.Timestamptz(3)
+  passwordChangedAt          DateTime?          @db.Timestamptz(3)
   /// Whether other people may see how far this user has read.
   ///
   /// Symmetric by design: turning it off also hides everyone else's markers from
@@ -45,10 +45,24 @@ model User {
   /// participant row — while this is false, that column stops advancing, so the
   /// marker never leaves the process rather than being filtered out of a response
   /// somebody could still ask for.
-  readReceiptsEnabled Boolean            @default(true)
-  lastSeenAt          DateTime?          @db.Timestamptz(3)
-  presenceVisibility  PresenceVisibility @default(CONTACTS)
-  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  readReceiptsEnabled        Boolean            @default(true)
+  lastSeenAt                 DateTime?          @db.Timestamptz(3)
+  presenceVisibility         PresenceVisibility @default(CONTACTS)
+  /// How long messages last in conversations this user starts, or null to keep
+  /// them. Applied once, when the conversation is created, and announced there as
+  /// this person's default — a habit stated for everyone, rather than a request
+  /// aimed at one person. Never changes an existing conversation. See ADR 0023.
+  defaultMessageTimerSeconds Int?
+  /// Whether other people may forward what this person writes. Read when a
+  /// forward happens, so turning it off covers messages already sent too — the
+  /// way KakaoTalk's sharing restriction works. Copying text and screenshots
+  /// remain possible and the settings copy says so. See ADR 0024.
+  allowMessageForwarding     Boolean            @default(true)
+  /// Whether "is typing…" is shared. Symmetric like read receipts: with this
+  /// off the server stops relaying this person's typing and their client stops
+  /// showing anyone else's. See ADR 0024.
+  typingIndicatorsEnabled    Boolean            @default(true)
+  createdAt                  DateTime           @default(now()) @db.Timestamptz(3)
 
   participants        ConversationParticipant[]
   messages            Message[]
@@ -61,6 +75,7 @@ model User {
   starredMessages     MessageStar[]
   mentions            MessageMention[]
   pinnedMessages      PinnedMessage[]
+  messageViews        MessageView[]
   blocksMade          UserBlock[]               @relation("BlocksMade")
   blocksReceived      UserBlock[]               @relation("BlocksReceived")
   restrictionsMade    UserRestriction[]         @relation("RestrictionsMade")
@@ -328,31 +343,43 @@ model OutboxMessage {
 }
 
 model Conversation {
-  id                 String                   @id @default(cuid())
+  id                  String                   @id @default(cuid())
   // true once a third participant joins; kept explicit rather than derived
   // from participant count so a 1-1 chat that later becomes a group doesn't
   // silently change identity.
-  isGroup            Boolean                  @default(false)
+  isGroup             Boolean                  @default(false)
   // display name for group chats; null for 1-1 (client derives a name from
   // the other participant)
-  name               String?
+  name                String?
   /// Who may add people. Any admin may change this; EVERYONE preserves the
   /// original open-invite behaviour, MANAGERS means admins only.
-  invitePolicy       ConversationInvitePolicy @default(EVERYONE)
+  invitePolicy        ConversationInvitePolicy @default(EVERYONE)
   /// Set only for a group's own photo — mirrors `User.avatarUpdatedAt` exactly,
   /// including the cache-busting scheme. Null in a direct conversation, which
   /// always shows the peer's own avatar instead. Group-only and admin-gated,
   /// same as renaming. See ADR 0022.
-  avatarUpdatedAt    DateTime?                @db.Timestamptz(3)
+  avatarUpdatedAt     DateTime?                @db.Timestamptz(3)
   /// The whole conversation's shared accent, or null for today's fixed
   /// appearance. Cosmetic, so any participant may change it — unlike the
   /// admin-gated settings above. See ADR 0022.
-  themeColor         ConversationTheme?
+  themeColor          ConversationTheme?
   /// Overrides the app-wide default reaction a double-click on a bubble
   /// leaves (`DEFAULT_REACTION`). Cosmetic, any participant may change it.
-  quickReactionEmoji String?
-  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
+  quickReactionEmoji  String?
+  /// Disappearing messages: every message sent while this is set expires this
+  /// many seconds after it was sent, for everyone. Null keeps messages. Not
+  /// retroactive — a message's own `expiresAt` is fixed when it is written. Any
+  /// participant may change it in a direct conversation, admins in a group, and
+  /// every change writes a system line. A check constraint limits the values to
+  /// the offered presets. See ADR 0023.
+  messageTimerSeconds Int?
+  /// Nobody may forward messages out of this conversation, whoever wrote them —
+  /// the per-chat counterpart of `User.allowMessageForwarding`, like WhatsApp's
+  /// Advanced Chat Privacy. Changed like the timer: either person in a direct
+  /// chat, admins in a group, always announced by name. See ADR 0024.
+  restrictSharing     Boolean                  @default(false)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
 
   participants   ConversationParticipant[]
   messages       Message[]
@@ -549,6 +576,17 @@ model Message {
   /// A copy made from another message. The source is deliberately not retained:
   /// forwarded content outlives deletion in the source conversation.
   isForwarded  Boolean      @default(false)
+  /// When this message stops existing for everyone, or null to keep it. Set once,
+  /// at send time, from the conversation's timer and — for a protected message —
+  /// the protection's own 24 hours; brought forward once every recipient has
+  /// opened a protected message. The expiry sweep tombstones it, and every read
+  /// path leaves out a message past this instant even before the sweep runs.
+  expiresAt    DateTime?    @db.Timestamptz(3)
+  /// A protected message: its text and photos are withheld from everyone but the
+  /// author until a recipient explicitly opens it (`MessageView`), each recipient
+  /// may open it once, and it cannot be edited, forwarded, saved, pinned or
+  /// searched. A check constraint requires `expiresAt` alongside it. See ADR 0023.
+  isProtected  Boolean      @default(false)
 
   /// A list since phase 22. It was `Attachment?` only because
   /// `Attachment.messageId` carried a unique — the relation was always
@@ -562,6 +600,7 @@ model Message {
   stars       MessageStar[]
   mentions    MessageMention[]
   pinnedIn    PinnedMessage[]
+  views       MessageView[]
   // SetNull, not Cascade: a reply outlives the message it answers. Messages are
   // never hard-deleted anyway (see `deletedAt`), so this only fires when a whole
   // conversation goes — and then the reply is going with it regardless.
@@ -570,10 +609,30 @@ model Message {
   // The GIN index on `searchVector` lives in the phase 12 migration: Prisma
   // cannot express an index method, and an `@@index` here would create a second,
   // useless btree one alongside it.
+  // The expiry sweep's index is partial — `WHERE "deletedAt" IS NULL AND
+  // "expiresAt" IS NOT NULL`, in migration 20261115090000 — so it holds only
+  // messages still waiting to expire. A plain index would keep every tombstone
+  // the sweep ever made, and each 10-second pass would walk them all. Prisma
+  // cannot express a partial index, the same reason the search GIN lives in SQL.
 
   @@index([conversationId, createdAt])
   @@index([authorId, clientId])
   @@index([replyToId])
+}
+
+/// One recipient having opened one protected message. At most once: the primary
+/// key is the "view once" rule, so a second open cannot be recorded however the
+/// service is called. Never written for the author, who may always see what they
+/// sent until it expires.
+model MessageView {
+  messageId String
+  userId    String
+  openedAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
 }
 
 /// One person's reaction to one message. At most one.

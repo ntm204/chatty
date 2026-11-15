@@ -213,6 +213,7 @@ describe("replying", () => {
 			hasAttachment: false,
 			attachmentUrl: null,
 			isDeleted: false,
+			isProtected: false,
 		});
 	});
 

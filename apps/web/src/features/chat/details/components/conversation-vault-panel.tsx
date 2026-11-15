@@ -7,9 +7,11 @@ import { Disclosure } from "@/components/disclosure";
 import { VAULT_CATEGORY_TABS, VAULT_TABS, type VaultTab } from "../constants/vault";
 import { useConversationVault } from "../hooks/use-conversation-vault";
 import { useVaultReadingPosition } from "../hooks/use-vault-reading-position";
-import { getDirectPeer } from "../../utils";
+import { getDirectPeer, isSavedConversation } from "../../utils";
 import { ConversationBlockControl } from "./conversation-block-control";
 import { ConversationCustomizePanel } from "./conversation-customize-panel";
+import { ConversationMessageTimerControl } from "./conversation-message-timer-control";
+import { ConversationSharingControl } from "./conversation-sharing-control";
 import { ConversationDetailsIdentity } from "./conversation-details-identity";
 import { ConversationQuickActions } from "./conversation-quick-actions";
 import { GroupInvitePolicyControl } from "./group-invite-policy-control";
@@ -183,12 +185,25 @@ export function ConversationVaultPanel({
 						</div>
 					)}
 
-					{/* Last, not first. Direct conversations only: a block is between two
-					    people and deliberately does not reach into a group they share. */}
-					{blockablePeer && (
+					{/* Last, not first. Blocking is direct-only: a block is between two
+					    people and deliberately does not reach into a group they share.
+					    Your own Saved chat has nobody to keep anything private from. */}
+					{!isSavedConversation(conversation, currentUserId) && (
 						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
 							<Disclosure label="Privacy & support">
-								<ConversationBlockControl peer={blockablePeer} />
+								<div className="px-3">
+									<ConversationMessageTimerControl
+										conversationId={conversation.id}
+										timer={conversation.messageTimerSeconds}
+										canChange={!conversation.isGroup || isAdmin}
+									/>
+									<ConversationSharingControl
+										conversationId={conversation.id}
+										isRestricted={conversation.isSharingRestricted}
+										canChange={!conversation.isGroup || isAdmin}
+									/>
+								</div>
+								{blockablePeer && <ConversationBlockControl peer={blockablePeer} />}
 							</Disclosure>
 						</div>
 					)}

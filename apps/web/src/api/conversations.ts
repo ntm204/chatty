@@ -15,6 +15,8 @@ import type {
 	MessageLinkPageDTO,
 	RenameConversationRequest,
 	SetGroupInvitePolicyRequest,
+	SetMessageTimerRequest,
+	SetSharingRestrictionRequest,
 	SetParticipantRoleRequest,
 	SetThemeRequest,
 	ConversationVaultSummaryDTO,
@@ -154,6 +156,26 @@ export const conversationsApi = {
 		const body: SetGroupInvitePolicyRequest = { invitePolicy };
 
 		return request<ConversationDTO>(`/conversations/${conversationId}/invite-policy`, {
+			method: "PUT",
+			body: JSON.stringify(body),
+		});
+	},
+
+	/** Disappearing messages: a preset lifetime, or null to keep messages. Admin-only in a group. */
+	setMessageTimer(conversationId: string, seconds: SetMessageTimerRequest["seconds"]): Promise<ConversationDTO> {
+		const body: SetMessageTimerRequest = { seconds };
+
+		return request<ConversationDTO>(`/conversations/${conversationId}/message-timer`, {
+			method: "PUT",
+			body: JSON.stringify(body),
+		});
+	},
+
+	/** Stops anyone forwarding out of this conversation. Admin-only in a group; always announced. */
+	setSharingRestriction(conversationId: string, isRestricted: boolean): Promise<ConversationDTO> {
+		const body: SetSharingRestrictionRequest = { isRestricted };
+
+		return request<ConversationDTO>(`/conversations/${conversationId}/sharing`, {
 			method: "PUT",
 			body: JSON.stringify(body),
 		});

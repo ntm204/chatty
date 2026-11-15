@@ -89,7 +89,7 @@ describe("MessageInput", () => {
 		expect(field).toHaveValue("First line\nSecond line");
 		expect(onSend).not.toHaveBeenCalled();
 		await typist.keyboard("{Enter}");
-		expect(onSend).toHaveBeenCalledWith("First line\nSecond line", [], null, []);
+		expect(onSend).toHaveBeenCalledWith("First line\nSecond line", [], null, [], false);
 	});
 
 	it("does not send while composing, on Safari composition Enter, or on held Enter", () => {
@@ -205,7 +205,7 @@ describe("MessageInput", () => {
 
 		await typist.type(screen.getByLabelText("Message"), "hello{Enter}");
 
-		expect(onSend).toHaveBeenCalledWith("hello", [], null, []);
+		expect(onSend).toHaveBeenCalledWith("hello", [], null, [], false);
 	});
 
 	it("restores a device-local draft for the conversation", () => {
@@ -280,7 +280,7 @@ describe("MessageInput", () => {
 		expect(screen.queryByRole("button", { name: "Retry file upload" })).not.toBeInTheDocument();
 
 		await typist.type(screen.getByLabelText("Message"), "{Enter}");
-		expect(onSend).toHaveBeenCalledWith("Keep this reply", [], replyTo, []);
+		expect(onSend).toHaveBeenCalledWith("Keep this reply", [], replyTo, [], false);
 	});
 
 	it.each(["paste", "drop"])("sends a file immediately from %s", async (source) => {
@@ -399,7 +399,7 @@ describe("MessageInput", () => {
 		const user = userEvent.setup();
 		renderInput({ participants: [makeParticipant("an", "An")], isGroup: false });
 		await user.type(screen.getByLabelText("Message"), "Hi @an{Enter}");
-		expect(onSend).toHaveBeenCalledWith("Hi @an", [], null, []);
+		expect(onSend).toHaveBeenCalledWith("Hi @an", [], null, [], false);
 	});
 
 	it("autocompletes a group mention and sends the participant id", async () => {
@@ -411,7 +411,7 @@ describe("MessageInput", () => {
 		await user.click(screen.getByRole("option", { name: "An@an" }));
 		await user.type(screen.getByLabelText("Message"), "there{Enter}");
 
-		expect(onSend).toHaveBeenCalledWith("Hello @an there", [], null, ["an"]);
+		expect(onSend).toHaveBeenCalledWith("Hello @an there", [], null, ["an"], false);
 	});
 
 	it("empties the field before the send resolves, so the next message need not wait", async () => {
@@ -447,7 +447,7 @@ describe("MessageInput", () => {
 		await typist.type(screen.getByLabelText("Message"), "second{Enter}");
 
 		expect(onSend).toHaveBeenCalledTimes(2);
-		expect(onSend).toHaveBeenLastCalledWith("second", [], null, []);
+		expect(onSend).toHaveBeenLastCalledWith("second", [], null, [], false);
 		pendingSends.forEach((resolve) => resolve());
 	});
 
@@ -459,7 +459,7 @@ describe("MessageInput", () => {
 		await typist.upload(fileInput(container), image);
 		await typist.click(sendButton());
 
-		expect(onSend).toHaveBeenCalledWith("", [image], null, []);
+		expect(onSend).toHaveBeenCalledWith("", [image], null, [], false);
 	});
 
 	it("sends an image together with its caption", async () => {
@@ -469,7 +469,7 @@ describe("MessageInput", () => {
 		await typist.upload(fileInput(container), image);
 		await typist.type(screen.getByLabelText("Message"), "look at this{Enter}");
 
-		expect(onSend).toHaveBeenCalledWith("look at this", [image], null, []);
+		expect(onSend).toHaveBeenCalledWith("look at this", [image], null, [], false);
 	});
 
 	it("shows a preview that can be removed again", async () => {
@@ -514,7 +514,7 @@ describe("MessageInput", () => {
 		await typist.upload(fileInput(container), [image, second]);
 		await typist.click(sendButton());
 
-		expect(onSend).toHaveBeenCalledWith("", [image, second], null, []);
+		expect(onSend).toHaveBeenCalledWith("", [image, second], null, [], false);
 	});
 
 	it("adds to the set on a second trip to the file dialog rather than replacing it", async () => {
@@ -540,7 +540,7 @@ describe("MessageInput", () => {
 		await typist.click(screen.getByRole("button", { name: "Remove attached image 1" }));
 		await typist.click(sendButton());
 
-		expect(onSend).toHaveBeenCalledWith("", [second], null, []);
+		expect(onSend).toHaveBeenCalledWith("", [second], null, [], false);
 	});
 
 	it("refuses more than the cap, and says so", async () => {

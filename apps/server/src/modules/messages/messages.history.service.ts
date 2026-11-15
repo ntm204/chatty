@@ -3,11 +3,36 @@
  * around one message, each marked with the viewer's own bookmarks.
  */
 import type { MessageContextDTO, MessageDTO } from "@chatty/shared-types";
+import type { Prisma } from "@prisma/client";
 import { NotFoundError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 import { assertParticipant } from "../conversations/conversations.service.js";
+import { unexpiredMessageWhere } from "./messages.lifecycle.js";
 import { messageSelect, toMessageDTO } from "./messages.mapper.js";
 import type { ListMessagesQuery, MessageContextQuery } from "./messages.schema.js";
+
+/**
+ * The messages strictly before or after one message, in (createdAt, id) order.
+ *
+ * Written out rather than left to Prisma's `cursor` + `skip: 1`, which assumes
+ * the cursor row is itself in the filtered result and skips it. Since messages
+ * expire (ADR 0023), the oldest message a client holds can stop matching the
+ * filter between its last page and this request — and `skip: 1` would then drop
+ * a real message instead. A missing cursor row reads as "nothing on that side".
+ */
+async function beyondCursor(cursorId: string, direction: "older" | "newer"): Promise<Prisma.MessageWhereInput> {
+	const cursor = await prisma.message.findUnique({ where: { id: cursorId }, select: { createdAt: true } });
+	if (!cursor) return { id: { in: [] } };
+
+	return direction === "older"
+		? { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursorId } }] }
+		: { OR: [{ createdAt: { gt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { gt: cursorId } }] };
+}
+
+/** One viewer's view of a conversation: the messages they have not hidden. */
+function visibleTo(currentUserId: string, conversationId: string): Prisma.MessageWhereInput {
+	return { conversationId, hiddenFor: { none: { userId: currentUserId } } };
+}
 
 export async function listMessages(
 	currentUserId: string,
@@ -17,30 +42,38 @@ export async function listMessages(
 	await assertParticipant(currentUserId, conversationId);
 	if (query.after) {
 		const newer = await prisma.message.findMany({
-			where: { conversationId, hiddenFor: { none: { userId: currentUserId } } },
+			where: {
+				...visibleTo(currentUserId, conversationId),
+				AND: [unexpiredMessageWhere(), await beyondCursor(query.after, "newer")],
+			},
 			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
 			take: query.limit,
-			cursor: { id: query.after },
-			skip: 1,
 			select: messageSelect,
 		});
 
-		return withViewerBookmarks(currentUserId, newer.map(toMessageDTO));
+		return withViewerBookmarks(
+			currentUserId,
+			newer.map((message) => toMessageDTO(message, currentUserId)),
+		);
 	}
 
 	const messages = await prisma.message.findMany({
-		where: { conversationId, hiddenFor: { none: { userId: currentUserId } } },
+		where: {
+			...visibleTo(currentUserId, conversationId),
+			// `before` is the id of the oldest message the client already has.
+			AND: [unexpiredMessageWhere(), ...(query.before ? [await beyondCursor(query.before, "older")] : [])],
+		},
 		// Newest first so `take` returns the most recent page; the client reverses
 		// for display. Backed by @@index([conversationId, createdAt]).
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: query.limit,
-		// `before` is the id of the oldest message the client already has.
-		// `skip: 1` excludes that message itself from the next page.
-		...(query.before ? { cursor: { id: query.before }, skip: 1 } : {}),
 		select: messageSelect,
 	});
 
-	return withViewerBookmarks(currentUserId, messages.map(toMessageDTO));
+	return withViewerBookmarks(
+		currentUserId,
+		messages.map((message) => toMessageDTO(message, currentUserId)),
+	);
 }
 
 /**
@@ -65,29 +98,22 @@ export async function getMessageContext(
 	query: MessageContextQuery,
 ): Promise<MessageContextDTO> {
 	await assertParticipant(currentUserId, conversationId);
-	const target = await prisma.message.findFirst({
-		where: { id: messageId, conversationId, hiddenFor: { none: { userId: currentUserId } } },
-		select: { id: true },
-	});
-	if (!target) throw new NotFoundError("Message not found");
+	const where = { AND: [visibleTo(currentUserId, conversationId), unexpiredMessageWhere()] };
+	const current = await prisma.message.findFirst({ where: { id: messageId, ...where }, select: messageSelect });
+	if (!current) throw new NotFoundError("Message not found");
 
 	const olderLimit = Math.floor(query.limit / 2);
 	const newerLimit = query.limit - olderLimit - 1;
-	const [older, current, newer] = await Promise.all([
+	const [older, newer] = await Promise.all([
 		prisma.message.findMany({
-			where: { conversationId, hiddenFor: { none: { userId: currentUserId } } },
+			where: { AND: [...where.AND, await beyondCursor(messageId, "older")] },
 			orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-			cursor: { id: messageId },
-			skip: 1,
 			take: olderLimit + 1,
 			select: messageSelect,
 		}),
-		prisma.message.findUniqueOrThrow({ where: { id: messageId }, select: messageSelect }),
 		prisma.message.findMany({
-			where: { conversationId, hiddenFor: { none: { userId: currentUserId } } },
+			where: { AND: [...where.AND, await beyondCursor(messageId, "newer")] },
 			orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-			cursor: { id: messageId },
-			skip: 1,
 			take: newerLimit + 1,
 			select: messageSelect,
 		}),
@@ -96,7 +122,9 @@ export async function getMessageContext(
 	return {
 		messages: await withViewerBookmarks(
 			currentUserId,
-			[...older.slice(0, olderLimit).reverse(), current, ...newer.slice(0, newerLimit)].map(toMessageDTO),
+			[...older.slice(0, olderLimit).reverse(), current, ...newer.slice(0, newerLimit)].map((message) =>
+				toMessageDTO(message, currentUserId),
+			),
 		),
 		hasMoreOlder: older.length > olderLimit,
 		hasMoreNewer: newer.length > newerLimit,

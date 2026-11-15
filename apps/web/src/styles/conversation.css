@@ -262,3 +262,27 @@
 [data-message-interaction-row][data-selected] {
 	cursor: pointer;
 }
+
+/* An opened protected message carries its viewer's name across it, so a capture
+ * names who took it. Faint enough to read through, repeated so no crop avoids it;
+ * the paper-coloured halo keeps it visible over a dark photo too. */
+.protected-watermark {
+	position: absolute;
+	inset: -50%;
+	display: flex;
+	flex-wrap: wrap;
+	align-content: center;
+	justify-content: center;
+	gap: 28px 44px;
+	transform: rotate(-24deg);
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	color: color-mix(in srgb, var(--color-ink) 16%, transparent);
+	text-shadow: 0 0 2px color-mix(in srgb, var(--color-paper-raised) 40%, transparent);
+}
+@media print {
+	.protected-viewer {
+		display: none !important;
+	}
+}

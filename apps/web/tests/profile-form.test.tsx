@@ -118,8 +118,6 @@ describe("ProfileForm", () => {
 		expect(form).toHaveAttribute("aria-busy", "true");
 		expect(nameField).toBeDisabled();
 		expect(screen.getByLabelText("Handle")).toBeDisabled();
-		expect(screen.getByLabelText(/Send read receipts/)).toBeDisabled();
-		for (const radio of screen.getAllByRole("radio")) expect(radio).toBeDisabled();
 		expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
 		await typist.type(nameField, " unsaved");
 		fireEvent.submit(form);
@@ -169,33 +167,5 @@ describe("ProfileForm", () => {
 
 		expect(await screen.findByText("Profile saved")).toBeInTheDocument();
 		expect(useAuth.getState().currentUser?.displayName).toBe("Minh Nguyen");
-	});
-
-	it("sends the read receipt setting when it is toggled", async () => {
-		const typist = userEvent.setup();
-		render(<ProfileForm user={user} />);
-
-		await typist.click(screen.getByLabelText(/Send read receipts/));
-		await typist.click(screen.getByRole("button", { name: "Save changes" }));
-
-		expect(updateProfile).toHaveBeenCalledWith({ readReceiptsEnabled: false });
-	});
-
-	it("says out loud that hiding your receipts also hides everyone else's", async () => {
-		// The symmetry is the part people are surprised by, and being surprised by
-		// it after the fact is what makes a setting feel like a trick.
-		render(<ProfileForm user={user} />);
-
-		expect(screen.getByText(/hides theirs from you/)).toBeInTheDocument();
-	});
-
-	it("saves last-seen privacy independently from the profile fields", async () => {
-		const typist = userEvent.setup();
-		render(<ProfileForm user={user} />);
-
-		await typist.click(screen.getByRole("radio", { name: "Nobody" }));
-		await typist.click(screen.getByRole("button", { name: "Save changes" }));
-
-		expect(updateProfile).toHaveBeenCalledWith({ presenceVisibility: "nobody" });
 	});
 });

@@ -8,6 +8,7 @@ import {
 	hideMessageController,
 	listMessageEditsController,
 	listMessagesController,
+	openProtectedMessageController,
 	pinMessageController,
 	removeSavedMessageController,
 	saveMessageController,
@@ -42,3 +43,7 @@ messagesRouter.put("/:messageId/star", saveMessageController);
 messagesRouter.delete("/:messageId/star", removeSavedMessageController);
 messagesRouter.put("/:messageId/pin", pinMessageController);
 messagesRouter.delete("/:messageId/pin", unpinMessageController);
+// POST, not GET: opening is the one-time act a "view once" message is about, and
+// it writes the view that refuses the second one. A GET a browser may prefetch
+// or retry must never be able to spend it.
+messagesRouter.post("/:messageId/open", openProtectedMessageController);

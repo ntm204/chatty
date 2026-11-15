@@ -19,9 +19,10 @@ import { ForbiddenError, NotFoundError, ValidationError } from "../../lib/errors
 import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
 import { readOwnedStickerPath } from "../stickers/stickers.service.js";
-import { getIO } from "../../lib/socket-bus.js";
 import { assertDirectContactAvailable, isDirectConversationBlocked } from "../blocks/blocks.service.js";
 import { assertParticipant } from "../conversations/conversations.service.js";
+import { broadcastMessage } from "./messages.broadcast.js";
+import { computeExpiresAt, unexpiredMessageWhere } from "./messages.lifecycle.js";
 import { messageSelect, toMessageDTO, type MessageRow } from "./messages.mapper.js";
 
 /**
@@ -45,6 +46,8 @@ export interface SendMessageArgs {
 	mentionedUserIds?: string[] | undefined;
 	/** Stored as this sender's idempotency key and echoed for optimistic reconciliation. */
 	clientId?: string | undefined;
+	/** Text and/or images withheld from recipients until each opens them once. See ADR 0023. */
+	isProtected?: boolean | undefined;
 }
 
 interface StoredMessageAttachment {
@@ -60,6 +63,22 @@ interface StoredMessageAttachment {
 	durationMs: number | null;
 	waveform: number[];
 	hasThumbnail: boolean;
+}
+
+/**
+ * Refuses a forward out of a conversation that restricts sharing — anyone's
+ * message, yours included, because the rule belongs to the chat — or of someone
+ * else's message once they have turned sharing off. See ADR 0024.
+ */
+function assertForwardableBy(
+	currentUserId: string,
+	author: { id: string; allowMessageForwarding: boolean } | null,
+	isConversationRestricted: boolean,
+): void {
+	if (isConversationRestricted) throw new ForbiddenError("Forwarding is turned off in this chat");
+	if (author && author.id !== currentUserId && !author.allowMessageForwarding) {
+		throw new ForbiddenError("This person doesn't allow their messages to be forwarded");
+	}
 }
 
 async function discardPreparedAttachments(attachmentIds: string[]): Promise<void> {
@@ -102,9 +121,10 @@ export async function sendMessage(
 				throw new ValidationError("A message id cannot be reused in another conversation");
 			}
 
-			return { ...toMessageDTO(previous), clientId: input.clientId };
+			return { ...toMessageDTO(previous, currentUserId), clientId: input.clientId };
 		}
 	}
+	const isProtected = input.isProtected === true;
 	let content = input.content;
 	let forwardedSource:
 		| {
@@ -131,6 +151,10 @@ export async function sendMessage(
 				id: input.forwardOfMessageId,
 				kind: "USER",
 				deletedAt: null,
+				// A protected message is the one thing that may not leave its
+				// conversation; an expired one no longer exists. Both read as a miss.
+				isProtected: false,
+				...unexpiredMessageWhere(),
 				hiddenFor: { none: { userId: currentUserId } },
 			},
 			select: {
@@ -139,6 +163,8 @@ export async function sendMessage(
 				content: true,
 				isSticker: true,
 				stickerKey: true,
+				author: { select: { id: true, allowMessageForwarding: true } },
+				conversation: { select: { restrictSharing: true } },
 				attachments: {
 					orderBy: { position: "asc" },
 					select: {
@@ -156,6 +182,7 @@ export async function sendMessage(
 		});
 		if (!source) throw new NotFoundError("Message not found");
 		await assertParticipant(currentUserId, source.conversationId);
+		assertForwardableBy(currentUserId, source.author, source.conversation.restrictSharing);
 		content = source.content;
 		forwardedSource = source;
 	}
@@ -333,11 +360,20 @@ export async function sendMessage(
 							conversationId: forwardedSource.conversationId,
 							kind: "USER",
 							deletedAt: null,
+							isProtected: false,
+							...unexpiredMessageWhere(),
 							hiddenFor: { none: { userId: currentUserId } },
 						},
-						select: { content: true },
+						select: {
+							content: true,
+							author: { select: { id: true, allowMessageForwarding: true } },
+							conversation: { select: { restrictSharing: true } },
+						},
 					});
 					if (!source) throw new NotFoundError("Message not found");
+					// Re-read under the lock: the author may have turned sharing off
+					// while the media was being copied.
+					assertForwardableBy(currentUserId, source.author, source.conversation.restrictSharing);
 					// Attachments are immutable while a message is live. Text can be edited
 					// during media preparation, so copy the current caption under the lock.
 					content = source.content;
@@ -353,7 +389,7 @@ export async function sendMessage(
 				// with a kick is refused on the same honest ordering the send itself is.
 				if (input.replyToId) {
 					const parent = await transaction.message.findFirst({
-						where: { id: input.replyToId, conversationId },
+						where: { id: input.replyToId, conversationId, ...unexpiredMessageWhere() },
 						select: { id: true },
 					});
 					if (!parent) throw new ValidationError("You can only reply to a message in this conversation");
@@ -361,9 +397,16 @@ export async function sendMessage(
 
 				const conversation = await transaction.conversation.findUniqueOrThrow({
 					where: { id: conversationId },
-					select: { isGroup: true, participants: { select: { userId: true } } },
+					select: {
+						isGroup: true,
+						messageTimerSeconds: true,
+						participants: { select: { userId: true } },
+					},
 				});
 				const participantIds = new Set(conversation.participants.map((participant) => participant.userId));
+				if (isProtected && participantIds.size < 2) {
+					throw new ValidationError("A protected message needs someone to send it to");
+				}
 
 				// The check that actually enforces blocking. Refusing to *create* a direct
 				// conversation is not enough on its own: two people who have been talking
@@ -385,13 +428,21 @@ export async function sendMessage(
 					throw new ValidationError("You can only mention conversation participants");
 				}
 
-				const links = extractLinks(content);
+				// A protected message's links are not indexed: the conversation's link
+				// list is shown to everyone, and would hand over what the cover withholds.
+				const links = isProtected ? [] : extractLinks(content);
+				// Counted from now rather than from the row's database-stamped
+				// `createdAt`: the two are the same instant to within the round trip,
+				// and the clock that writes `createdAt` is not this process's.
+				const expiresAt = computeExpiresAt(new Date(), conversation.messageTimerSeconds, isProtected);
 				const created = await transaction.message.create({
 					data: {
 						conversationId,
 						authorId: currentUserId,
 						...(input.clientId ? { clientId: input.clientId } : {}),
 						content,
+						...(expiresAt ? { expiresAt } : {}),
+						...(isProtected ? { isProtected: true } : {}),
 						...(input.replyToId ? { replyToId: input.replyToId } : {}),
 						...(input.stickerId || forwardedSource?.isSticker ? { isSticker: true } : {}),
 						...(input.stickerKey || forwardedSource?.stickerKey
@@ -460,11 +511,11 @@ export async function sendMessage(
 		await discardPreparedAttachments(preparedAttachmentIds);
 
 		return input.clientId
-			? { ...toMessageDTO(result.message), clientId: input.clientId }
-			: toMessageDTO(result.message);
+			? { ...toMessageDTO(result.message, currentUserId), clientId: input.clientId }
+			: toMessageDTO(result.message, currentUserId);
 	}
 
-	const messageDTO = toMessageDTO(result.message);
+	const messageDTO = toMessageDTO(result.message, currentUserId);
 	// Carried on the broadcast, not just the response, and that is the whole
 	// point of it. The sender has drawn this message optimistically since phase
 	// 19, so it needs to recognise its own draft in an event that otherwise
@@ -475,8 +526,9 @@ export async function sendMessage(
 	const withClientId = input.clientId ? { ...messageDTO, clientId: input.clientId } : messageDTO;
 
 	// Broadcast to the room, which every participant's socket joined on connect.
-	// The sender receives this too, so everyone runs the same code path.
-	getIO().to(conversationId).emit("message:new", withClientId);
+	// The sender receives this too, so everyone runs the same code path — with
+	// the content only on the author's copy of a protected message.
+	await broadcastMessage("message:new", result.message, input.clientId ? { clientId: input.clientId } : {});
 
 	return withClientId;
 }

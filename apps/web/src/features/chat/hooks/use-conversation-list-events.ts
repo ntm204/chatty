@@ -1,4 +1,4 @@
-import { retractCachedMessage } from "@/lib/local-chat-store";
+import { purgeCachedMessage, retractCachedMessage } from "@/lib/local-chat-store";
 import type {
 	ConversationDTO,
 	ConversationLeftEvent,
@@ -109,6 +109,31 @@ export function useConversationListEvents({
 				});
 			},
 			[currentUserId, isShowingArchived],
+		),
+	);
+
+	useSocketEvent(
+		"message:expired",
+		useCallback(
+			(event: { conversationId: string; messageId: string }) => {
+				if (currentUserId)
+					void purgeCachedMessage(currentUserId, event.conversationId, event.messageId).catch(
+						() => undefined,
+					);
+				setConversations((current) =>
+					current.map((conversation) =>
+						conversation.id === event.conversationId
+							? {
+									...conversation,
+									pinnedMessages: conversation.pinnedMessages.filter(
+										(pin) => pin.messageId !== event.messageId,
+									),
+								}
+							: conversation,
+					),
+				);
+			},
+			[currentUserId],
 		),
 	);
 
@@ -251,6 +276,8 @@ export function useConversationListEvents({
 								avatarUrl: event.avatarUrl,
 								themeColor: event.themeColor,
 								quickReactionEmoji: event.quickReactionEmoji,
+								messageTimerSeconds: event.messageTimerSeconds,
+								isSharingRestricted: event.isSharingRestricted,
 								participants: event.participants,
 							}
 						: conversation,

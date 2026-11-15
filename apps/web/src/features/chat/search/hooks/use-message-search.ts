@@ -152,22 +152,21 @@ export function useMessageSearch(conversationId?: string): MessageSearch {
 			[conversationId, query],
 		),
 	);
-	useSocketEvent(
-		"message:hidden",
-		useCallback(
-			(event: { conversationId: string; messageId: string }) => {
-				if (
-					query.trim().length < MESSAGE_SEARCH_MIN_LENGTH ||
-					(conversationId && event.conversationId !== conversationId)
-				) {
-					return;
-				}
-				hiddenRef.current.add(event.messageId);
-				setResults((current) => current.filter((result) => result.message.id !== event.messageId));
-			},
-			[conversationId, query],
-		),
+	const removeResult = useCallback(
+		(event: { conversationId: string; messageId: string }) => {
+			if (
+				query.trim().length < MESSAGE_SEARCH_MIN_LENGTH ||
+				(conversationId && event.conversationId !== conversationId)
+			) {
+				return;
+			}
+			hiddenRef.current.add(event.messageId);
+			setResults((current) => current.filter((result) => result.message.id !== event.messageId));
+		},
+		[conversationId, query],
 	);
+	useSocketEvent("message:hidden", removeResult);
+	useSocketEvent("message:expired", removeResult);
 
 	return {
 		query,

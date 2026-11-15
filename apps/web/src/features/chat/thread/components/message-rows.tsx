@@ -24,6 +24,7 @@ interface MessageRowsProps extends MessageRowActions {
 	unreadCount: number;
 	editingMessageId: string | null;
 	pinnedMessageIds: string[];
+	isSharingRestricted: boolean;
 }
 
 /**
@@ -42,6 +43,7 @@ export const MessageRows = memo(function MessageRows({
 	unreadCount,
 	editingMessageId,
 	pinnedMessageIds,
+	isSharingRestricted,
 	...actions
 }: MessageRowsProps) {
 	const rowKeys = useMessageRowKeys(messages, currentUserId);
@@ -132,6 +134,7 @@ export const MessageRows = memo(function MessageRows({
 					participants={participants}
 					themeColor={themeColor}
 					isPinned={isPinned}
+					isSharingRestricted={isSharingRestricted}
 					{...actions}
 				/>
 			</Fragment>

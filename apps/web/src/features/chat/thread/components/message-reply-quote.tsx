@@ -1,7 +1,12 @@
 import type { MessageReplyDTO } from "@chatty/shared-types";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
-import { DELETED_AUTHOR_NAME, DELETED_MESSAGE_TEXT, IMAGE_ONLY_QUOTE_TEXT } from "../../constants/message";
+import {
+	DELETED_AUTHOR_NAME,
+	DELETED_MESSAGE_TEXT,
+	IMAGE_ONLY_QUOTE_TEXT,
+	PROTECTED_MESSAGE_TEXT,
+} from "../../constants/message";
 
 interface MessageReplyQuoteProps {
 	replyTo: MessageReplyDTO;
@@ -27,7 +32,9 @@ export function MessageReplyQuote({ replyTo, isMine, onJumpToOriginal }: Message
 	const isUnavailable = replyTo.isDeleted;
 	const preview = isUnavailable
 		? DELETED_MESSAGE_TEXT
-		: replyTo.content || (replyTo.hasAttachment ? IMAGE_ONLY_QUOTE_TEXT : "");
+		: replyTo.isProtected
+			? PROTECTED_MESSAGE_TEXT
+			: replyTo.content || (replyTo.hasAttachment ? IMAGE_ONLY_QUOTE_TEXT : "");
 	const quoteClassName = cn(
 		"mb-1.5 mt-px flex w-full min-w-0 flex-col items-start gap-0.5 rounded-none px-0 py-0 text-left",
 		"border-l-2 pl-2.5",

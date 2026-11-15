@@ -54,3 +54,9 @@ export const MESSAGE_SKELETON_BUBBLES = [
 
 /** How long a freshly opened thread gets to settle its scroll before the unread rule counts as seen. */
 export const UNREAD_JUMP_SETTLE_MS = 600;
+
+/** How many times the viewer's name repeats across an opened protected message. */
+export const PROTECTED_WATERMARK_REPEATS = 18;
+
+/** How often a disappearing message's "time left" is recomputed while it is on screen. */
+export const TIME_LEFT_REFRESH_MS = 30_000;

@@ -53,6 +53,7 @@ export function buildDraftMessage(
 	content: string,
 	replyTo: MessageDTO["replyTo"],
 	attachments: AttachmentDTO[] = [],
+	isProtected = false,
 ): ThreadMessage {
 	return {
 		id: `${DRAFT_ID_PREFIX}${crypto.randomUUID()}`,
@@ -66,6 +67,13 @@ export function buildDraftMessage(
 		isForwarded: false,
 		mentionedUserIds: [],
 		createdAt: new Date().toISOString(),
+		// The server decides when it expires; until it says, the draft keeps.
+		expiresAt: null,
+		protection: isProtected
+			? { openedByUserIds: [], imageCount: attachments.length, hasText: content.length > 0 }
+			: null,
+		// Nothing may act on a draft; the server's copy says what may be forwarded.
+		isForwardable: false,
 		authorActionExpiresAt: null,
 		editedAt: null,
 		deletedAt: null,

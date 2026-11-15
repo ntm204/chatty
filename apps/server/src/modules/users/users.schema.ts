@@ -1,5 +1,6 @@
 import type { DeleteAccountRequest, UpdateProfileRequest } from "@chatty/shared-types";
 import { z } from "zod";
+import { messageTimerSecondsSchema } from "../conversations/conversations.schema.js";
 // Imported rather than re-declared. These rules already exist because
 // registration needs them, and a profile edit that validated a handle
 // differently from a signup would let a value in that could never have been
@@ -43,6 +44,9 @@ export const updateProfileSchema = z
 		handle: handleSchema,
 		readReceiptsEnabled: z.boolean(),
 		presenceVisibility: z.enum(["everyone", "contacts", "nobody"]),
+		defaultMessageTimerSeconds: messageTimerSecondsSchema,
+		allowMessageForwarding: z.boolean(),
+		typingIndicatorsEnabled: z.boolean(),
 	})
 	.partial()
 	.refine(
@@ -50,7 +54,10 @@ export const updateProfileSchema = z
 			input.displayName !== undefined ||
 			input.handle !== undefined ||
 			input.readReceiptsEnabled !== undefined ||
-			input.presenceVisibility !== undefined,
+			input.presenceVisibility !== undefined ||
+			input.defaultMessageTimerSeconds !== undefined ||
+			input.allowMessageForwarding !== undefined ||
+			input.typingIndicatorsEnabled !== undefined,
 		{ message: "Provide a profile setting to update" },
 	);
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

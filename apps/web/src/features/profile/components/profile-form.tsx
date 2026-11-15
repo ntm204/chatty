@@ -5,10 +5,8 @@ import { Button } from "@/components/button";
 import { TextField } from "@/components/text-field";
 import { HANDLE_PATTERN, MAX_HANDLE_LENGTH, MIN_HANDLE_LENGTH } from "@/constants/validation";
 import { useAuth } from "@/hooks/use-auth";
-import { cn } from "@/utils/cn";
 import { focusField } from "@/utils/focus-field";
 import { getServerErrorField } from "@/utils/server-error-field";
-import { PRESENCE_VISIBILITY_OPTIONS } from "../constants/presence-visibility";
 import { getErrorMessage } from "@/utils/get-error-message";
 
 interface ProfileFormProps {
@@ -28,8 +26,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
 	const [fields, setFields] = useState({
 		displayName: user.displayName,
 		handle: user.handle,
-		readReceiptsEnabled: user.readReceiptsEnabled,
-		presenceVisibility: user.presenceVisibility,
 	});
 	const [errors, setErrors] = useState({ displayName: "", handle: "", form: "" });
 	const [isSaving, setIsSaving] = useState(false);
@@ -39,11 +35,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 	// capital into your own unchanged handle is not an edit.
 	const displayName = fields.displayName.trim();
 	const handle = fields.handle.trim().toLowerCase();
-	const hasChanges =
-		displayName !== user.displayName ||
-		handle !== user.handle ||
-		fields.readReceiptsEnabled !== user.readReceiptsEnabled ||
-		fields.presenceVisibility !== user.presenceVisibility;
+	const hasChanges = displayName !== user.displayName || handle !== user.handle;
 
 	function validate(form: HTMLFormElement) {
 		const nextErrors = { displayName: "", handle: "", form: "" };
@@ -77,12 +69,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
 		const input: UpdateProfileRequest = {
 			...(displayName !== user.displayName && { displayName }),
 			...(handle !== user.handle && { handle }),
-			...(fields.readReceiptsEnabled !== user.readReceiptsEnabled && {
-				readReceiptsEnabled: fields.readReceiptsEnabled,
-			}),
-			...(fields.presenceVisibility !== user.presenceVisibility && {
-				presenceVisibility: fields.presenceVisibility,
-			}),
 		};
 
 		setIsSaving(true);
@@ -132,77 +118,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
 					setFields((current) => ({ ...current, handle: event.target.value }));
 				}}
 			/>
-			{/* A raw checkbox: the app declares a Button and a TextField and nothing
-			    else, and inventing a toggle primitive for its only use would be a
-			    component to maintain rather than a decision made. */}
-			<label className="flex cursor-pointer items-start gap-3 text-sm text-ink">
-				<input
-					type="checkbox"
-					checked={fields.readReceiptsEnabled}
-					disabled={isSaving}
-					onChange={(event) => {
-						setIsSaved(false);
-						setErrors((current) => ({ ...current, form: "" }));
-						setFields((current) => ({ ...current, readReceiptsEnabled: event.target.checked }));
-					}}
-					// `accent-color` is the whole styling: a hand-built box would need
-					// its own focus ring, indeterminate state and keyboard handling to
-					// be as good as the one the browser already ships.
-					className="mt-0.5 size-4 accent-ink"
-				/>
-				<span className="flex flex-col gap-1">
-					<span className="font-medium">Send read receipts</span>
-					{/* The symmetry is said out loud, because it is the part people are
-					    surprised by — and being surprised by it after the fact is what
-					    makes a setting feel like a trick. */}
-					<span className="text-[13px] leading-normal text-ink-faint">
-						Turning this off hides your “Seen” from everyone, and hides theirs from you.
-					</span>
-				</span>
-			</label>
-
-			<div className="flex flex-col gap-2 text-sm text-ink">
-				<span id="presence-visibility-label" className="note font-medium text-ink-soft">
-					Who can see your last seen
-				</span>
-				<div
-					role="radiogroup"
-					aria-labelledby="presence-visibility-label"
-					aria-disabled={isSaving || undefined}
-					className="flex flex-wrap gap-2"
-				>
-					{PRESENCE_VISIBILITY_OPTIONS.map((option) => {
-						const isSelected = fields.presenceVisibility === option.value;
-
-						return (
-							<Button
-								key={option.value}
-								variant="ghost"
-								role="radio"
-								aria-checked={isSelected}
-								disabled={isSaving}
-								onClick={() => {
-									setIsSaved(false);
-									setErrors((current) => ({ ...current, form: "" }));
-									setFields((current) => ({ ...current, presenceVisibility: option.value }));
-								}}
-								className={cn(
-									"rounded-control border px-3 py-2 text-[13px]",
-									isSelected
-										? "border-ink bg-paper-raised font-semibold text-ink hover:bg-paper-raised"
-										: "border-rule text-ink-soft hover:bg-paper-raised hover:text-ink",
-								)}
-							>
-								{option.label}
-							</Button>
-						);
-					})}
-				</div>
-				<span className="text-[13px] text-ink-faint">
-					Online status is still shown while you are connected.
-				</span>
-			</div>
-
 			{errors.form && (
 				<p role="alert" className="text-[13px] text-signal">
 					{errors.form}

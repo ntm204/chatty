@@ -1,3 +1,4 @@
+import { MESSAGE_TIMER_SECONDS, type MessageTimerSeconds } from "@chatty/shared-types";
 import { z } from "zod";
 import { SINGLE_RGI_EMOJI } from "../messages/messages.schema.js";
 
@@ -81,3 +82,20 @@ export const searchConversationsQuerySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 export type SearchConversationsQuery = z.infer<typeof searchConversationsQuerySchema>;
+
+/** One of the offered lifetimes, or null to keep messages. The database checks the same list. */
+export const messageTimerSecondsSchema = z
+	.number()
+	.refine(
+		(seconds): seconds is MessageTimerSeconds => (MESSAGE_TIMER_SECONDS as readonly number[]).includes(seconds),
+		{
+			message: "Choose one of the offered timers",
+		},
+	)
+	.nullable();
+
+export const setMessageTimerSchema = z.object({ seconds: messageTimerSecondsSchema });
+export type SetMessageTimerInput = z.infer<typeof setMessageTimerSchema>;
+
+export const setSharingRestrictionSchema = z.object({ isRestricted: z.boolean() });
+export type SetSharingRestrictionInput = z.infer<typeof setSharingRestrictionSchema>;

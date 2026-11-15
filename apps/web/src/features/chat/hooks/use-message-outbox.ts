@@ -110,6 +110,7 @@ export function useMessageOutbox({
 				// response knows how to remove.
 				draft.id,
 				(percent) => updateProgress(percent >= 100 ? "confirming" : "uploading", percent),
+				draft.protection !== null,
 			);
 
 			releaseUpload(pendingUploadsRef.current, draft.id);
@@ -194,7 +195,13 @@ export function useMessageOutbox({
 	 * bar ever said, on the one occasion it mattered.
 	 */
 	const sendMessage = useCallback(
-		async (content: string, attachments: File[], replyTo: MessageDTO | null, mentionedUserIds: string[] = []) => {
+		async (
+			content: string,
+			attachments: File[],
+			replyTo: MessageDTO | null,
+			mentionedUserIds: string[] = [],
+			isProtected = false,
+		) => {
 			if (!conversationId) return;
 			const author = useAuth.getState().currentUser;
 			if (!author) return;
@@ -213,7 +220,14 @@ export function useMessageOutbox({
 				return;
 			}
 			const draft = {
-				...buildDraftMessage(conversationId, author, content, replyTo ? toReplyQuote(replyTo) : null, local),
+				...buildDraftMessage(
+					conversationId,
+					author,
+					content,
+					replyTo ? toReplyQuote(replyTo) : null,
+					local,
+					isProtected,
+				),
 				mentionedUserIds,
 			};
 			if (attachments.length > 0) {

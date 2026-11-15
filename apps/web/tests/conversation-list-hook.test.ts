@@ -158,6 +158,8 @@ describe("useConversationList event reducer", () => {
 			avatarUrl: null,
 			themeColor: null,
 			quickReactionEmoji: null,
+			messageTimerSeconds: null,
+			isSharingRestricted: false,
 			participants: first.participants,
 		});
 

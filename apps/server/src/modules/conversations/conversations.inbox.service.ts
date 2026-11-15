@@ -13,6 +13,8 @@ import {
 	announceNewConversation,
 	assertParticipant,
 	countUnreadByConversation,
+	createSystemMessage,
+	describeMessageTimer,
 	subscribeParticipantsToRoom,
 } from "./conversations.shared.js";
 
@@ -26,6 +28,41 @@ import {
 const DEFAULT_CONVERSATION_PAGE_SIZE = 30;
 
 type DirectConversationReader = Pick<Prisma.TransactionClient, "conversation">;
+
+/**
+ * Starts a new conversation with its creator's disappearing-message default.
+ *
+ * The line it writes names the default as the creator's *habit* — "Minh uses
+ * this for new chats" — because the feature exists for people who would find it
+ * awkward to say "I want this chat to disappear" to one person. A setting that
+ * applies to everyone they start talking to says nothing about anyone in
+ * particular, and the line makes that visible to both sides. See ADR 0023.
+ *
+ * Skipped for your own Saved conversation: nobody else is there to protect
+ * anything from, and notes that vanish would surprise their only reader.
+ */
+async function applyCreatorTimerDefault(
+	transaction: Prisma.TransactionClient,
+	creatorId: string,
+	conversationId: string,
+): Promise<void> {
+	const creator = await transaction.user.findUniqueOrThrow({
+		where: { id: creatorId },
+		select: { displayName: true, defaultMessageTimerSeconds: true },
+	});
+	if (creator.defaultMessageTimerSeconds === null) return;
+
+	await transaction.conversation.update({
+		where: { id: conversationId },
+		data: { messageTimerSeconds: creator.defaultMessageTimerSeconds },
+		select: { id: true },
+	});
+	await createSystemMessage(
+		transaction,
+		conversationId,
+		`New messages disappear after ${describeMessageTimer(creator.defaultMessageTimerSeconds)}. ${creator.displayName} uses this for new chats.`,
+	);
+}
 
 /**
  * Finds an existing 1-1 conversation between exactly these two users.
@@ -94,6 +131,7 @@ export async function createConversation(
 				},
 				select: { id: true },
 			});
+			if (otherUserId !== currentUserId) await applyCreatorTimerDefault(transaction, currentUserId, created.id);
 
 			return { conversationId: created.id, isNew: true };
 		});
@@ -118,22 +156,32 @@ export async function createConversation(
 
 	const participantIds = [currentUserId, ...otherUserIds];
 
-	// One statement, so a conversation can never exist without its participants.
-	const conversation = await prisma.conversation.create({
-		data: {
-			isGroup,
-			name: isGroup ? (input.name ?? null) : null,
-			participants: {
-				// The creator of a group starts as its admin. In a direct
-				// conversation everyone stays a member: the role only decides who
-				// may act on *other* people, and there is nobody to administer
-				// between two — see ADR 0021.
-				create: participantIds.map((userId) => ({
-					userId,
-					...(isGroup && userId === currentUserId ? { role: "ADMIN" as const } : {}),
-				})),
+	// One transaction, so a conversation can never exist without its participants
+	// or start with the creator's default only half applied.
+	const createdId = await prisma.$transaction(async (transaction) => {
+		const created = await transaction.conversation.create({
+			data: {
+				isGroup,
+				name: isGroup ? (input.name ?? null) : null,
+				participants: {
+					// The creator of a group starts as its admin. In a direct
+					// conversation everyone stays a member: the role only decides who
+					// may act on *other* people, and there is nobody to administer
+					// between two — see ADR 0021.
+					create: participantIds.map((userId) => ({
+						userId,
+						...(isGroup && userId === currentUserId ? { role: "ADMIN" as const } : {}),
+					})),
+				},
 			},
-		},
+			select: { id: true },
+		});
+		await applyCreatorTimerDefault(transaction, currentUserId, created.id);
+
+		return created.id;
+	});
+	const conversation = await prisma.conversation.findUniqueOrThrow({
+		where: { id: createdId },
 		include: conversationInclude,
 	});
 

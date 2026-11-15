@@ -12,7 +12,8 @@ interface AttachmentLightboxToolbarProps {
 	onRotateClockwise: () => void;
 	onOpenMessage?: () => void;
 	onForward?: () => void;
-	onSave: () => void;
+	/** Absent when sharing is restricted (ADR 0024): no save button at all. */
+	onSave?: (() => void) | undefined;
 	isSaving: boolean;
 	canSave?: boolean;
 	onClose: () => void;
@@ -128,16 +129,18 @@ export function AttachmentLightboxToolbar({
 					<Forward className="size-4" />
 				</Button>
 			)}
-			<Button
-				variant="ghost"
-				onClick={onSave}
-				disabled={isSaving || !canSave}
-				data-tooltip="Save"
-				aria-label="Save this image"
-				className={LIGHTBOX_TOOLBAR_BUTTON_CLASS}
-			>
-				<Download className="size-4" />
-			</Button>
+			{onSave && (
+				<Button
+					variant="ghost"
+					onClick={onSave}
+					disabled={isSaving || !canSave}
+					data-tooltip="Save"
+					aria-label="Save this image"
+					className={LIGHTBOX_TOOLBAR_BUTTON_CLASS}
+				>
+					<Download className="size-4" />
+				</Button>
+			)}
 			<Button
 				variant="ghost"
 				onClick={onClose}

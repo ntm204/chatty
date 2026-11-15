@@ -6,3 +6,5 @@ export { useComposerTextInsertion } from "./use-composer-text-insertion";
 export { useMessageDraft } from "./use-message-draft";
 export { useTypingNotifier } from "./use-typing-notifier";
 export { useVoiceRecorder } from "./use-voice-recorder";
+export { useComposerPanels } from "./use-composer-panels";
+export { useProtectedSend } from "./use-protected-send";

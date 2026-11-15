@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { logger } from "../lib/logger.js";
 import { userRoom, type ChattySocket } from "../lib/socket-bus.js";
+import { prisma } from "../lib/prisma.js";
 import { isDirectConversationBlocked } from "../modules/blocks/blocks.service.js";
 
 /**
@@ -72,6 +73,24 @@ export function registerTypingHandlers(socket: ChattySocket): void {
 		return isBlockedNow;
 	}
 
+	let sharing: { isEnabled: boolean; expiresAt: number } | undefined;
+
+	/**
+	 * Whether this person shares "is typing…" at all (ADR 0024), cached for the
+	 * same few seconds as the block verdict and for the same reason. Fails
+	 * closed: an unanswerable preference is not permission to announce.
+	 */
+	async function isSharingTyping(): Promise<boolean> {
+		if (sharing && sharing.expiresAt > Date.now()) return sharing.isEnabled;
+		const isEnabled = await prisma.user
+			.findUnique({ where: { id: userId }, select: { typingIndicatorsEnabled: true } })
+			.then((user) => user?.typingIndicatorsEnabled ?? false)
+			.catch(() => false);
+		sharing = { isEnabled, expiresAt: Date.now() + POLICY_VERDICT_TTL_MS };
+
+		return isEnabled;
+	}
+
 	async function announce(signal: unknown, isTyping: boolean): Promise<void> {
 		const parsed = typingSignalSchema.safeParse(signal);
 		if (!parsed.success) return;
@@ -79,6 +98,9 @@ export function registerTypingHandlers(socket: ChattySocket): void {
 		const { conversationId } = parsed.data;
 		if (!socket.rooms.has(conversationId)) return;
 		if (await isBlocked(conversationId)) return;
+		// Only the start is withheld: a stop always goes through, so turning the
+		// setting off mid-sentence clears an indicator instead of stranding it.
+		if (isTyping && !(await isSharingTyping())) return;
 
 		// `socket.to` excludes the socket that sent this — but not the *person*.
 		// Their other tabs and devices are in the same conversation room, so

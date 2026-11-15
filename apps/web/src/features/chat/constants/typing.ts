@@ -29,3 +29,6 @@ export const TYPING_EXPIRY_MS = 7000;
  * typing has stopped being the useful part.
  */
 export const MAX_NAMED_TYPERS = 2;
+
+/** One shared empty map, so a hidden typing state does not hand consumers a new object every render. */
+export const NO_TYPERS: Record<string, string[]> = {};

@@ -1,5 +1,6 @@
 import { OFFLINE_BINARY_URL, OFFLINE_IMAGE_URL } from "@/constants/offline-media";
 import { applyMessageUpdate } from "@/utils/apply-message-update";
+import { isExpiredMessage } from "@/utils/is-expired-message";
 import { clearMessageDrafts, getMessageDraftGeneration } from "./message-drafts";
 import type { ConversationDTO, CurrentUserDTO, MessageDTO, MessageReplyDTO, UserDTO } from "@chatty/shared-types";
 
@@ -43,6 +44,8 @@ export interface LocalOutboxMessage {
 	content: string;
 	replyTo: MessageReplyDTO | null;
 	mentionedUserIds: string[];
+	/** Optional: records written before protected messages existed lack it. */
+	isProtected?: boolean;
 	createdAt: string;
 	attachments: LocalOutboxAttachment[];
 }
@@ -189,7 +192,10 @@ export async function cacheConversationPage(
 		isArchived,
 		items: items.map((conversation) => ({
 			...conversation,
-			lastMessage: conversation.lastMessage ? withoutExpiringMedia(conversation.lastMessage) : null,
+			lastMessage:
+				conversation.lastMessage && !isExpiredMessage(conversation.lastMessage)
+					? withoutExpiringMedia(conversation.lastMessage)
+					: null,
 		})),
 		hasMore,
 	} satisfies ConversationPageRecord);
@@ -200,8 +206,17 @@ export async function readConversationPage(
 	isArchived: boolean,
 ): Promise<{ items: ConversationDTO[]; hasMore: boolean } | null> {
 	const record = await readRecord<ConversationPageRecord>(CONVERSATION_STORE, pageKey(userId, isArchived));
+	if (!record) return null;
 
-	return record ? { items: record.items, hasMore: record.hasMore } : null;
+	// A preview cached before its message expired must not come back from disk.
+	return {
+		items: record.items.map((conversation) =>
+			conversation.lastMessage && isExpiredMessage(conversation.lastMessage)
+				? { ...conversation, lastMessage: null }
+				: conversation,
+		),
+		hasMore: record.hasMore,
+	};
 }
 
 export async function cacheMessageSnapshot(
@@ -213,14 +228,16 @@ export async function cacheMessageSnapshot(
 		key: snapshotKey(userId, conversationId),
 		userId,
 		conversationId,
-		messages: messages.map(withoutExpiringMedia),
+		// Disappearing messages leave the device when they leave the screen.
+		messages: messages.filter((message) => !isExpiredMessage(message)).map(withoutExpiringMedia),
 	} satisfies MessageSnapshotRecord);
 }
 
 export async function readMessageSnapshot(userId: string, conversationId: string): Promise<MessageDTO[]> {
-	return (
-		(await readRecord<MessageSnapshotRecord>(MESSAGE_STORE, snapshotKey(userId, conversationId)))?.messages ?? []
-	);
+	const messages =
+		(await readRecord<MessageSnapshotRecord>(MESSAGE_STORE, snapshotKey(userId, conversationId)))?.messages ?? [];
+
+	return messages.filter((message) => !isExpiredMessage(message));
 }
 
 export async function enqueueLocalMessage(
@@ -344,6 +361,93 @@ export async function retractCachedMessage(userId: string, message: MessageDTO):
 						isDeleted: true,
 					},
 				});
+			cursor.continue();
+		};
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
+		transaction.onabort = () => reject(transaction.error);
+	});
+}
+
+/**
+ * Removes an expired message from every cached copy for this account: its
+ * thread snapshot, the sidebar preview and the pins. Unlike a retraction there is
+ * no tombstone to keep — an expired message leaves no trace on the device.
+ */
+export async function purgeCachedMessage(userId: string, conversationId: string, messageId: string): Promise<void> {
+	const database = await openDatabase();
+	if (!database) return;
+
+	return new Promise((resolve, reject) => {
+		const transaction = database.transaction([MESSAGE_STORE, CONVERSATION_STORE], "readwrite");
+		const snapshots = transaction.objectStore(MESSAGE_STORE);
+		const snapshotRequest = snapshots.get(snapshotKey(userId, conversationId));
+		snapshotRequest.onsuccess = () => {
+			const record = snapshotRequest.result as MessageSnapshotRecord | undefined;
+			if (record) snapshots.put({ ...record, messages: record.messages.filter((item) => item.id !== messageId) });
+		};
+		const pageRequest = transaction.objectStore(CONVERSATION_STORE).index("by-user").openCursor(userId);
+		pageRequest.onsuccess = () => {
+			const cursor = pageRequest.result;
+			if (!cursor) return;
+			const record = cursor.value as ConversationPageRecord;
+			cursor.update({
+				...record,
+				items: record.items.map((conversation) =>
+					conversation.id === conversationId
+						? {
+								...conversation,
+								lastMessage:
+									conversation.lastMessage?.id === messageId ? null : conversation.lastMessage,
+								pinnedMessages: conversation.pinnedMessages.filter(
+									(pin) => pin.messageId !== messageId,
+								),
+							}
+						: conversation,
+				),
+			});
+			cursor.continue();
+		};
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
+		transaction.onabort = () => reject(transaction.error);
+	});
+}
+
+/**
+ * Drops every expired message from this account's cached snapshots and sidebar
+ * pages — including conversations nobody has opened since. Run once per signed-in
+ * session, so a device that was offline when messages expired does not keep them
+ * on disk until the day someone happens to open that thread.
+ */
+export async function purgeExpiredMessages(userId: string): Promise<void> {
+	const database = await openDatabase();
+	if (!database) return;
+
+	return new Promise((resolve, reject) => {
+		const transaction = database.transaction([MESSAGE_STORE, CONVERSATION_STORE], "readwrite");
+		const snapshotRequest = transaction.objectStore(MESSAGE_STORE).index("by-user").openCursor(userId);
+		snapshotRequest.onsuccess = () => {
+			const cursor = snapshotRequest.result;
+			if (!cursor) return;
+			const record = cursor.value as MessageSnapshotRecord;
+			const kept = record.messages.filter((message) => !isExpiredMessage(message));
+			if (kept.length !== record.messages.length) cursor.update({ ...record, messages: kept });
+			cursor.continue();
+		};
+		const pageRequest = transaction.objectStore(CONVERSATION_STORE).index("by-user").openCursor(userId);
+		pageRequest.onsuccess = () => {
+			const cursor = pageRequest.result;
+			if (!cursor) return;
+			const record = cursor.value as ConversationPageRecord;
+			if (record.items.some((item) => item.lastMessage && isExpiredMessage(item.lastMessage))) {
+				cursor.update({
+					...record,
+					items: record.items.map((item) =>
+						item.lastMessage && isExpiredMessage(item.lastMessage) ? { ...item, lastMessage: null } : item,
+					),
+				});
+			}
 			cursor.continue();
 		};
 		transaction.oncomplete = () => resolve();

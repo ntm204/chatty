@@ -38,6 +38,9 @@ export function makeCurrentUser(overrides: Partial<CurrentUserDTO> = {}): Curren
 		email: "minh@chatty.test",
 		readReceiptsEnabled: true,
 		presenceVisibility: "contacts",
+		defaultMessageTimerSeconds: null,
+		allowMessageForwarding: true,
+		typingIndicatorsEnabled: true,
 		...overrides,
 	};
 }
@@ -67,7 +70,14 @@ export function makeMessage(
 	// `attachment` would have rewritten every call site to say so.
 	overrides: Pick<
 		Partial<MessageDTO>,
-		"authorActionExpiresAt" | "createdAt" | "editedAt" | "deletedAt" | "reactions" | "replyTo"
+		| "authorActionExpiresAt"
+		| "createdAt"
+		| "editedAt"
+		| "deletedAt"
+		| "reactions"
+		| "replyTo"
+		| "expiresAt"
+		| "protection"
 	> = {},
 ): MessageDTO {
 	return {
@@ -82,6 +92,9 @@ export function makeMessage(
 		isForwarded: false,
 		mentionedUserIds: [],
 		createdAt: "2026-08-23T10:00:00.000Z",
+		expiresAt: null,
+		protection: null,
+		isForwardable: true,
 		authorActionExpiresAt: "2099-08-23T18:00:00.000Z",
 		editedAt: null,
 		deletedAt: null,
@@ -110,6 +123,9 @@ export function makeSystemMessage(id: string, content: string): MessageDTO {
 		isForwarded: false,
 		mentionedUserIds: [],
 		createdAt: "2026-08-23T10:00:00.000Z",
+		expiresAt: null,
+		protection: null,
+		isForwardable: false,
 		authorActionExpiresAt: null,
 		// Not overridable, unlike `makeMessage`: nobody wrote a system line, so
 		// there is nobody who may change it — the database refuses both.
@@ -164,6 +180,8 @@ export function makeConversation(overrides: Partial<ConversationDTO> = {}): Conv
 		avatarUrl: null,
 		themeColor: null,
 		quickReactionEmoji: null,
+		messageTimerSeconds: null,
+		isSharingRestricted: false,
 		participants: [],
 		lastMessage: null,
 		unreadCount: 0,

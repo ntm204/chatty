@@ -13,3 +13,6 @@ export type { ReadReceipt } from "./read-receipt";
 export { rememberReadingPosition, recallReadingPosition, forgetReadingPositions } from "./reading-positions";
 export type { ReadingPosition } from "./reading-positions";
 export { findVisibleMessageId } from "./visible-message";
+export { describeProtectedContent, describeProtectedStatus } from "./protected-message";
+export { refuseEvent } from "./refuse-event";
+export { formatTimeLeft } from "./format-time-left";

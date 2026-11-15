@@ -1,6 +1,8 @@
 interface StoredMessageDraft {
 	content: string;
 	replyToId: string | null;
+	/** A draft about to be sent protected: previews show the cover, not the words. */
+	isProtected?: boolean;
 }
 
 const DRAFT_PREFIX = "chatty:draft:";
@@ -28,7 +30,9 @@ export function readMessageDraft(userId: string, conversationId: string): Stored
 		"replyToId" in parsed &&
 		(parsed.replyToId === null || typeof parsed.replyToId === "string")
 	) {
-		return { content: parsed.content, replyToId: parsed.replyToId };
+		const isProtected = "isProtected" in parsed && parsed.isProtected === true;
+
+		return { content: parsed.content, replyToId: parsed.replyToId, ...(isProtected && { isProtected }) };
 	}
 
 	return { content: "", replyToId: null };

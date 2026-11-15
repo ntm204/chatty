@@ -82,14 +82,16 @@ export function useReplyTarget(messages: ThreadMessage[], conversationId: string
 		if (message.conversationId !== conversationId) return;
 		if (message.id === replyTo?.id || message.id === pendingReplyId) selectReply(message);
 	});
-	useSocketEvent("message:hidden", (event) => {
+	const loseReplyTarget = (event: { conversationId: string; messageId: string }) => {
 		if (event.conversationId !== conversationId) return;
 		if (event.messageId !== replyTo?.id && event.messageId !== pendingReplyId) return;
 		requestRef.current += 1;
 		setReplyTo(null);
 		setPendingReplyId(event.messageId);
 		setReplyError("This reply is no longer available. Remove the reply to send your draft.");
-	});
+	};
+	useSocketEvent("message:hidden", loseReplyTarget);
+	useSocketEvent("message:expired", loseReplyTarget);
 	const currentReply = replyTo ? (messages.find((message) => message.id === replyTo.id) ?? replyTo) : null;
 
 	return { replyTo: currentReply, pendingReplyId, replyError, setReplyTo: selectReply, requestReplyTo, clearReply };

@@ -22,3 +22,4 @@ export { getDraftPreview, announceDraftPreview } from "./draft-preview";
 export { getPinnedMessagePreview } from "./pinned-message-preview";
 export { getTotalUnreadCount, findFirstUnreadConversation } from "./unread-summary";
 export { focusMenuItem } from "./focus-menu-item";
+export { isSavedConversation } from "./is-saved-conversation";

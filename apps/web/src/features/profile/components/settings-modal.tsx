@@ -12,6 +12,7 @@ import { ChangeEmailForm } from "./change-email-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountForm } from "./delete-account-form";
 import { NotificationSettings } from "./notification-settings";
+import { PrivacySettings } from "./privacy-settings";
 import { ProfileForm } from "./profile-form";
 import { RestrictedUsersSettings } from "./restricted-users-settings";
 import { SettingsNav } from "./settings-nav";
@@ -89,6 +90,7 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 								<ProfileForm user={user} />
 							</>
 						)}
+						{activeSection === "privacy" && <PrivacySettings user={user} />}
 						{activeSection === "blocked" && <BlockedUsersSettings />}
 						{activeSection === "restricted" && <RestrictedUsersSettings />}
 						{activeSection === "appearance" && <AppearanceSettings />}

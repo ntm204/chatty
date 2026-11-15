@@ -27,8 +27,10 @@ the external conditions in [Deployment](docs/DEPLOYMENT.md).
   session that survives network drops, and an offline app shell.
 - **Groups**: admin/member roles, invite policy, shared nicknames and message color, a media, file
   and link vault per conversation.
-- **Privacy and accounts**: block and restrict, read-receipt and last-seen controls, email change,
-  password reset by mail, account deletion.
+- **Privacy and accounts**: disappearing messages (per chat, or as your default for new chats) and
+  protected messages that open once; a Privacy section for read receipts, typing indicator, forwarding
+  of your messages and last seen; block and restrict, email change, password reset by mail, account
+  deletion.
 - **Interface**: five colour palettes (ink & pastel, clay, ocean, forest, graphite), each with light
   and dark modes; phone layouts, keyboard navigation, reduced motion.
 
@@ -164,6 +166,10 @@ Known gaps:
   [ADR 0007](docs/adr/0007-signed-attachment-urls.md).
 - **Signing out on one device** stops its realtime connection only when its access token expires,
   at most 15 minutes, the same as its HTTP requests.
+- **Protected messages deter screenshots; they cannot prevent them.** A browser cannot block or detect a
+  capture, so Chatty refuses copying and shows the viewer's name across an opened message instead, and
+  the server — not end-to-end encrypted — can read messages until they expire. See
+  [ADR 0023](docs/adr/0023-disappearing-and-protected-messages.md).
 - **The message list is not virtualised.** History grows only through explicit paging, but the
   ceiling is real.
 

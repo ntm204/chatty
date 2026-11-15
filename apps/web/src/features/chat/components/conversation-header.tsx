@@ -1,7 +1,8 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { ArrowLeft, PanelRight, Search } from "lucide-react";
+import { ArrowLeft, PanelRight, Search, Timer } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
+import { formatMessageTimer, formatMessageTimerShort } from "@/utils/format-message-timer";
 import { getConversationPresence, getConversationTitle, getTypingMessage } from "../utils";
 import { ConversationAvatar } from "./conversation-avatar";
 
@@ -71,9 +72,23 @@ export function ConversationHeader({
 				without increasing the fixed header height.
 			*/}
 			<div className="flex min-w-0 flex-1 flex-col justify-center">
-				<h1 className="font-content truncate text-[14px] font-semibold leading-[18px] tracking-tight text-ink">
-					{getConversationTitle(conversation, currentUserId)}
-				</h1>
+				<div className="flex min-w-0 items-center gap-1.5">
+					<h1 className="font-content truncate text-[14px] font-semibold leading-[18px] tracking-tight text-ink">
+						{getConversationTitle(conversation, currentUserId)}
+					</h1>
+					{/* Always in view while it applies, so neither side forgets it is on. */}
+					{conversation.messageTimerSeconds && (
+						<span
+							role="img"
+							aria-label={`Messages disappear after ${formatMessageTimer(conversation.messageTimerSeconds)}`}
+							title={`Messages disappear after ${formatMessageTimer(conversation.messageTimerSeconds)}`}
+							className="meta flex shrink-0 items-center gap-1 text-ink-faint"
+						>
+							<Timer aria-hidden="true" className="size-3" />
+							{formatMessageTimerShort(conversation.messageTimerSeconds)}
+						</span>
+					)}
+				</div>
 
 				{(typingMessage || conversation.isGroup || peerStatus) && (
 					<div className="flex h-[17px] items-center gap-2">

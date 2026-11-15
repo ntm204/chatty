@@ -12,6 +12,8 @@ import { prisma } from "../../lib/prisma.js";
 import { getIO, userRoom } from "../../lib/socket-bus.js";
 import { assertDirectConversationAvailable } from "../blocks/blocks.service.js";
 import { assertParticipant } from "../conversations/conversations.service.js";
+import { broadcastMessage } from "./messages.broadcast.js";
+import { hasExpired, unexpiredMessageWhere } from "./messages.lifecycle.js";
 import { messageSelect, toMessageDTO } from "./messages.mapper.js";
 import { MESSAGE_AUTHOR_ACTION_WINDOW_MS } from "./messages.constants.js";
 import type { EditMessageInput } from "./messages.schema.js";
@@ -26,6 +28,7 @@ interface EditableMessage {
 	attachmentIds: string[];
 	content: string;
 	createdAt: Date;
+	isProtected: boolean;
 }
 
 /**
@@ -65,6 +68,8 @@ async function loadEditableMessage(
 			deletedAt: true,
 			content: true,
 			createdAt: true,
+			expiresAt: true,
+			isProtected: true,
 			attachments: { select: { id: true }, orderBy: { position: "asc" } },
 		},
 	});
@@ -72,7 +77,10 @@ async function loadEditableMessage(
 	// One error for "no such message" and for "a message in a conversation you
 	// are in, but not this one", so neither can be used to probe for ids — the
 	// same reasoning `markConversationRead` already uses.
-	if (!message || message.conversationId !== conversationId) throw new NotFoundError("Message not found");
+	// An expired message no longer exists, whether or not the sweep has erased it yet.
+	if (!message || message.conversationId !== conversationId || hasExpired(message.expiresAt)) {
+		throw new NotFoundError("Message not found");
+	}
 
 	// Nobody wrote a system line, so there is nobody who may rewrite it. The
 	// database refuses this too (see the phase 8 migration); this is the check
@@ -89,6 +97,7 @@ async function loadEditableMessage(
 		attachmentIds: message.attachments.map((attachment) => attachment.id),
 		content: message.content,
 		createdAt: message.createdAt,
+		isProtected: message.isProtected,
 	};
 }
 
@@ -117,6 +126,9 @@ export async function editMessage(
 		// Editing a tombstone would have to un-delete it, and "deleted" is the one
 		// state everyone else has already been told about.
 		if (message.deletedAt) throw new ValidationError("This message was deleted");
+		// Recipients may already have opened it once; rewriting it afterwards would
+		// change what they were shown without a way to show them again.
+		if (message.isProtected) throw new ValidationError("A protected message cannot be edited");
 		if (Date.now() - message.createdAt.getTime() >= MESSAGE_AUTHOR_ACTION_WINDOW_MS) {
 			throw new ValidationError("Messages can only be edited for 8 hours");
 		}
@@ -172,9 +184,9 @@ export async function editMessage(
 		});
 	});
 
-	const messageDTO = toMessageDTO(updated);
+	const messageDTO = toMessageDTO(updated, currentUserId);
 
-	getIO().to(conversationId).emit("message:updated", messageDTO);
+	await broadcastMessage("message:updated", updated);
 
 	return messageDTO;
 }
@@ -186,7 +198,13 @@ export async function listMessageEdits(
 ): Promise<MessageEditDTO[]> {
 	await assertParticipant(currentUserId, conversationId);
 	const message = await prisma.message.findFirst({
-		where: { id: messageId, conversationId, deletedAt: null, hiddenFor: { none: { userId: currentUserId } } },
+		where: {
+			id: messageId,
+			conversationId,
+			deletedAt: null,
+			hiddenFor: { none: { userId: currentUserId } },
+			...unexpiredMessageWhere(),
+		},
 		select: { edits: { orderBy: { editedAt: "desc" }, select: { id: true, content: true, editedAt: true } } },
 	});
 	if (!message) throw new NotFoundError("Message not found");
@@ -281,11 +299,11 @@ export async function deleteMessage(
 		});
 	}
 
-	const messageDTO = toMessageDTO(deleted);
+	const messageDTO = toMessageDTO(deleted, currentUserId);
 
 	// Nothing to announce when it was already a tombstone: everyone was told the
 	// first time, and a second event would only re-render what is already there.
-	if (!wasAlreadyDeleted) getIO().to(conversationId).emit("message:updated", messageDTO);
+	if (!wasAlreadyDeleted) await broadcastMessage("message:updated", deleted);
 
 	return messageDTO;
 }

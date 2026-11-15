@@ -13,6 +13,7 @@ import { MessageGallery } from "../../media/components";
 import { MessageFileCard } from "../../media/components";
 import { MessageReplyQuote } from "./message-reply-quote";
 import { MessageText } from "./message-text";
+import { ProtectedMessageLabel } from "./protected-message-label";
 import { VoicePlayer } from "../../media/components";
 import type { ConversationTheme, ParticipantDTO } from "@chatty/shared-types";
 import type { ReactNode } from "react";
@@ -31,6 +32,8 @@ interface MessageBubbleProps {
 	participants: ParticipantDTO[];
 	/** The conversation's shared accent, replacing the fixed default for "mine" surfaces — see ADR 0022. */
 	themeColor: ConversationTheme | null;
+	/** The chat restricts sharing (ADR 0024): others' content may not be saved or selected. */
+	isSharingRestricted: boolean;
 	/**
 	 * Forwards this message from inside the image viewer. Optional and omitted
 	 * for a message nothing may act on yet — one still on its way has no server
@@ -66,9 +69,12 @@ export function MessageBubble({
 	onJumpToReplyOriginal,
 	participants,
 	themeColor,
+	isSharingRestricted,
 	onForward,
 	footer,
 }: MessageBubbleProps) {
+	// Someone else's content that its author or this chat keeps from being shared.
+	const isShareLocked = !isMine && (isSharingRestricted || !message.isForwardable);
 	const theme = getConversationThemeClasses(themeColor);
 	const images = message.attachments.filter((attachment) => attachment.kind === "image");
 	const file = message.attachments.find((attachment) => attachment.kind === "file");
@@ -80,6 +86,7 @@ export function MessageBubble({
 	const bubbleRef = useCompactMessage(
 		message.content,
 		message.attachments.length === 0 &&
+			!message.protection &&
 			!message.replyTo &&
 			!message.isForwarded &&
 			message.mentionedUserIds.length === 0 &&
@@ -127,6 +134,9 @@ export function MessageBubble({
 		return (
 			<div className={cn("flex min-w-0 flex-col gap-1.5", isMine ? "items-end" : "items-start")}>
 				{message.isForwarded && <span className="eyebrow text-ink-faint">Forwarded</span>}
+				{message.protection && (
+					<ProtectedMessageLabel protection={message.protection} participantCount={participants.length} />
+				)}
 				{message.replyTo && (
 					<MessageReplyQuote
 						replyTo={message.replyTo}
@@ -140,6 +150,7 @@ export function MessageBubble({
 					caption={message.content}
 					{...(message.deliveryState ? {} : { timeLabel: formatMessageTime(message.createdAt) })}
 					{...(onForward && { onForward })}
+					isSaveAllowed={!isShareLocked}
 				/>
 				{footer && <div className="px-1.5 text-ink">{footer}</div>}
 			</div>
@@ -208,6 +219,8 @@ export function MessageBubble({
 						)
 					: cn(
 							isMine ? cn(theme.bubble, theme.bubbleInk) : "bg-paper-sunken text-ink",
+							// A deterrent, not a lock: its author turned sharing off (ADR 0024).
+							isShareLocked && "select-none",
 							(isMine ? OUTGOING_BUBBLE_RADIUS : INCOMING_BUBBLE_RADIUS)[clusterPosition],
 							"chat-bubble px-3 py-1.5",
 							// The tail hooks the last bubble of a run to its speaker's side.
@@ -217,6 +230,9 @@ export function MessageBubble({
 			)}
 		>
 			{message.isForwarded && <span className="eyebrow mb-1 block opacity-65">Forwarded</span>}
+			{message.protection && (
+				<ProtectedMessageLabel protection={message.protection} participantCount={participants.length} />
+			)}
 			{message.replyTo && (
 				<MessageReplyQuote replyTo={message.replyTo} isMine={isMine} onJumpToOriginal={onJumpToReplyOriginal} />
 			)}

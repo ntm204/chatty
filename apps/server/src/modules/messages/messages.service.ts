@@ -8,3 +8,5 @@ export * from "./messages.send.service.js";
 export * from "./messages.history.service.js";
 export * from "./messages.annotations.service.js";
 export * from "./messages.editing.service.js";
+export * from "./messages.protection.service.js";
+export * from "./messages.expiry.service.js";

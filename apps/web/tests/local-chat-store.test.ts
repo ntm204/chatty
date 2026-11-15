@@ -12,12 +12,38 @@ import {
 	readLocalOutboxForUser,
 	readLocalOutbox,
 	readMessageSnapshot,
+	purgeCachedMessage,
 	removeLocalMessage,
 	retractCachedMessage,
 } from "@/lib/local-chat-store";
 import { makeConversation, makeCurrentUser, makeMessage } from "./factories";
 
 describe("local chat store", () => {
+	it("never writes or reads back a disappearing message past its expiry, and purges one on request", async () => {
+		const userId = "cached-expiry";
+		const now = Date.now();
+		const expired = {
+			...makeMessage("expired", "an", "gone words"),
+			expiresAt: new Date(now - 1000).toISOString(),
+		};
+		const soon = { ...makeMessage("soon", "an", "soon gone"), expiresAt: new Date(now + 60_000).toISOString() };
+		const kept = makeMessage("kept", "an", "kept words");
+		await cacheMessageSnapshot(userId, kept.conversationId, [expired, soon, kept]);
+		await cacheConversationPage(
+			userId,
+			false,
+			[makeConversation({ id: kept.conversationId, lastMessage: expired })],
+			false,
+		);
+
+		const snapshot = await readMessageSnapshot(userId, kept.conversationId);
+		expect(snapshot.map((message) => message.id)).toEqual(["soon", "kept"]);
+		expect((await readConversationPage(userId, false))?.items[0]?.lastMessage).toBeNull();
+
+		await purgeCachedMessage(userId, kept.conversationId, "soon");
+		expect((await readMessageSnapshot(userId, kept.conversationId)).map((message) => message.id)).toEqual(["kept"]);
+	});
+
 	it("retracts cached content and embedded quotes while another conversation is open", async () => {
 		const userId = "cached-retraction";
 		const original = makeMessage("original", "an", "private original");
@@ -30,6 +56,7 @@ describe("local chat store", () => {
 				hasAttachment: true,
 				attachmentUrl: "https://example.test/private",
 				isDeleted: false,
+				isProtected: false,
 			},
 		};
 		await cacheMessageSnapshot(userId, original.conversationId, [original, reply]);
@@ -42,7 +69,12 @@ describe("local chat store", () => {
 		await retractCachedMessage(userId, { ...original, content: "", deletedAt: new Date().toISOString() });
 		const snapshot = await readMessageSnapshot(userId, original.conversationId);
 		expect(JSON.stringify(snapshot)).not.toContain("private original");
-		expect(snapshot[1]?.replyTo).toMatchObject({ isDeleted: true, content: "", attachmentUrl: null });
+		expect(snapshot[1]?.replyTo).toMatchObject({
+			isDeleted: true,
+			isProtected: false,
+			content: "",
+			attachmentUrl: null,
+		});
 		expect((await readConversationPage(userId, false))?.items[0]?.lastMessage?.content).toBe("");
 	});
 	it("restores a profile, sidebar page, and recent messages without expiring media tokens", async () => {

@@ -2,6 +2,8 @@ import { setIO, type ChattyServer } from "../src/lib/socket-bus.js";
 
 export interface CapturedEmit {
 	room: string;
+	/** A room whose sockets were left out — `io.to(room).except(...)`. */
+	except?: string;
 	event: string;
 	payload: unknown;
 }
@@ -47,6 +49,13 @@ export function installFakeIO(): FakeIO {
 			return {
 				emit(event: string, payload: unknown) {
 					emits.push({ room, event, payload });
+				},
+				except(excluded: string) {
+					return {
+						emit(event: string, payload: unknown) {
+							emits.push({ room, except: excluded, event, payload });
+						},
+					};
 				},
 			};
 		},

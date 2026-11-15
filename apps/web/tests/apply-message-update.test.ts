@@ -12,6 +12,7 @@ it("retracts an embedded quote even when the original is outside loaded history"
 			hasAttachment: true,
 			attachmentUrl: "https://example.test/private.jpg",
 			isDeleted: false,
+			isProtected: false,
 		},
 	};
 	const deleted = { ...makeMessage("original", "minh", ""), deletedAt: new Date().toISOString() };
@@ -22,6 +23,7 @@ it("retracts an embedded quote even when the original is outside loaded history"
 			hasAttachment: false,
 			attachmentUrl: null,
 			isDeleted: true,
+			isProtected: false,
 		},
 	});
 	const unrelated = makeMessage("unrelated", "an", "keep identity");
@@ -41,6 +43,7 @@ it("keeps an observed retraction over stale paging and retracts cached reply tex
 			hasAttachment: false,
 			attachmentUrl: null,
 			isDeleted: false,
+			isProtected: false,
 		},
 	};
 	const page = applyMessageRetractions([original, reply], known);

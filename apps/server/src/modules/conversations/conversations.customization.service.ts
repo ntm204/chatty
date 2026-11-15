@@ -11,7 +11,13 @@ import {
 	saveConversationAvatar,
 } from "../../lib/conversation-avatar-storage.js";
 import { themeByWireValue, toConversationDTO, toConversationUpdatedEvent } from "./conversations.mapper.js";
-import type { SetNicknameInput, SetQuickReactionInput, SetThemeInput } from "./conversations.schema.js";
+import type {
+	SetMessageTimerInput,
+	SetNicknameInput,
+	SetQuickReactionInput,
+	SetSharingRestrictionInput,
+	SetThemeInput,
+} from "./conversations.schema.js";
 import {
 	announceConversationUpdated,
 	announceSystemMessage,
@@ -19,6 +25,7 @@ import {
 	assertParticipant,
 	countUnreadByConversation,
 	createSystemMessage,
+	describeMessageTimer,
 	displayNamesOf,
 	prepareGroupMutation,
 	reloadConversation,
@@ -146,6 +153,114 @@ export async function setConversationQuickReaction(
 	});
 
 	if (didChange) announceConversationUpdated(conversationId, toConversationUpdatedEvent(updated));
+	const actorUnread = await countUnreadByConversation(currentUserId, [conversationId]);
+
+	return toConversationDTO(updated, actorUnread.get(conversationId) ?? 0, currentUserId);
+}
+
+/**
+ * Turns disappearing messages on, changes their lifetime, or turns them off.
+ *
+ * Not cosmetic, so not open to everyone the way theme is: in a group it changes
+ * what happens to everybody's words, so it is admin-gated like the group's other
+ * rules. In a direct conversation either person may change it — there is nobody
+ * to administer between two, and a setting only one of them could turn off would
+ * be a setting one person imposes on the other.
+ *
+ * Every change writes a system line, by name. That is the fairness half of the
+ * feature: nothing about how long messages last changes without both sides being
+ * told who changed it. Never retroactive — messages already sent keep the
+ * `expiresAt` they were written with. See ADR 0023.
+ */
+export async function setConversationMessageTimer(
+	currentUserId: string,
+	conversationId: string,
+	input: SetMessageTimerInput,
+): Promise<ConversationDTO> {
+	const { systemMessage, updated } = await prisma.$transaction(async (transaction) => {
+		const locked = await transaction.$queryRaw<{ isGroup: boolean; messageTimerSeconds: number | null }[]>`
+			SELECT "isGroup", "messageTimerSeconds" FROM "Conversation" WHERE id = ${conversationId} FOR UPDATE
+		`;
+		await assertParticipant(currentUserId, conversationId, transaction);
+		const conversation = locked[0];
+		if (!conversation) throw new NotFoundError("Conversation not found");
+		if (conversation.isGroup) await assertAdmin(transaction, currentUserId, conversationId);
+		if (conversation.messageTimerSeconds === input.seconds) {
+			return { systemMessage: null, updated: await reloadConversation(transaction, conversationId) };
+		}
+
+		await transaction.conversation.update({
+			where: { id: conversationId },
+			data: { messageTimerSeconds: input.seconds },
+			select: { id: true },
+		});
+		const [actorName] = await displayNamesOf(transaction, [currentUserId]);
+		const message = await createSystemMessage(
+			transaction,
+			conversationId,
+			input.seconds === null
+				? `${actorName} turned off disappearing messages`
+				: `${actorName} set new messages to disappear after ${describeMessageTimer(input.seconds)}`,
+		);
+
+		return { systemMessage: message, updated: await reloadConversation(transaction, conversationId) };
+	});
+
+	if (systemMessage) {
+		announceSystemMessage(systemMessage);
+		announceConversationUpdated(conversationId, toConversationUpdatedEvent(updated));
+	}
+	const actorUnread = await countUnreadByConversation(currentUserId, [conversationId]);
+
+	return toConversationDTO(updated, actorUnread.get(conversationId) ?? 0, currentUserId);
+}
+
+/**
+ * Turns the conversation's sharing restriction on or off.
+ *
+ * Same rules as the disappearing timer, for the same reasons: admin-gated in a
+ * group, open to either person in a direct chat, and always announced by name —
+ * so nobody can quietly lift the restriction, forward something, and put it
+ * back. See ADR 0024.
+ */
+export async function setConversationSharingRestriction(
+	currentUserId: string,
+	conversationId: string,
+	input: SetSharingRestrictionInput,
+): Promise<ConversationDTO> {
+	const { systemMessage, updated } = await prisma.$transaction(async (transaction) => {
+		const locked = await transaction.$queryRaw<{ isGroup: boolean; restrictSharing: boolean }[]>`
+			SELECT "isGroup", "restrictSharing" FROM "Conversation" WHERE id = ${conversationId} FOR UPDATE
+		`;
+		await assertParticipant(currentUserId, conversationId, transaction);
+		const conversation = locked[0];
+		if (!conversation) throw new NotFoundError("Conversation not found");
+		if (conversation.isGroup) await assertAdmin(transaction, currentUserId, conversationId);
+		if (conversation.restrictSharing === input.isRestricted) {
+			return { systemMessage: null, updated: await reloadConversation(transaction, conversationId) };
+		}
+
+		await transaction.conversation.update({
+			where: { id: conversationId },
+			data: { restrictSharing: input.isRestricted },
+			select: { id: true },
+		});
+		const [actorName] = await displayNamesOf(transaction, [currentUserId]);
+		const message = await createSystemMessage(
+			transaction,
+			conversationId,
+			input.isRestricted
+				? `${actorName} turned off forwarding in this chat`
+				: `${actorName} turned forwarding back on in this chat`,
+		);
+
+		return { systemMessage: message, updated: await reloadConversation(transaction, conversationId) };
+	});
+
+	if (systemMessage) {
+		announceSystemMessage(systemMessage);
+		announceConversationUpdated(conversationId, toConversationUpdatedEvent(updated));
+	}
 	const actorUnread = await countUnreadByConversation(currentUserId, [conversationId]);
 
 	return toConversationDTO(updated, actorUnread.get(conversationId) ?? 0, currentUserId);

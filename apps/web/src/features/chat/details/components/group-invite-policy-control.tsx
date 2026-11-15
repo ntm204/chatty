@@ -2,8 +2,7 @@ import type { GroupInvitePolicy } from "@chatty/shared-types";
 import { useState } from "react";
 import { ShieldPlus } from "lucide-react";
 import { api } from "@/api/client";
-import { Button } from "@/components/button";
-import { cn } from "@/utils/cn";
+import { Switch } from "@/components/switch";
 import { getErrorMessage } from "@/utils/get-error-message";
 
 interface GroupInvitePolicyControlProps {
@@ -38,36 +37,12 @@ export function GroupInvitePolicyControl({ conversationId, policy, isAdmin }: Gr
 					<ShieldPlus className="size-4 text-ink-soft" aria-hidden="true" />
 				</span>
 				<span className="min-w-0 flex-1 whitespace-nowrap text-[13px] text-ink">Admin-only invites</span>
-				<Button
-					variant="ghost"
-					role="switch"
-					aria-checked={isAdminsOnly}
-					aria-label="Only admins can add people"
-					disabled={!isAdmin || isSaving}
-					onClick={() => void toggle()}
-					className={cn(
-						"relative h-6 w-11 shrink-0 rounded-full border p-0 transition-colors",
-						// Ghost's own hover:bg-ink/5 would otherwise win over the track's
-						// solid "on" fill while the pointer rests on it, mid-hover, turning
-						// a solid switch hollow — so the hover state is restated here too.
-						// The off track is `paper-sunken`, not a translucent ink tint: an
-						// opacity-based fill and a `paper-raised` knob both read as "the
-						// panel's own surface" in dark mode, where ink is pale — the two
-						// nearly vanished into each other. Raised-above-sunken is the pair
-						// this app already uses for "this sits above that", in both themes.
-						isAdminsOnly
-							? "border-ink bg-ink hover:bg-ink"
-							: "border-rule bg-paper-sunken hover:bg-paper-sunken",
-					)}
-				>
-					<span
-						aria-hidden="true"
-						className={cn(
-							"absolute left-0.5 top-1/2 size-[18px] -translate-y-1/2 rounded-full bg-paper-raised shadow-sm motion-safe:transition-transform",
-							isAdminsOnly ? "translate-x-5" : "translate-x-0",
-						)}
-					/>
-				</Button>
+				<Switch
+					label="Only admins can add people"
+					isOn={isAdminsOnly}
+					isDisabled={!isAdmin || isSaving}
+					onChange={() => void toggle()}
+				/>
 			</div>
 			{!isAdmin && <p className="note mt-2 text-ink-faint">Only group admins can change this policy.</p>}
 			{error && (

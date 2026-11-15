@@ -83,6 +83,8 @@ export async function countUnreadByConversation(
 			AND m."kind" = 'USER'
 			AND m."authorId" IS DISTINCT FROM ${userId}
 			AND m."deletedAt" IS NULL
+			-- An expired message is gone; counting it would leave a badge nobody can clear.
+			AND (m."expiresAt" IS NULL OR m."expiresAt" > ${new Date()})
 			AND NOT EXISTS (
 				SELECT 1 FROM "MessageHiddenFor" h
 				WHERE h."messageId" = m.id AND h."userId" = ${userId}
@@ -319,4 +321,15 @@ export async function reloadConversation(
 		where: { id: conversationId },
 		include: conversationInclude,
 	});
+}
+
+/**
+ * How a disappearing-message timer reads in a system line: "24 hours", "7 days".
+ * One spelling for every sentence that names it, so the chat log, the default
+ * notice and the change notice can never disagree about the same value.
+ */
+export function describeMessageTimer(seconds: number): string {
+	const days = seconds / 86_400;
+
+	return days === 1 ? "24 hours" : `${String(days)} days`;
 }

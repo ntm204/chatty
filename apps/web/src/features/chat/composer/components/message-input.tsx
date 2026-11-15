@@ -12,9 +12,13 @@ import { useComposerAttachments } from "../hooks/use-composer-attachments";
 import { useComposerTextInsertion } from "../hooks/use-composer-text-insertion";
 import { useComposerStickerSend } from "../hooks/use-composer-sticker-send";
 import { useComposerFileSend } from "../hooks/use-composer-file-send";
+import { useComposerPanels } from "../hooks/use-composer-panels";
+import { useProtectedSend } from "../hooks/use-protected-send";
 import { useMessageDraft } from "../hooks/use-message-draft";
 import { ComposerControls } from "./composer-controls";
 import { ComposerMentionSuggestions } from "./composer-mention-suggestions";
+import { ComposerProtectedNotice } from "./composer-protected-notice";
+import { ComposerTextField } from "./composer-text-field";
 import { ComposerReplyPreview } from "./composer-reply-preview";
 import { ComposerUploadPreview } from "./composer-upload-preview";
 import { VoiceRecorder } from "./voice-recorder";
@@ -37,6 +41,7 @@ interface MessageInputProps {
 		attachments: File[],
 		replyTo: MessageDTO | null,
 		mentionedUserIds?: string[],
+		isProtected?: boolean,
 	) => Promise<void>;
 	onSendSticker: (stickerId: string, replyTo: MessageDTO | null) => Promise<void>;
 	onSendFile: (
@@ -67,8 +72,7 @@ export function MessageInput({
 }: MessageInputProps) {
 	const [content, setContent] = useState("");
 	const [error, setError] = useState("");
-	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-	const [isStickerTrayOpen, setIsStickerTrayOpen] = useState(false);
+	const panels = useComposerPanels();
 	const [isVoiceActive, setIsVoiceActive] = useState(false);
 	const fieldRef = useRef<HTMLTextAreaElement>(null);
 	const composerRef = useRef<HTMLDivElement>(null);
@@ -80,10 +84,7 @@ export function MessageInput({
 		isDisabled: isDisabled || isVoiceActive,
 		onSendFile,
 		setError,
-		onStart: useCallback(() => {
-			setIsEmojiPickerOpen(false);
-			setIsStickerTrayOpen(false);
-		}, []),
+		onStart: panels.closePanels,
 	});
 	const {
 		attachments,
@@ -103,14 +104,23 @@ export function MessageInput({
 		onFileSelected: sendFile,
 		onPasteText: insertText,
 	});
+	// A message is allowed to be pictures with nothing written on them.
+	const hasSomethingToSend = Boolean(content.trim()) || attachments.length > 0;
+	const protection = useProtectedSend({
+		hasRecipients: participants.length > 1,
+		hasFile: Boolean(selectedFile),
+		hasSomethingToSend,
+	});
 	const { clearDraft, hasStorageError } = useMessageDraft({
 		userId: currentUserId,
 		conversationId,
 		content,
 		replyToId: replyTo?.id ?? pendingReplyId,
+		isProtected: protection.isRequested,
 		onRestore: useCallback(
 			(draft) => {
 				setContent(draft.content);
+				protection.setIsRequested(Boolean(draft.isProtected));
 				if (draft.replyToId) onRestoreReply(draft.replyToId);
 			},
 			[onRestoreReply],
@@ -133,16 +143,12 @@ export function MessageInput({
 		onInsert: notifyTyping,
 	});
 
-	// A message is allowed to be pictures with nothing written on them.
-	const hasSomethingToSend = Boolean(content.trim()) || attachments.length > 0;
-
 	useEffect(() => {
 		if (!isDisabled) return;
 
 		stopTyping();
-		setIsEmojiPickerOpen(false);
-		setIsStickerTrayOpen(false);
-	}, [isDisabled, stopTyping]);
+		panels.closePanels();
+	}, [isDisabled, stopTyping, panels.closePanels]);
 
 	function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
 		if (isDisabled) return;
@@ -185,10 +191,11 @@ export function MessageInput({
 		// request must never restore an old message over words typed after sending.
 		setContent("");
 		setAttachments([]);
+		protection.setIsRequested(false);
 		clearDraft();
 		onCancelReply();
 		try {
-			await onSend(draftContent, attachments, draftReplyTo, mentionedUserIds);
+			await onSend(draftContent, attachments, draftReplyTo, mentionedUserIds, protection.isProtected);
 		} catch {
 			// The row remains visible with Retry. Do not create a second composer copy.
 		}
@@ -215,6 +222,9 @@ export function MessageInput({
 				)}
 			>
 				{replyTo && <ComposerReplyPreview replyTo={replyTo} onCancel={onCancelReply} />}
+				{protection.isProtected && (
+					<ComposerProtectedNotice onTurnOff={() => protection.setIsRequested(false)} />
+				)}
 				<ComposerUploadPreview
 					error={error}
 					isSending={isSending}
@@ -244,46 +254,35 @@ export function MessageInput({
 					isFull={isFull}
 					canSend={hasSomethingToSend}
 					isSendBlocked={pendingReplyId !== null}
-					isEmojiPickerOpen={isEmojiPickerOpen}
-					isStickerTrayOpen={isStickerTrayOpen}
-					onToggleEmojiPicker={() => {
-						setIsStickerTrayOpen(false);
-						setIsEmojiPickerOpen((current) => !current);
-					}}
-					onToggleStickerTray={() => {
-						setIsEmojiPickerOpen(false);
-						setIsStickerTrayOpen((current) => !current);
-					}}
-					onCloseEmojiPicker={() => setIsEmojiPickerOpen(false)}
-					onCloseStickerTray={() => setIsStickerTrayOpen(false)}
+					canProtect={protection.canProtect}
+					isProtected={protection.isProtected}
+					onToggleProtected={protection.toggle}
+					isEmojiPickerOpen={panels.isEmojiPickerOpen}
+					isStickerTrayOpen={panels.isStickerTrayOpen}
+					onToggleEmojiPicker={panels.toggleEmojiPicker}
+					onToggleStickerTray={panels.toggleStickerTray}
+					onCloseEmojiPicker={panels.closeEmojiPicker}
+					onCloseStickerTray={panels.closeStickerTray}
 					onFilesSelected={handleFilesSelected}
 					onFileSelected={handleFileSelected}
 					onInsertEmoji={insertText}
 					onPickSticker={sendSticker}
 					field={
-						<textarea
-							ref={fieldRef}
-							rows={1}
-							onKeyDown={handleKeyDown}
-							onCompositionStart={() => {
-								isComposingRef.current = true;
-							}}
-							onCompositionEnd={() => {
-								isComposingRef.current = false;
-							}}
+						<ComposerTextField
+							fieldRef={fieldRef}
+							isComposingRef={isComposingRef}
 							value={content}
-							onChange={handleChange}
-							onSelect={(event) => mentions.syncSelection(event.currentTarget)}
-							aria-controls={mentions.suggestions.length ? mentions.listId : undefined}
-							aria-activedescendant={
-								mentions.suggestions.length ? `${mentions.listId}-${mentions.selectedIndex}` : undefined
+							isDisabled={isDisabled || isVoiceActive}
+							mentionList={
+								mentions.suggestions.length
+									? { id: mentions.listId, activeIndex: mentions.selectedIndex }
+									: null
 							}
-							aria-autocomplete={isGroup ? "list" : undefined}
+							isGroup={isGroup}
+							onChange={handleChange}
+							onKeyDown={handleKeyDown}
 							onPaste={handlePaste}
-							disabled={isDisabled || isVoiceActive}
-							placeholder="Write a message"
-							aria-label="Message"
-							className="font-content max-h-40 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2.5 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint"
+							onSelect={(event) => mentions.syncSelection(event.currentTarget)}
 						/>
 					}
 					voiceRecorder={

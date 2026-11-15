@@ -26,6 +26,7 @@ it("keeps the selected gallery open through upload acknowledgement and later his
 		unreadCount: 0,
 		editingMessageId: null,
 		pinnedMessageIds: [],
+		isSharingRestricted: false,
 		onStartEdit: vi.fn(),
 		onSaveEdit: vi.fn(),
 		onCancelEdit: vi.fn(),

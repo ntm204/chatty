@@ -25,6 +25,8 @@ interface MessageGalleryProps {
 	isTimeAlwaysVisible?: boolean;
 	/** Forwards this message from inside the viewer. Absent while it is still being sent. */
 	onForward?: () => void;
+	/** False when the sender or the chat restricts sharing (ADR 0024). */
+	isSaveAllowed?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export function MessageGallery({
 	timeLabel,
 	isTimeAlwaysVisible = false,
 	onForward,
+	isSaveAllowed = true,
 }: MessageGalleryProps) {
 	const [openIndex, setOpenIndex] = useState<number | null>(null);
 	const first = attachments[0];
@@ -174,6 +177,7 @@ export function MessageGallery({
 					attachments={attachments}
 					initialIndex={openIndex}
 					caption={caption}
+					isSaveAllowed={isSaveAllowed}
 					onClose={() => setOpenIndex(null)}
 					// Closed on the way out, and not as a courtesy: the forward panel
 					// belongs to the conversation pane and renders under this viewer,

@@ -179,6 +179,24 @@ describe("typing over the socket", () => {
 		expect(await heard).toMatchObject({ isTyping: false });
 	});
 
+	it("withholds a start from someone who stopped sharing typing, but still relays their stop", async () => {
+		const minh = await createUser("minh");
+		const an = await createUser("an");
+		const conversation = await createConversation(minh.id, { participantIds: [an.id] });
+		await prisma.user.update({ where: { id: minh.id }, data: { typingIndicatorsEnabled: false } });
+
+		const minhSocket = await connectAs(minh.token);
+		const anSocket = await connectAs(an.token);
+
+		const start = nextEvent(anSocket, "typing:update");
+		minhSocket.emit("typing:start", { conversationId: conversation.id });
+		expect(await start).toBeNull();
+
+		const stop = nextEvent(anSocket, "typing:update");
+		minhSocket.emit("typing:stop", { conversationId: conversation.id });
+		expect(await stop).toMatchObject({ userId: minh.id, isTyping: false });
+	});
+
 	it("drops typing aimed at a conversation the sender is not in", async () => {
 		const minh = await createUser("minh");
 		const an = await createUser("an");

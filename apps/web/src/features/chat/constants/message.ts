@@ -43,3 +43,13 @@ export const ARRIVAL_ANNOUNCEMENT_WINDOW_MS = 30 * 1000;
 
 /** A screen reader hears the gist; the full text is one arrow key away in the thread. */
 export const ARRIVAL_ANNOUNCEMENT_MAX_LENGTH = 140;
+
+/**
+ * What a protected message says everywhere it cannot be shown — the sidebar,
+ * notifications, a reply quote — including to its author: the preview line is
+ * read over people's shoulders more than any other surface.
+ */
+export const PROTECTED_MESSAGE_TEXT = "Protected message";
+
+/** Stands in for the words of someone who turned off forwarding, wherever text would be copied out. */
+export const SHARING_RESTRICTED_TEXT = "Sharing is turned off for this message";

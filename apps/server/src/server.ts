@@ -7,6 +7,7 @@ import { startOrphanedUploadSweeper } from "./lib/orphaned-uploads.js";
 import { startOutboxWorker } from "./lib/outbox.js";
 import { redis } from "./lib/redis.js";
 import { getIO } from "./lib/socket-bus.js";
+import { startMessageExpirySweeper } from "./modules/messages/messages.expiry.service.js";
 import { initSockets } from "./sockets/index.js";
 
 const app = createApp();
@@ -45,6 +46,12 @@ startOutboxWorker();
 // one is not doing work anybody is waiting for — it reclaims the files left by
 // uploads that died between writing the image and committing its row.
 startOrphanedUploadSweeper();
+
+// Also one per instance: batches are claimed with `FOR UPDATE SKIP LOCKED`, so
+// several sweeps split the work rather than repeat it. Unlike the orphan sweep
+// this one keeps a promise people rely on — disappearing messages — so it runs
+// every few seconds rather than every few hours. See ADR 0023.
+startMessageExpirySweeper();
 
 httpServer.listen(env.PORT, () => {
 	logger.info(`chatty server listening on :${env.PORT}`);

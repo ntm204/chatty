@@ -15,6 +15,7 @@ export async function toLocalOutboxMessage(
 		content: draft.content,
 		replyTo: draft.replyTo ? { ...draft.replyTo, attachmentUrl: null } : null,
 		mentionedUserIds: draft.mentionedUserIds,
+		isProtected: draft.protection !== null,
 		createdAt: draft.createdAt,
 		attachments: await Promise.all(
 			files.map(async (file, index) => ({
@@ -71,6 +72,11 @@ export function restoreLocalOutboxMessage(record: LocalOutboxMessage): {
 			isForwarded: false,
 			mentionedUserIds: record.mentionedUserIds,
 			createdAt: record.createdAt,
+			expiresAt: null,
+			protection: record.isProtected
+				? { openedByUserIds: [], imageCount: attachments.length, hasText: record.content.length > 0 }
+				: null,
+			isForwardable: false,
 			authorActionExpiresAt: null,
 			editedAt: null,
 			deletedAt: null,

@@ -29,6 +29,7 @@ interface AttachmentLightboxProps {
 	 * not the messages that carried them.
 	 */
 	onForward?: () => void;
+	isSaveAllowed?: boolean; // False when sharing is restricted (ADR 0024): no save button.
 }
 
 /**
@@ -69,6 +70,7 @@ export function AttachmentLightbox({
 	onClose,
 	onOpenMessage,
 	onForward,
+	isSaveAllowed = true,
 }: AttachmentLightboxProps) {
 	const close = useCallback(() => onClose(), [onClose]);
 	const dialogRef = useDialog<HTMLDivElement>(close);
@@ -126,10 +128,8 @@ export function AttachmentLightbox({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [dialogRef, resetZoom, rotate, step, zoomIn, zoomOut]);
 
-	// Both neighbours are fetched while this one is being looked at, so an arrow
-	// key swaps the picture instead of blanking the frame for as long as a
-	// megabyte takes to arrive. Nothing is kept: the point is only to put the
-	// bytes in the browser's cache before they are asked for.
+	// Prefetch both neighbours into the browser cache so an arrow key swaps the
+	// picture instead of blanking the frame while a megabyte arrives.
 	useEffect(() => {
 		if (total < 2) return;
 
@@ -281,7 +281,7 @@ export function AttachmentLightbox({
 					onResetZoom={resetZoom}
 					onRotateCounterclockwise={() => rotate(-1)}
 					onRotateClockwise={() => rotate(1)}
-					onSave={() => void saveCurrentImage(current)}
+					{...(isSaveAllowed && { onSave: () => void saveCurrentImage(current) })}
 					isSaving={isSaving}
 					canSave={!isOfflineMediaUrl(current.url)}
 					onClose={close}

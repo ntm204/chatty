@@ -175,6 +175,7 @@ export function ChatConversationPane({
 							) : (
 								<MessageList
 									{...messageListProps}
+									isSharingRestricted={conversation.isSharingRestricted}
 									navigationError={navigationError}
 									typingMessage={getTypingMessage(
 										typingUserIds.filter((userId) => userId !== currentUserId),
@@ -194,6 +195,7 @@ export function ChatConversationPane({
 					{isSelectingMessages ? (
 						<MessageSelectionBar
 							messages={messageListProps.messages}
+							isSharingRestricted={conversation.isSharingRestricted}
 							onHideMessage={messageListProps.onHideMessage}
 						/>
 					) : (

@@ -1,4 +1,11 @@
-import type { MessageDTO, MessageReplyDTO, ReactionDTO, ReactionEmoji } from "@chatty/shared-types";
+import type {
+	AttachmentDTO,
+	MessageDTO,
+	MessageReplyDTO,
+	ProtectedMessageContentDTO,
+	ReactionDTO,
+	ReactionEmoji,
+} from "@chatty/shared-types";
 import type { AttachmentKind as PrismaAttachmentKind, MessageKind } from "@prisma/client";
 import { buildAttachmentUrl, buildAttachmentUrls } from "../../lib/attachment-storage.js";
 import { toUserDTO, userSelect, type UserRow } from "../users/users.mapper.js";
@@ -54,6 +61,7 @@ interface ReplyParentRow {
 	id: string;
 	content: string;
 	deletedAt: Date | null;
+	isProtected: boolean;
 	author: { displayName: string } | null;
 	/** At most one, because a quote shows a thumbnail rather than a gallery. */
 	attachments: { id: string }[];
@@ -64,7 +72,7 @@ export interface MessageRow {
 	conversationId: string;
 	kind: MessageKind;
 	/** Null on a system message, which nobody wrote. */
-	author: UserRow | null;
+	author: (UserRow & { allowMessageForwarding: boolean }) | null;
 	content: string;
 	createdAt: Date;
 	editedAt: Date | null;
@@ -72,9 +80,13 @@ export interface MessageRow {
 	isSticker: boolean;
 	stickerKey: string | null;
 	isForwarded: boolean;
+	expiresAt: Date | null;
+	isProtected: boolean;
 	attachments: AttachmentRow[];
 	reactions: ReactionRow[];
 	mentions: { userId: string }[];
+	/** Recipients who opened a protected message; empty on every other message. */
+	views: { userId: string }[];
 	replyTo: ReplyParentRow | null;
 }
 
@@ -86,7 +98,9 @@ export const messageSelect = {
 	// participants — which is what the client used to do — loses the name and the
 	// avatar of everyone who has since left the group, while their messages stay.
 	// One join per page of messages is the price of history that keeps its faces.
-	author: { select: userSelect },
+	// The author's sharing preference rides along so `isForwardable` reflects it
+	// now, not when the message was written — see ADR 0024.
+	author: { select: { ...userSelect, allowMessageForwarding: true } },
 	content: true,
 	createdAt: true,
 	editedAt: true,
@@ -94,6 +108,8 @@ export const messageSelect = {
 	isSticker: true,
 	stickerKey: true,
 	isForwarded: true,
+	expiresAt: true,
+	isProtected: true,
 	// Ordered by the column the sender's choice was written to, not by
 	// `createdAt`: a message's images are inserted in one transaction and share a
 	// timestamp to the millisecond, so ordering by time would let a gallery
@@ -119,12 +135,14 @@ export const messageSelect = {
 	// handful per message and a groupBy per message would be a second query.
 	reactions: { select: { userId: true, emoji: true }, orderBy: { createdAt: "asc" } },
 	mentions: { select: { userId: true } },
+	views: { select: { userId: true }, orderBy: { openedAt: "asc" } },
 	// One level deep. See `ReplyParentRow`.
 	replyTo: {
 		select: {
 			id: true,
 			content: true,
 			deletedAt: true,
+			isProtected: true,
 			author: { select: { displayName: true } },
 			// Only the first, and only to draw a thumbnail beside the quote. A
 			// reply points at a message; it does not re-show the whole gallery.
@@ -166,44 +184,83 @@ function toReactionDTOs(rows: ReactionRow[]): ReactionDTO[] {
  */
 function toReplyDTO(row: ReplyParentRow): MessageReplyDTO {
 	const isDeleted = row.deletedAt !== null;
-	const firstImage = isDeleted ? undefined : row.attachments[0];
+	// A quote of a protected message is a quote of its cover, for everyone. A
+	// reply is broadcast to the whole room, so this is the only rule that cannot
+	// leak the parent's words to somebody who has not opened it.
+	const isWithheld = isDeleted || row.isProtected;
+	const firstImage = isWithheld ? undefined : row.attachments[0];
 
 	return {
 		id: row.id,
 		authorName: row.author?.displayName ?? null,
-		content: isDeleted ? "" : row.content,
-		hasAttachment: firstImage !== undefined,
+		content: isWithheld ? "" : row.content,
+		hasAttachment: row.isProtected ? false : firstImage !== undefined,
 		attachmentUrl: firstImage ? buildAttachmentUrl(firstImage.id) : null,
 		isDeleted,
+		isProtected: row.isProtected,
 	};
 }
 
-export function toMessageDTO(row: MessageRow): MessageDTO {
+function toAttachmentDTOs(rows: AttachmentRow[]): AttachmentDTO[] {
+	return rows.map((attachment) => ({
+		id: attachment.id,
+		kind: attachment.kind === "IMAGE" ? "image" : attachment.kind === "FILE" ? "file" : "audio",
+		...buildAttachmentUrls(attachment.id, attachment.kind === "IMAGE" && attachment.hasThumbnail),
+		width: attachment.width,
+		height: attachment.height,
+		byteSize: attachment.byteSize,
+		fileName: attachment.fileName,
+		mediaType: attachment.mediaType,
+		durationMs: attachment.durationMs,
+		waveform: attachment.waveform,
+	}));
+}
+
+/** What opening a protected message hands its one recipient: the words and freshly signed photos. */
+export function toProtectedContentDTO(row: Pick<MessageRow, "content" | "attachments">): ProtectedMessageContentDTO {
+	return { content: row.content, attachments: toAttachmentDTOs(row.attachments) };
+}
+
+/**
+ * Builds the wire shape of a message, as seen by `viewerId`.
+ *
+ * **Protected content is withheld unless the viewer is its author** — and
+ * withheld by default: a caller that does not know who is looking (a room
+ * broadcast, a sidebar row) gets the cover, never the content. Forgetting to
+ * pass a viewer therefore costs the author a blank bubble until a reload, which
+ * is visible and harmless; the opposite default would leak a confession to a
+ * whole group the first time somebody forgot. Recipients read the content only
+ * through `openProtectedMessage`, once.
+ */
+export function toMessageDTO(row: MessageRow, viewerId?: string): MessageDTO {
+	const isWithheld = row.isProtected && (viewerId === undefined || row.author?.id !== viewerId);
+
 	return {
 		id: row.id,
 		conversationId: row.conversationId,
 		kind: row.kind === "SYSTEM" ? "system" : "user",
 		author: row.author ? toUserDTO(row.author) : null,
-		content: row.content,
+		content: isWithheld ? "" : row.content,
 		// The URLs are built per response rather than stored: each carries a signed
 		// token that expires, so a cached copy would rot.
 		isSticker: row.isSticker,
 		stickerKey: row.stickerKey,
 		isForwarded: row.isForwarded,
 		mentionedUserIds: row.mentions.map((mention) => mention.userId),
-		attachments: row.attachments.map((attachment) => ({
-			id: attachment.id,
-			kind: attachment.kind === "IMAGE" ? "image" : attachment.kind === "FILE" ? "file" : "audio",
-			...buildAttachmentUrls(attachment.id, attachment.kind === "IMAGE" && attachment.hasThumbnail),
-			width: attachment.width,
-			height: attachment.height,
-			byteSize: attachment.byteSize,
-			fileName: attachment.fileName,
-			mediaType: attachment.mediaType,
-			durationMs: attachment.durationMs,
-			waveform: attachment.waveform,
-		})),
+		attachments: isWithheld ? [] : toAttachmentDTOs(row.attachments),
 		createdAt: row.createdAt.toISOString(),
+		expiresAt: row.expiresAt?.toISOString() ?? null,
+		protection: row.isProtected
+			? {
+					openedByUserIds: row.views.map((view) => view.userId),
+					imageCount: row.deletedAt ? 0 : row.attachments.filter((item) => item.kind === "IMAGE").length,
+					hasText: !row.deletedAt && row.content.length > 0,
+				}
+			: null,
+		// The chat's own restriction is not folded in here: it lives on the
+		// conversation, which changes live for everyone, while this value is
+		// frozen into whatever copy a client already holds.
+		isForwardable: row.kind === "USER" && !row.isProtected && (row.author?.allowMessageForwarding ?? true),
 		authorActionExpiresAt:
 			row.kind === "USER"
 				? new Date(row.createdAt.getTime() + MESSAGE_AUTHOR_ACTION_WINDOW_MS).toISOString()

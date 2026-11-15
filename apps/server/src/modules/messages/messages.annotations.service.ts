@@ -8,16 +8,27 @@ import { prisma } from "../../lib/prisma.js";
 import { getIO, userRoom } from "../../lib/socket-bus.js";
 import { assertDirectConversationAvailable } from "../blocks/blocks.service.js";
 import { assertParticipant } from "../conversations/conversations.service.js";
+import { broadcastMessage } from "./messages.broadcast.js";
+import { hasExpired, unexpiredMessageWhere } from "./messages.lifecycle.js";
 import { messageSelect, toMessageDTO, type MessageRow } from "./messages.mapper.js";
 import type { ToggleReactionInput } from "./messages.schema.js";
 
 export async function saveMessageForUser(userId: string, conversationId: string, messageId: string): Promise<void> {
 	await assertParticipant(userId, conversationId);
 	const message = await prisma.message.findFirst({
-		where: { id: messageId, conversationId, deletedAt: null, hiddenFor: { none: { userId } } },
-		select: { id: true },
+		where: {
+			id: messageId,
+			conversationId,
+			deletedAt: null,
+			hiddenFor: { none: { userId } },
+			...unexpiredMessageWhere(),
+		},
+		select: { id: true, isProtected: true },
 	});
 	if (!message) throw new NotFoundError("Message not found");
+	// A bookmark is a way of keeping something; a protected message is a promise
+	// that it will not be kept.
+	if (message.isProtected) throw new ValidationError("A protected message cannot be saved");
 
 	await prisma.messageStar.upsert({
 		where: { messageId_userId: { messageId, userId } },
@@ -50,6 +61,17 @@ function toPinnedMessageDTO(
 	}));
 }
 
+/** The conversation's pins as everyone sees them, for a change made outside `setMessagePinned`. */
+export async function loadPinnedMessages(conversationId: string): Promise<PinnedMessageDTO[]> {
+	const pinned = await prisma.pinnedMessage.findMany({
+		where: { conversationId },
+		orderBy: { pinnedAt: "desc" },
+		select: { messageId: true, pinnedById: true, pinnedAt: true, message: { select: messageSelect } },
+	});
+
+	return toPinnedMessageDTO(pinned);
+}
+
 export async function setMessagePinned(
 	userId: string,
 	conversationId: string,
@@ -63,10 +85,13 @@ export async function setMessagePinned(
 		await assertParticipant(userId, conversationId, transaction);
 		await assertDirectConversationAvailable(userId, conversationId, transaction);
 		const message = await transaction.message.findFirst({
-			where: { id: messageId, conversationId, deletedAt: null },
-			select: { id: true },
+			where: { id: messageId, conversationId, deletedAt: null, ...unexpiredMessageWhere() },
+			select: { id: true, isProtected: true },
 		});
 		if (!message) throw new NotFoundError("Message not found");
+		// Pinning puts a message in everyone's header; a protected one is withheld
+		// from everyone until they choose to open it.
+		if (isPinned && message.isProtected) throw new ValidationError("A protected message cannot be pinned");
 		const existing = await transaction.pinnedMessage.findUnique({
 			where: { conversationId_messageId: { conversationId, messageId } },
 			select: { messageId: true },
@@ -171,9 +196,9 @@ export async function toggleReaction(
 			// Scoped by conversation, so an id from a conversation the caller is not in
 			// is a 404 rather than a reaction landing somewhere they cannot see.
 			where: { id: messageId, conversationId },
-			select: { id: true, deletedAt: true, kind: true },
+			select: { id: true, deletedAt: true, kind: true, expiresAt: true },
 		});
-		if (!target) throw new NotFoundError("Message not found");
+		if (!target || hasExpired(target.expiresAt)) throw new NotFoundError("Message not found");
 		// Both refusals are about there being nothing to react *to*. A tombstone has
 		// surrendered its content, and the mapper drops its reactions anyway — storing
 		// one would be a row nobody could ever see. A system line is the app talking.
@@ -197,14 +222,14 @@ export async function toggleReaction(
 		return transaction.message.findUniqueOrThrow({ where: { id: messageId }, select: messageSelect });
 	});
 
-	const messageDTO = toMessageDTO(message);
+	const messageDTO = toMessageDTO(message, currentUserId);
 
 	// `message:updated`, not an event of its own. The DTO carries the whole
 	// reaction list, so a client replaces by id and has nothing to merge — and a
 	// merge that goes wrong on a reaction is a count that drifts and never
 	// recovers. It also means every surface that already renders an edit renders
 	// this, including the one that arrives while you are scrolled away.
-	getIO().to(conversationId).emit("message:updated", messageDTO);
+	await broadcastMessage("message:updated", message);
 
 	return messageDTO;
 }

@@ -3,6 +3,7 @@ import type { AttachmentDTO } from "@chatty/shared-types";
 import { isValidAttachmentToken } from "../../lib/attachment-token.js";
 import { NotFoundError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
+import { unexpiredMessageWhere } from "../messages/messages.lifecycle.js";
 
 /** Renew only from current membership and message visibility, never from an expired token. */
 export async function getAttachmentUrls(
@@ -16,6 +17,9 @@ export async function getAttachmentUrls(
 				deletedAt: null,
 				hiddenFor: { none: { userId } },
 				conversation: { participants: { some: { userId } } },
+				// A protected photo reaches a recipient once, through the open endpoint;
+				// renewing its URL afterwards would be a second look. Only its author may.
+				AND: [unexpiredMessageWhere(), { OR: [{ isProtected: false }, { authorId: userId }] }],
 			},
 		},
 		select: { id: true, kind: true, hasThumbnail: true },

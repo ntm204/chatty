@@ -42,18 +42,33 @@ export function useLiveMessageEvents({
 		),
 	);
 
+	// Hidden for you and expired for everyone leave the thread the same way.
+	const removeMessage = useCallback(
+		(event: { conversationId: string; messageId: string }) => {
+			if (event.conversationId === conversationId) {
+				loadingChangesRef.current?.hiddenIds.add(event.messageId);
+				setMessages((current) => current.filter((message) => message.id !== event.messageId));
+			}
+			onConversationsChanged();
+		},
+		[conversationId, onConversationsChanged],
+	);
+	useSocketEvent("message:hidden", removeMessage);
+	useSocketEvent("message:expired", removeMessage);
+
 	useSocketEvent(
-		"message:hidden",
-		useCallback(
-			(event: { conversationId: string; messageId: string }) => {
-				if (event.conversationId === conversationId) {
-					loadingChangesRef.current?.hiddenIds.add(event.messageId);
-					setMessages((current) => current.filter((message) => message.id !== event.messageId));
-				}
-				onConversationsChanged();
-			},
-			[conversationId, onConversationsChanged],
-		),
+		"user:forwarding-changed",
+		useCallback((event: { userId: string; allowMessageForwarding: boolean }) => {
+			setMessages((current) =>
+				current.some((message) => message.author?.id === event.userId)
+					? current.map((message) =>
+							message.author?.id === event.userId && message.kind === "user" && !message.protection
+								? { ...message, isForwardable: event.allowMessageForwarding }
+								: message,
+						)
+					: current,
+			);
+		}, []),
 	);
 
 	useSocketEvent(

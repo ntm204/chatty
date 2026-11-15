@@ -108,6 +108,8 @@ export function useOutboxReplay({ userId, activeConversationId }: UseOutboxRepla
 								message.replyTo?.id,
 								message.mentionedUserIds,
 								message.id,
+								undefined,
+								message.isProtected === true,
 							);
 							if (isCurrentSession()) await removeLocalMessage(message.id);
 						} catch {

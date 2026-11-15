@@ -3,13 +3,14 @@ import { deleteAvatar, findAvatarPath, saveAvatar } from "../../lib/avatar-stora
 import { ConflictError, NotFoundError, UnauthorizedError } from "../../lib/errors.js";
 import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
-import { getIO, userRoom } from "../../lib/socket-bus.js";
+import { getIO, getOptionalIO, userRoom } from "../../lib/socket-bus.js";
 import { assertPasswordMatches } from "../auth/auth.service.js";
 import {
 	announceDepartures,
 	clearSharedReadMarkers,
 	removeUserFromEveryGroup,
 } from "../conversations/conversations.service.js";
+import { toMessageTimer } from "../conversations/conversations.mapper.js";
 import { toUserDTO, userSelect } from "./users.mapper.js";
 import type { DeleteAccountInput, SearchUsersQuery, UpdateProfileInput } from "./users.schema.js";
 
@@ -29,7 +30,15 @@ export async function getUserById(userId: string): Promise<CurrentUserDTO> {
 		// projection rather than being part of it: this is the one response allowed
 		// to carry them, and keeping them out of `userSelect` is what stops them
 		// riding along on somebody else's profile.
-		select: { ...userSelect, email: true, readReceiptsEnabled: true, presenceVisibility: true },
+		select: {
+			...userSelect,
+			email: true,
+			readReceiptsEnabled: true,
+			presenceVisibility: true,
+			defaultMessageTimerSeconds: true,
+			allowMessageForwarding: true,
+			typingIndicatorsEnabled: true,
+		},
 	});
 
 	// findUnique + explicit throw, not findUniqueOrThrow: the latter raises a
@@ -41,6 +50,9 @@ export async function getUserById(userId: string): Promise<CurrentUserDTO> {
 		email: user.email,
 		readReceiptsEnabled: user.readReceiptsEnabled,
 		presenceVisibility: user.presenceVisibility.toLowerCase() as CurrentUserDTO["presenceVisibility"],
+		defaultMessageTimerSeconds: toMessageTimer(user.defaultMessageTimerSeconds),
+		allowMessageForwarding: user.allowMessageForwarding,
+		typingIndicatorsEnabled: user.typingIndicatorsEnabled,
 	};
 }
 
@@ -75,6 +87,13 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
 			...(input.displayName !== undefined && { displayName: input.displayName }),
 			...(input.handle !== undefined && { handle: input.handle }),
 			...(input.readReceiptsEnabled !== undefined && { readReceiptsEnabled: input.readReceiptsEnabled }),
+			...(input.allowMessageForwarding !== undefined && { allowMessageForwarding: input.allowMessageForwarding }),
+			...(input.typingIndicatorsEnabled !== undefined && {
+				typingIndicatorsEnabled: input.typingIndicatorsEnabled,
+			}),
+			...(input.defaultMessageTimerSeconds !== undefined && {
+				defaultMessageTimerSeconds: input.defaultMessageTimerSeconds,
+			}),
 			...(input.presenceVisibility !== undefined && {
 				presenceVisibility: input.presenceVisibility.toUpperCase() as "EVERYONE" | "CONTACTS" | "NOBODY",
 			}),
@@ -88,6 +107,22 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
 	// nothing — the markers are gone, and they catch up when this user next reads
 	// something, which is what keeps the toggle from being a retroactive reveal.
 	if (input.readReceiptsEnabled === false) await clearSharedReadMarkers(userId);
+
+	// Messages already on other people's screens carry the old answer in
+	// `isForwardable`; tell every conversation so "Forward" appears or goes now,
+	// not at their next reload. Best effort: the server refuses the forward anyway.
+	if (input.allowMessageForwarding !== undefined) {
+		const memberships = await prisma.conversationParticipant.findMany({
+			where: { userId },
+			select: { conversationId: true },
+		});
+		const rooms = memberships.map((membership) => membership.conversationId);
+		if (rooms.length > 0) {
+			getOptionalIO()
+				?.to(rooms)
+				.emit("user:forwarding-changed", { userId, allowMessageForwarding: input.allowMessageForwarding });
+		}
+	}
 
 	// Re-read rather than mapping the update's own result, so there is exactly one
 	// place that knows how a row becomes a CurrentUserDTO.

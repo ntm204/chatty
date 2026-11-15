@@ -58,6 +58,57 @@ The conversation background remains unchanged. The header and pin bar float over
 a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
+## Next — 24-hour stories — `planned`
+
+Researched 2026-11-15 against Telegram Stories, WhatsApp Status and Instagram Stories. It fits the
+product contract only in this shape: **people you talk to, in time order, finite, and every
+interaction lands in a conversation** — no algorithm, no public discovery, no endless scroll.
+
+- **Where**: a single row of avatars with a ring above the chat list, unseen first, then by time;
+  none when nobody has posted. Opening plays one person's stories, then the next person's, then stops.
+- **Content** (batch 1): a photo with an optional caption, or text on one of the theme colours.
+  Re-encoded server-side like attachments, with a thumbnail; only the next story is prefetched.
+  Short video (≤15 s, 720p H.264 through the existing ffmpeg) is batch 2, after measuring storage
+  and bandwidth against ADR 0016.
+- **Audience**: "People you chat with" by default, or Close friends (one private list, never shown
+  to anyone), plus a "Hide stories from" list. Blocked and restricted people are always excluded.
+  Changeable while the story is live (Telegram).
+- **Lifetime**: 24 hours, enforced the same three ways as disappearing messages (every read path,
+  a sweep over a partial index of pending stories, the client clock). Nothing is archived.
+- **Interactions**: a reply or a quick reaction becomes a direct message quoting a thumbnail of the
+  story, so it continues a conversation instead of starting a comment section. The author sees a
+  viewers list; it follows read receipts symmetrically (off: you are not listed and see no list),
+  as WhatsApp does. "Allow forwarding" off means no save or forward of your stories.
+- **Honesty**: no screenshot alerts; the same copy as protected messages.
+- **Data**: `Story`, `StoryView` (unique per viewer), `CloseFriend`, `StoryHiddenFrom`; realtime
+  `story:new` / `story:expired` to each audience member's personal room, never a broadcast.
+
+Open decisions for the owner before building: name (Stories vs Moments), whether batch 1 includes
+video, and whether lifetimes other than 24 hours (Telegram's 6/12/48) are worth a choice.
+
+## November 15 — Privacy settings: sharing and typing — `done`
+
+A Privacy section gathers every personal signal setting, each applied the moment it changes
+([ADR 0024](adr/0024-sharing-and-typing-privacy.md)). New: a symmetric typing indicator switch,
+enforced by the server, and "Allow forwarding", which the server checks at forward time so it also
+covers messages already sent. Option groups became compact segmented controls; disappearing messages
+show their time left; protected drafts no longer show their words in the sidebar; expired messages are
+cleared from the offline cache at sign-in. A chat-wide "Allow forwarding" switch covers everyone's
+messages in one conversation; both it and the personal setting update messages already on screen
+live. The expiry sweep's index now holds only pending messages.
+
+## November 14 — disappearing and protected messages — `done`
+
+Answers "people confide, then get screenshotted" without a secret mode and without promising what a
+browser cannot do ([ADR 0023](adr/0023-disappearing-and-protected-messages.md)). A conversation timer
+(24 hours / 7 days / 90 days) is changed in place, announced by name and shown in the header; an
+account default seeds chats you start and is worded as your habit. A protected text/photo message
+is withheld from recipients on the wire until each opens it once, then expires within a minute
+(at most 24 hours either way); it cannot be edited, forwarded, saved, pinned, searched or listed in the
+vault. The viewer refuses copying, hides when the window is not in front and shows the viewer's name
+across the content. Expiry is enforced on every read path, by a 10-second sweep that erases content and
+files, and on the client clock. The day labels in the thread now hand over instead of stacking.
+
 ## Current focus — everyday experience polish
 
 The built-app performance workload now covers 1,000 messages, 30 groups, normal/4× CPU,

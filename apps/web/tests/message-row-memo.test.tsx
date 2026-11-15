@@ -37,6 +37,7 @@ function makeProps(): ComponentProps<typeof MessageRows> {
 		unreadCount: 0,
 		editingMessageId: null,
 		pinnedMessageIds: [],
+		isSharingRestricted: false,
 		onStartEdit: vi.fn(),
 		onSaveEdit: vi.fn(),
 		onCancelEdit: vi.fn(),

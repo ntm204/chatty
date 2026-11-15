@@ -20,3 +20,4 @@ export { useUserSearch } from "./use-user-search";
 export { useConversationMuted } from "./use-conversation-muted";
 export { useConversationMutation } from "./use-conversation-mutation";
 export { useMuteExpiry } from "./use-mute-expiry";
+export { useExpiredCachePurge } from "./use-expired-cache-purge";

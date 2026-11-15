@@ -12,6 +12,7 @@ import type {
 	MessageSearchPageDTO,
 	SavedMessagePageDTO,
 	PinnedMessageDTO,
+	ProtectedMessageContentDTO,
 	ReactionEmoji,
 	StickerDTO,
 	ToggleReactionRequest,
@@ -45,6 +46,15 @@ export const messagesApi = {
 		return get<MessageEditDTO[]>(`/conversations/${conversationId}/messages/${messageId}/edits`);
 	},
 
+	/**
+	 * Opens a protected message — once for a recipient, as often as they like for
+	 * its author. The content lives only in the caller's memory afterwards; it is
+	 * never written to the message list or the local cache.
+	 */
+	openProtectedMessage(conversationId: string, messageId: string): Promise<ProtectedMessageContentDTO> {
+		return post<ProtectedMessageContentDTO>(`/conversations/${conversationId}/messages/${messageId}/open`, {});
+	},
+
 	hideMessage(conversationId: string, messageId: string): Promise<void> {
 		return request<void>(`/conversations/${conversationId}/messages/${messageId}/me`, { method: "DELETE" });
 	},
@@ -66,6 +76,7 @@ export const messagesApi = {
 		mentionedUserIds: string[] = [],
 		clientId?: string,
 		onProgress?: (percent: number) => void,
+		isProtected = false,
 	): Promise<MessageDTO> {
 		const path = `/conversations/${conversationId}/messages`;
 		if (attachments.length === 0) {
@@ -74,6 +85,7 @@ export const messagesApi = {
 				...(replyToId ? { replyToId } : {}),
 				...(mentionedUserIds.length > 0 ? { mentionedUserIds } : {}),
 				...(clientId ? { clientId } : {}),
+				...(isProtected ? { isProtected: true } : {}),
 			});
 		}
 
@@ -89,6 +101,7 @@ export const messagesApi = {
 		if (replyToId) body.append("replyToId", replyToId);
 		if (mentionedUserIds.length > 0) body.append("mentionedUserIds", JSON.stringify(mentionedUserIds));
 		if (clientId) body.append("clientId", clientId);
+		if (isProtected) body.append("isProtected", "true");
 
 		return uploadMessage(conversationId, body, onProgress, "The image upload was interrupted");
 	},

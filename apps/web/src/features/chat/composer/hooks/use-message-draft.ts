@@ -5,6 +5,7 @@ import { announceDraftPreview } from "../../utils/draft-preview";
 interface MessageDraft {
 	content: string;
 	replyToId: string | null;
+	isProtected?: boolean;
 }
 
 interface DraftSession {
@@ -20,13 +21,20 @@ interface UseMessageDraftOptions {
 	conversationId: string;
 	content: string;
 	replyToId: string | null;
+	isProtected?: boolean;
 	onRestore: (draft: MessageDraft) => void;
 	isPaused?: boolean;
 }
 
 function persistDraft(session: DraftSession): boolean {
 	if (session.generation !== getMessageDraftGeneration(session.userId)) return true;
-	announceDraftPreview(session.userId, session.conversationId, session.draft.content, session.draft.replyToId);
+	announceDraftPreview(
+		session.userId,
+		session.conversationId,
+		session.draft.content,
+		session.draft.replyToId,
+		session.draft.isProtected,
+	);
 	try {
 		writeMessageDraft(session.userId, session.conversationId, session.draft);
 
@@ -42,6 +50,7 @@ export function useMessageDraft({
 	conversationId,
 	content,
 	replyToId,
+	isProtected = false,
 	onRestore,
 	isPaused = false,
 }: UseMessageDraftOptions) {
@@ -94,12 +103,12 @@ export function useMessageDraft({
 		// Restoration must render before props from the previous account/thread can be saved.
 		if (!session || restoredSession !== session || isPaused) return;
 		if (session.generation !== getMessageDraftGeneration(userId)) return;
-		session.draft = { content, replyToId };
-		announceDraftPreview(userId, conversationId, content, replyToId);
+		session.draft = { content, replyToId, ...(isProtected && { isProtected }) };
+		announceDraftPreview(userId, conversationId, content, replyToId, isProtected);
 		session.timer = setTimeout(() => setHasStorageError(!persistDraft(session)), 250);
 
 		return () => clearTimeout(session.timer);
-	}, [userId, conversationId, restoredSession, content, replyToId, isPaused]);
+	}, [userId, conversationId, restoredSession, content, replyToId, isProtected, isPaused]);
 
 	function clearDraft() {
 		const session = sessionRef.current;

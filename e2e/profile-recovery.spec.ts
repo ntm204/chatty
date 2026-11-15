@@ -37,8 +37,6 @@ test("profile validation and a failed save preserve the edits and allow a delibe
 	await expect.poll(() => saveCount).toBe(1);
 	await expect(name).toBeDisabled();
 	await expect(handle).toBeDisabled();
-	await expect(dialog.getByRole("checkbox", { name: /Send read receipts/ })).toBeDisabled();
-	await expect(dialog.getByRole("radio", { name: "Everyone" })).toBeDisabled();
 	await expect(dialog.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
 	releaseSave();
 	await expect(dialog.getByRole("alert")).toBeVisible();

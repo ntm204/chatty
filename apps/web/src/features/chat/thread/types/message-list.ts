@@ -54,6 +54,8 @@ export interface MessageListProps {
 	onForwardMessage: (message: MessageDTO) => void;
 	onTogglePinMessage: (messageId: string, isPinned: boolean) => void | Promise<void>;
 	pinnedMessageIds: string[];
+	/** The chat restricts sharing; read live from the conversation (ADR 0024). */
+	isSharingRestricted?: boolean;
 	onJumpToMessage: (messageId: string) => void;
 	/** Drops the oldest page once the thread outgrows what it needs — see `MAX_RETAINED_MESSAGES`. */
 	onTrimHistory: () => void;

@@ -1,6 +1,8 @@
 import { Copy, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
+import { useAuth } from "@/hooks/use-auth";
+import { SHARING_RESTRICTED_TEXT } from "../../constants/message";
 import { useMessageSelection } from "../hooks/use-message-selection";
 import type { ThreadMessage } from "../../types/thread-message";
 import { getConversationPreview } from "../../utils";
@@ -8,6 +10,7 @@ import { getErrorMessage } from "@/utils/get-error-message";
 
 interface MessageSelectionBarProps {
 	messages: ThreadMessage[];
+	isSharingRestricted: boolean;
 	onHideMessage: (messageId: string) => void | Promise<void>;
 }
 
@@ -15,8 +18,9 @@ interface MessageSelectionBarProps {
  * The bar shown while messages are selected: how many, and what to do with
  * them — copy as text in thread order, or delete for yourself. Escape leaves.
  */
-export function MessageSelectionBar({ messages, onHideMessage }: MessageSelectionBarProps) {
+export function MessageSelectionBar({ messages, isSharingRestricted, onHideMessage }: MessageSelectionBarProps) {
 	const ids = useMessageSelection((state) => state.ids);
+	const currentUserId = useAuth((state) => state.currentUser?.id);
 	const clear = useMessageSelection((state) => state.clear);
 	const [isWorking, setIsWorking] = useState(false);
 	const [error, setError] = useState("");
@@ -33,7 +37,13 @@ export function MessageSelectionBar({ messages, onHideMessage }: MessageSelectio
 
 	async function copy() {
 		const text = picked
-			.map((message) => `${message.author?.displayName ?? ""}: ${getConversationPreview(message)}`)
+			.map((message) => {
+				// The app's own copy honours its author's choice; text selection is the user's.
+				const isRestricted =
+					isSharingRestricted || (!message.isForwardable && message.author?.id !== currentUserId);
+
+				return `${message.author?.displayName ?? ""}: ${isRestricted ? SHARING_RESTRICTED_TEXT : getConversationPreview(message)}`;
+			})
 			.join("\n");
 		await navigator.clipboard?.writeText(text);
 		clear();

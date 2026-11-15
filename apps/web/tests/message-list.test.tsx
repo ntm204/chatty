@@ -353,6 +353,7 @@ describe("MessageList", () => {
 						hasAttachment: false,
 						attachmentUrl: null,
 						isDeleted: false,
+						isProtected: false,
 					},
 				}),
 			],
@@ -376,6 +377,7 @@ describe("MessageList", () => {
 						hasAttachment: false,
 						attachmentUrl: null,
 						isDeleted: true,
+						isProtected: false,
 					},
 				}),
 			],
@@ -658,6 +660,7 @@ describe("returning to the live edge", () => {
 						hasAttachment: false,
 						attachmentUrl: null,
 						isDeleted: false,
+						isProtected: false,
 					},
 				}),
 			];

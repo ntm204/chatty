@@ -22,6 +22,7 @@ import {
 	useMessageNotifications,
 	useMessageSound,
 	useOutboxReplay,
+	useExpiredCachePurge,
 	usePresence,
 	useRestrictedUsersSync,
 	useSocketConnection,
@@ -79,6 +80,7 @@ export function ChatPage() {
 	useDocumentTitle(conversations);
 	useMessageSound(currentUser?.id ?? "", conversations, selectedConversationId);
 	useOutboxReplay({ userId: currentUser?.id, activeConversationId: selectedConversationId });
+	useExpiredCachePurge(currentUser?.id);
 
 	const messageState = useConversationMessages(
 		selectedConversationId,

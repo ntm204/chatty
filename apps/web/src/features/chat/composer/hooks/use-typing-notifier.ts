@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { getSocket } from "@/lib/socket";
 import { TYPING_IDLE_MS, TYPING_REFRESH_MS } from "../../constants/typing";
 
@@ -37,6 +38,8 @@ export function useTypingNotifier(conversationId: string): TypingNotifier {
 	}, [conversationId]);
 
 	const notifyTyping = useCallback(() => {
+		// Not sharing typing means not sending it; the server also refuses to relay it.
+		if (useAuth.getState().currentUser?.typingIndicatorsEnabled === false) return;
 		const now = Date.now();
 
 		if (now - announcedAt.current >= TYPING_REFRESH_MS) {

@@ -100,6 +100,8 @@ describe("outbox replay", () => {
 			undefined,
 			[],
 			"draft:text",
+			undefined,
+			false,
 		);
 		const imageFiles = vi.mocked(api.sendMessage).mock.calls[1]![2] ?? [];
 		expect(imageFiles).toHaveLength(1);
@@ -125,6 +127,8 @@ describe("outbox replay", () => {
 				undefined,
 				[],
 				"draft:queued",
+				undefined,
+				false,
 			),
 		);
 	});

@@ -1,7 +1,8 @@
 import type { MessageDTO, PresenceEvent, TypingEvent } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { getSocket } from "@/lib/socket";
-import { TYPING_EXPIRY_MS } from "../constants/typing";
+import { NO_TYPERS, TYPING_EXPIRY_MS } from "../constants/typing";
 import { useSocketEvent } from "./use-socket-event";
 
 /**
@@ -20,6 +21,7 @@ export function useTypingParticipants(conversationId: string | null): {
 	typingByConversation: Record<string, string[]>;
 } {
 	const [typingByConversation, setTypingByConversation] = useState<Record<string, string[]>>({});
+	const isSharingTyping = useAuth((state) => state.currentUser?.typingIndicatorsEnabled !== false);
 	const expiryTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
 	const forgetTyper = useCallback((targetConversationId: string, userId: string) => {
@@ -109,6 +111,9 @@ export function useTypingParticipants(conversationId: string | null): {
 			[forgetTyper, typingByConversation],
 		),
 	);
+
+	// Symmetric with sharing your own (ADR 0024): with yours off, nobody else's is shown either.
+	if (!isSharingTyping) return { activeUserIds: [], typingByConversation: NO_TYPERS };
 
 	return { activeUserIds: conversationId ? (typingByConversation[conversationId] ?? []) : [], typingByConversation };
 }

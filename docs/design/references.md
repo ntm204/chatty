@@ -184,3 +184,25 @@ How the three lay out a chat-list row's small parts, and the arrangement Chatty 
   right column. → Chatty: hover swaps the whole right column for ⋯; on touch ⋯ keeps its own lane so time and
   count stay readable (a long-press opens the preview).
 
+
+## Private messages — Signal, WhatsApp, Instagram, Telegram — 2026-11-14
+
+- Signal's default timer for new chats is set once in settings, so turning it on says nothing about one
+  person. → Chatty: done, and the system line names it as the starter's habit for every new chat.
+- Telegram's secret chat is a separate thread you have to invite someone into. → Chatty: not copied; the
+  timer changes in place in the same thread.
+- Instagram announces vanish mode to both sides; the change is never silent. → Chatty: done — every timer
+  change is a named system line and the header shows the timer while it applies.
+- WhatsApp view once covers one photo for one viewing, and was removed from WhatsApp Web in 2022 because a
+  browser cannot block screenshots. → Chatty: one protected message (text and/or photos), opened once, with
+  honest deterrence (no copy, hides when unfocused, viewer's name across it) instead of a blocking claim.
+- WhatsApp Advanced Chat Privacy blocks export and auto-save but states it does not stop screenshots.
+  → Chatty: protected messages cannot be forwarded, saved, pinned, searched or listed in the vault.
+
+## Privacy settings — KakaoTalk, Messenger — 2026-11-15
+
+- KakaoTalk lets you restrict what others do with your messages. → Chatty: "Allow forwarding", checked by
+  the server at forward time, covering messages already sent; copying and screenshots described honestly.
+- Messenger lets you hide activity signals. → Chatty: typing indicator and read receipts, both symmetric.
+- One-tap choices save at once instead of behind a Save button; mutually exclusive options are one compact
+  segmented track rather than a row of outlined pills.

@@ -87,7 +87,41 @@ export interface CurrentUserDTO extends UserDTO {
 	 */
 	readReceiptsEnabled: boolean;
 	presenceVisibility: PresenceVisibility;
+	/**
+	 * How long messages last in conversations you start, or null to keep them.
+	 * Applied when a conversation is created and announced there as your default,
+	 * so nobody reads it as aimed at them. See ADR 0023.
+	 */
+	defaultMessageTimerSeconds: MessageTimerSeconds | null;
+	/**
+	 * Whether other people may forward what you write. Checked when a forward
+	 * happens, so it covers messages you already sent. See ADR 0024.
+	 */
+	allowMessageForwarding: boolean;
+	/**
+	 * Whether "is typing…" is shared. **Symmetric**, like `readReceiptsEnabled`:
+	 * off stops yours reaching anyone and stops theirs being shown to you.
+	 */
+	typingIndicatorsEnabled: boolean;
 }
+
+/**
+ * The disappearing-message lifetimes on offer: 24 hours, 7 days, 90 days.
+ *
+ * A closed list rather than any number of seconds, and the database holds the
+ * same list in a check constraint — a timer nobody was shown is not a choice.
+ */
+export const MESSAGE_TIMER_SECONDS = [86_400, 604_800, 7_776_000] as const;
+export type MessageTimerSeconds = (typeof MESSAGE_TIMER_SECONDS)[number];
+
+/** A protected message lasts at most this long, opened or not. */
+export const PROTECTED_MESSAGE_LIFETIME_SECONDS = 86_400;
+
+/**
+ * Once every recipient has opened a protected message, it lasts only this much
+ * longer — enough for the opener's photo to finish loading, not enough to keep.
+ */
+export const PROTECTED_MESSAGE_OPENED_GRACE_SECONDS = 60;
 
 /**
  * A user seen through their membership of one conversation.
@@ -160,6 +194,13 @@ export interface ConversationDTO {
 	themeColor: ConversationTheme | null;
 	/** Overrides the app-wide default reaction a double-click leaves, or null for that default. */
 	quickReactionEmoji: string | null;
+	/**
+	 * Disappearing messages: each message sent while this is set expires this long
+	 * after it was sent, for everyone. Null keeps messages. See ADR 0023.
+	 */
+	messageTimerSeconds: MessageTimerSeconds | null;
+	/** Nobody may forward messages out of this conversation. Announced whenever it changes. See ADR 0024. */
+	isSharingRestricted: boolean;
 	participants: ParticipantDTO[];
 	lastMessage: MessageDTO | null;
 	/**
@@ -344,6 +385,35 @@ export interface MessageReplyDTO {
 	attachmentUrl: string | null;
 	/** True when the parent has since been deleted — quote it as a tombstone. */
 	isDeleted: boolean;
+	/**
+	 * True when the parent is a protected message. Its words and picture never
+	 * ride on a quote — for anyone, its author included — so `content` is empty
+	 * and `attachmentUrl` null.
+	 */
+	isProtected: boolean;
+}
+
+/**
+ * What a protected message says about itself without giving itself away.
+ *
+ * Present only on protected messages. Recipients receive the message with empty
+ * `content` and no `attachments`; this is what lets the cover say "Photo" or
+ * "Message" and who has already opened it. Only the author's own copies carry
+ * the content inline. See ADR 0023.
+ */
+export interface MessageProtectionDTO {
+	/** Recipients who have opened it, each at most once. Never includes the author. */
+	openedByUserIds: string[];
+	/** How many photos wait behind the cover. */
+	imageCount: number;
+	/** Whether there are words behind the cover. */
+	hasText: boolean;
+}
+
+/** What `POST .../messages/:id/open` hands the one recipient opening a protected message. */
+export interface ProtectedMessageContentDTO {
+	content: string;
+	attachments: AttachmentDTO[];
 }
 
 export interface MessageDTO {
@@ -401,6 +471,23 @@ export interface MessageDTO {
 	/** Stable ids; display names are resolved from current participants. */
 	mentionedUserIds: string[];
 	createdAt: string;
+	/**
+	 * When this message disappears for everyone, or null to keep it. Clients
+	 * remove it at this instant; the server stops returning it from then on and
+	 * announces `message:expired` once its sweep has erased it.
+	 */
+	expiresAt: string | null;
+	/** Set only on a protected message — see `MessageProtectionDTO`. */
+	protection: MessageProtectionDTO | null;
+	/**
+	 * Whether this message may be forwarded or saved out of the conversation:
+	 * false for a protected message, a system line, or when its author has
+	 * turned off `allowMessageForwarding`. A conversation's own restriction is
+	 * `ConversationDTO.isSharingRestricted` — read it too, because it changes
+	 * live while this value is frozen into the copy already held. The server
+	 * enforces both either way.
+	 */
+	isForwardable: boolean;
 	/**
 	 * When author-only edit and “delete for everyone” actions expire.
 	 *
@@ -567,6 +654,9 @@ export interface UpdateProfileRequest {
 	 */
 	readReceiptsEnabled?: boolean | undefined;
 	presenceVisibility?: PresenceVisibility | undefined;
+	defaultMessageTimerSeconds?: MessageTimerSeconds | null | undefined;
+	allowMessageForwarding?: boolean | undefined;
+	typingIndicatorsEnabled?: boolean | undefined;
 }
 
 /**
@@ -611,6 +701,16 @@ export interface SetGroupInvitePolicyRequest {
 
 export interface SetThemeRequest {
 	theme: ConversationTheme | null;
+}
+
+/** Body of `PUT /conversations/:id/sharing`. */
+export interface SetSharingRestrictionRequest {
+	isRestricted: boolean;
+}
+
+/** Body of `PUT /conversations/:id/message-timer`. Null turns disappearing messages off. */
+export interface SetMessageTimerRequest {
+	seconds: MessageTimerSeconds | null;
 }
 
 export interface SetQuickReactionRequest {
@@ -704,6 +804,11 @@ export interface SendMessageRequest {
 	replyToId?: string | undefined;
 	forwardOfMessageId?: string | undefined;
 	mentionedUserIds?: string[] | undefined;
+	/**
+	 * Sends a protected message: text and/or photos only, hidden from recipients
+	 * until each opens it once, and gone within 24 hours. See ADR 0023.
+	 */
+	isProtected?: boolean | undefined;
 	/**
 	 * The id the sender's optimistic copy is already drawn under.
 	 *
@@ -875,6 +980,8 @@ export interface ConversationUpdatedEvent {
 	avatarUrl: string | null;
 	themeColor: ConversationTheme | null;
 	quickReactionEmoji: string | null;
+	messageTimerSeconds: MessageTimerSeconds | null;
+	isSharingRestricted: boolean;
 	participants: ParticipantDTO[];
 }
 
@@ -910,6 +1017,17 @@ export interface ServerToClientEvents {
 	"bookmark:changed": (event: BookmarkChangedEvent) => void;
 	"message:new": (message: MessageDTO) => void;
 	"message:hidden": (event: { conversationId: string; messageId: string }) => void;
+	/**
+	 * A message reached its `expiresAt` and the server erased it — for everyone.
+	 * Remove it from every surface and every local copy, the way a hide removes it
+	 * for one person. Sent to the conversation room.
+	 */
+	"message:expired": (event: { conversationId: string; messageId: string }) => void;
+	/**
+	 * Someone in a conversation you share changed whether others may forward their
+	 * messages. Patch `isForwardable` on their messages already held. See ADR 0024.
+	 */
+	"user:forwarding-changed": (event: { userId: string; allowMessageForwarding: boolean }) => void;
 	/**
 	 * A message already on screen changed — its author edited it, or deleted it.
 	 *

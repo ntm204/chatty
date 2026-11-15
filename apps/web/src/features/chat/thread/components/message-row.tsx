@@ -17,6 +17,7 @@ import { DOUBLE_TAP_REACTION } from "../constants/message-row";
 import { MessageActionFeedback } from "./message-action-feedback";
 import { MessageActions } from "./message-actions";
 import { MessageBubble } from "./message-bubble";
+import { ProtectedMessageCover } from "./protected-message-cover";
 import { MessagePinBadge } from "./message-pin-badge";
 import { MessageSelectCheck } from "./message-select-check";
 import { SwipeReplyHint } from "./swipe-reply-hint";
@@ -46,7 +47,8 @@ interface MessageRowProps extends MessageRowActions {
 	participants: ParticipantDTO[];
 	themeColor: ConversationTheme | null;
 	isPinned: boolean;
-	/** Yours, and read by somebody: the bubble shows two ticks. */
+	/** The chat restricts sharing: nothing in it is forwarded or saved out. */
+	isSharingRestricted: boolean;
 }
 
 /**
@@ -71,6 +73,7 @@ export const MessageRow = memo(function MessageRow({
 	participants,
 	themeColor,
 	isPinned,
+	isSharingRestricted,
 	...actions
 }: MessageRowProps) {
 	// Bind only after React's shallow comparison has admitted this row's update.
@@ -101,6 +104,11 @@ export const MessageRow = memo(function MessageRow({
 	const deliveryState = message.deliveryState;
 	// A tombstone has nothing left for the author to change.
 	const canModify = isMine && !isDeleted && !deliveryState;
+	// Withheld from its recipients and never kept: no edit, forward, pin or bookmark.
+	const isProtected = message.protection !== null;
+	// A chat's restriction covers everyone; otherwise your own words are yours to
+	// forward and others' follow their author's choice (ADR 0024).
+	const canForward = !isSharingRestricted && (isMine ? !isProtected : message.isForwardable);
 	// A picture states its own time on the image; files and voice notes do not.
 	const hasTimeOnMedia =
 		!isDeleted &&
@@ -110,10 +118,23 @@ export const MessageRow = memo(function MessageRow({
 	const hasImages = message.attachments.length > 0;
 	// A few emoji standing alone are drawn large and bare; a reply, caption or
 	// quote makes them part of something else.
-	const jumboCount = !isDeleted && !hasImages && !message.replyTo ? countJumboEmoji(message.content) : 0;
+	const jumboCount =
+		!isDeleted && !hasImages && !message.replyTo && !isProtected ? countJumboEmoji(message.content) : 0;
 	const hasReactions = message.reactions.length > 0;
 	// One per person, so this is an emoji and not a list — see `MessageReaction`.
 	const myReaction = findMyReaction(message.reactions, currentUserId);
+
+	const reactionsFooter = hasReactions && (
+		<MessageReactions
+			reactions={message.reactions}
+			currentUserId={currentUserId}
+			users={participants}
+			isMine={isMine}
+			onToggle={onToggleReaction}
+			isDisabled={isPending}
+			onShowDetails={onShowReactions}
+		/>
+	);
 
 	const { isSelecting, isSelected, onClickCapture, start: startSelection } = useRowSelection(message.id);
 	const gestures = useMessageGestures({
@@ -201,6 +222,12 @@ export const MessageRow = memo(function MessageRow({
 							onSave={onSaveEdit}
 							onCancel={onCancelEdit}
 						/>
+					) : isProtected && !isMine ? (
+						<ProtectedMessageCover
+							message={message}
+							clusterPosition={clusterPosition}
+							footer={reactionsFooter}
+						/>
 					) : (
 						<MessageBubble
 							message={message}
@@ -210,21 +237,10 @@ export const MessageRow = memo(function MessageRow({
 							onJumpToReplyOriginal={onJumpToReplyOriginal}
 							participants={participants}
 							themeColor={themeColor}
+							isSharingRestricted={isSharingRestricted}
 							// Nothing to forward on a tombstone or a message still sending.
-							{...(!isDeleted && !deliveryState && { onForward })}
-							footer={
-								hasReactions && (
-									<MessageReactions
-										reactions={message.reactions}
-										currentUserId={currentUserId}
-										users={participants}
-										isMine={isMine}
-										onToggle={onToggleReaction}
-										isDisabled={isPending}
-										onShowDetails={onShowReactions}
-									/>
-								)
-							}
+							{...(!isDeleted && !deliveryState && canForward && { onForward })}
+							footer={reactionsFooter}
 						/>
 					)}
 				</div>
@@ -232,11 +248,13 @@ export const MessageRow = memo(function MessageRow({
 				{!isEditing && !deliveryState && !isSelecting && (
 					<MessageActions
 						isPending={isPending}
-						{...(canModify && { onEdit: onStartEdit, onDeleteForEveryone })}
+						{...(canModify && { onDeleteForEveryone, ...(!isProtected && { onEdit: onStartEdit }) })}
 						onDeleteForMe={onDeleteForMe}
 						// Both omitted on a tombstone: there is nothing left to answer or to
 						// mark, and the server refuses either write anyway.
-						{...(!isDeleted && { onReply, onToggleReaction, onForward, onTogglePin, onBookmark })}
+						{...(!isDeleted && { onReply, onToggleReaction })}
+						{...(!isDeleted && canForward && { onForward })}
+						{...(!isDeleted && !isProtected && { onTogglePin, onBookmark })}
 						onSelect={startSelection}
 						{...(hasReactions && { onShowReactions })}
 						isPinned={isPinned}
@@ -249,6 +267,7 @@ export const MessageRow = memo(function MessageRow({
 
 				<MessageMeta
 					createdAt={message.createdAt}
+					expiresAt={message.expiresAt}
 					hasTimeOnMedia={hasTimeOnMedia}
 					isMine={isMine}
 					isEdited={isEdited}

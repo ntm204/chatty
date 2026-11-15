@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 export type SettingsSection =
-	"profile" | "blocked" | "restricted" | "appearance" | "email" | "notifications" | "security" | "danger";
+	"profile" | "privacy" | "blocked" | "restricted" | "appearance" | "email" | "notifications" | "security" | "danger";
 
 /**
  * One row of the settings dialog's left-hand nav, and the heading it opens.

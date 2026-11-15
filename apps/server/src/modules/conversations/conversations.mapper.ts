@@ -6,6 +6,7 @@
  */
 import type {
 	ConversationDTO,
+	MessageTimerSeconds,
 	ConversationRole,
 	ConversationTheme,
 	ConversationUpdatedEvent,
@@ -20,6 +21,7 @@ import type {
 	ConversationTheme as DbConversationTheme,
 } from "@prisma/client";
 import { buildConversationAvatarUrl } from "../../lib/conversation-avatar-storage.js";
+import { unexpiredMessageWhere } from "../messages/messages.lifecycle.js";
 import { messageSelect, toMessageDTO, type MessageRow } from "../messages/messages.mapper.js";
 import { toUserDTO, userSelect, type UserRow } from "../users/users.mapper.js";
 
@@ -60,7 +62,10 @@ export function conversationIncludeForUser(userId: string) {
 		pinnedMessages: conversationInclude.pinnedMessages,
 		messages: {
 			...conversationInclude.messages,
-			where: { hiddenFor: { none: { userId } } },
+			// The newest message that still exists: a sidebar preview of an expired
+			// message is the message, outliving its promise in the one place
+			// everybody looks first.
+			where: { hiddenFor: { none: { userId } }, ...unexpiredMessageWhere() },
 		},
 	} satisfies Prisma.ConversationInclude;
 }
@@ -73,6 +78,8 @@ export interface ConversationRow {
 	avatarUpdatedAt: Date | null;
 	themeColor: DbConversationTheme | null;
 	quickReactionEmoji: string | null;
+	messageTimerSeconds: number | null;
+	restrictSharing: boolean;
 	updatedAt: Date;
 	participants: {
 		lastSharedReadMessageId: string | null;
@@ -125,6 +132,14 @@ export const themeByWireValue: Record<ConversationTheme, DbConversationTheme> = 
 };
 
 /**
+ * Narrows the stored integer to the wire's preset union. The database's check
+ * constraint already admits only these values; this is the type's half.
+ */
+export function toMessageTimer(seconds: number | null): MessageTimerSeconds | null {
+	return seconds === null ? null : (seconds as MessageTimerSeconds);
+}
+
+/**
  * Shared by every mapper here, so a participant looks the same everywhere one appears.
  *
  * `lastReadMessageId` on the wire is fed by `lastSharedReadMessageId` in the
@@ -156,7 +171,7 @@ export function toConversationDTO(row: ConversationRow, unreadCount: number, vie
 	// Mapped by the messages module rather than here, so a message carries the
 	// same fields in the sidebar as it does in the conversation — an attachment
 	// on the newest message is the first thing that would have diverged.
-	const lastMessage: MessageDTO | null = latest ? toMessageDTO(latest) : null;
+	const lastMessage: MessageDTO | null = latest ? toMessageDTO(latest, viewerId) : null;
 
 	return {
 		id: row.id,
@@ -166,6 +181,8 @@ export function toConversationDTO(row: ConversationRow, unreadCount: number, vie
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
 		themeColor: row.themeColor ? themeByDatabaseValue[row.themeColor] : null,
 		quickReactionEmoji: row.quickReactionEmoji,
+		messageTimerSeconds: toMessageTimer(row.messageTimerSeconds),
+		isSharingRestricted: row.restrictSharing,
 		participants,
 		lastMessage,
 		unreadCount,
@@ -198,6 +215,8 @@ export function toConversationUpdatedEvent(row: ConversationRow): ConversationUp
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
 		themeColor: row.themeColor ? themeByDatabaseValue[row.themeColor] : null,
 		quickReactionEmoji: row.quickReactionEmoji,
+		messageTimerSeconds: toMessageTimer(row.messageTimerSeconds),
+		isSharingRestricted: row.restrictSharing,
 		participants: mapParticipants(row.participants),
 	};
 }

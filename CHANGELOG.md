@@ -8,6 +8,23 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- A chat can turn forwarding off for everyone in it (details → Privacy & support), announced by name;
+  forward and photo save disappear on screen immediately, and the server refuses the forward.
+- Faster: the expiry sweep uses a partial index of pending messages only; every "time left" label shares one
+  clock instead of one timer per message.
+- Settings → Privacy (ADR 0024): read receipts, a typing indicator switch (symmetric — off hides yours and
+  others'), "Allow forwarding" (off stops others forwarding your messages, including ones already sent;
+  enforced by the server), last seen and the new-chat disappearing timer. Choices apply at once.
+- Disappearing-message polish: option groups are compact segmented controls (Off · 24h · 7d · 90d); each
+  disappearing message shows its time left on hover; a draft about to be protected shows "Protected message"
+  in the sidebar; expired messages are cleared from the offline cache at sign-in.
+- Disappearing and protected messages (ADR 0023). A chat can make new messages disappear after 24 hours,
+  7 days or 90 days — changed in place, announced to everyone by name, shown in the header. An account
+  default applies to chats you start and is stated as your habit ("Minh uses this for new chats"). A single
+  message can be sent protected: recipients get a cover and the server withholds the words until each opens
+  it once, in a viewer that blocks copying, hides when the window is not in front and shows the viewer's
+  name across it; it cannot be edited, forwarded, saved, pinned or searched, and it is gone within 24 hours.
+  Chatty does not claim to stop screenshots, and says so.
 - Fix: day labels in the thread no longer stack on top of each other while scrolling, and the "resumed at"
   time fades out before it reaches the pinned "Today" label instead of showing through it.
 - Socket frames of 512 B and more are compressed (`permessage-deflate`, no context takeover): a new

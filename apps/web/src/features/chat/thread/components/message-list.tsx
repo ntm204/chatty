@@ -49,6 +49,7 @@ export function MessageList({
 	onForwardMessage,
 	onTogglePinMessage,
 	pinnedMessageIds,
+	isSharingRestricted = false,
 	onJumpToMessage,
 	onTrimHistory,
 	requestEditLast,
@@ -214,6 +215,7 @@ export function MessageList({
 								unreadCount={initialUnreadCount}
 								editingMessageId={editingMessageId}
 								pinnedMessageIds={pinnedMessageIds}
+								isSharingRestricted={isSharingRestricted}
 								onStartEdit={startEdit}
 								onSaveEdit={handleSaveEdit}
 								onCancelEdit={cancelEdit}

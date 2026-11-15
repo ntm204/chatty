@@ -23,6 +23,12 @@ export const sendMessageSchema = z.object({
 	// A device-generated idempotency key. The service scopes it to the author;
 	// the length bound also caps the unique-index key stored by PostgreSQL.
 	clientId: z.string().min(1).max(64).optional(),
+	// Multipart carries every field as a string, so "true" has to become a
+	// boolean here for an image send to be protected the same way a text one is.
+	isProtected: z.preprocess(
+		(value) => (value === "true" ? true : value === "false" ? false : value),
+		z.boolean().optional(),
+	),
 	mentionedUserIds: z.preprocess(
 		(value) => {
 			if (typeof value !== "string") return value;

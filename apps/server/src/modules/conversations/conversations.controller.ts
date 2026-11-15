@@ -11,6 +11,8 @@ import {
 	pinConversationSchema,
 	renameConversationSchema,
 	setInvitePolicySchema,
+	setMessageTimerSchema,
+	setSharingRestrictionSchema,
 	setNicknameSchema,
 	setParticipantRoleSchema,
 	setQuickReactionSchema,
@@ -186,4 +188,24 @@ export async function renameConversationController(req: Request, res: Response):
 export async function searchConversationsController(req: Request, res: Response): Promise<void> {
 	const query = searchConversationsQuerySchema.parse(req.query);
 	res.status(200).json(await conversationsService.searchConversationsForUser(req.userId!, query));
+}
+
+export async function setMessageTimerController(req: Request, res: Response): Promise<void> {
+	const input = setMessageTimerSchema.parse(req.body);
+	const conversation = await conversationsService.setConversationMessageTimer(
+		req.userId!,
+		req.params.conversationId as string,
+		input,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function setSharingRestrictionController(req: Request, res: Response): Promise<void> {
+	const input = setSharingRestrictionSchema.parse(req.body);
+	const conversation = await conversationsService.setConversationSharingRestriction(
+		req.userId!,
+		req.params.conversationId as string,
+		input,
+	);
+	res.status(200).json(conversation);
 }

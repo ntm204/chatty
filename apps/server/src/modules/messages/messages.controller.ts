@@ -71,6 +71,12 @@ export async function sendMessageController(req: Request, res: Response): Promis
 	if (input.forwardOfMessageId && (content || images.length > 0 || file || voice || isSticker)) {
 		throw new ValidationError("A forwarded message is sent on its own");
 	}
+	// Words and photos are what people regret sharing; a file is a download and a
+	// voice note a recording, and covering either would promise more than the
+	// cover can keep. Forwards and stickers are someone else's content or a mascot.
+	if (input.isProtected && (file || voice || isSticker || input.forwardOfMessageId)) {
+		throw new ValidationError("Only text and photos can be sent as a protected message");
+	}
 
 	const metricKind: MessageMetricKind = voice
 		? "voice"
@@ -96,6 +102,7 @@ export async function sendMessageController(req: Request, res: Response): Promis
 			...(input.forwardOfMessageId ? { forwardOfMessageId: input.forwardOfMessageId } : {}),
 			...(input.mentionedUserIds ? { mentionedUserIds: input.mentionedUserIds } : {}),
 			...(input.clientId ? { clientId: input.clientId } : {}),
+			...(input.isProtected ? { isProtected: true } : {}),
 			...(images.length > 0 ? { attachments: images.map((image) => image.buffer) } : {}),
 			...(file ? { file: { buffer: file.buffer, fileName: file.originalname } } : {}),
 			...(voice ? { voice: voice.buffer } : {}),
@@ -222,4 +229,18 @@ export async function unpinMessageController(req: Request, res: Response): Promi
 		false,
 	);
 	res.status(200).json(pinnedMessages);
+}
+
+/**
+ * 200 with the content, for the one recipient opening it — never cached. See
+ * `openProtectedMessage` for the once-only rule.
+ */
+export async function openProtectedMessageController(req: Request, res: Response): Promise<void> {
+	const content = await messagesService.openProtectedMessage(
+		req.userId!,
+		req.params.conversationId as string,
+		req.params.messageId as string,
+	);
+	res.setHeader("Cache-Control", "no-store");
+	res.status(200).json(content);
 }

@@ -100,12 +100,14 @@ export function useBookmarkedMessages(currentUserId: string) {
 			[refresh],
 		),
 	);
-	useSocketEvent("message:hidden", (event) => {
+	const removeResult = (event: { messageId: string }) => {
 		setResults((current) =>
 			current.filter((row) => row.message.id !== event.messageId && row.message.replyTo?.id !== event.messageId),
 		);
 		refresh();
-	});
+	};
+	useSocketEvent("message:hidden", removeResult);
+	useSocketEvent("message:expired", removeResult);
 	useSocketEvent("conversation:left", reload);
 	useSocketEvent("bookmark:changed", refresh);
 

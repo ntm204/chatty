@@ -10,11 +10,29 @@ import { buildAttachmentUrls } from "../../lib/attachment-storage.js";
 import { NotFoundError } from "../../lib/errors.js";
 import { prisma } from "../../lib/prisma.js";
 import { assertParticipant } from "../conversations/conversations.service.js";
+import { unexpiredMessageWhere } from "../messages/messages.lifecycle.js";
 import { messageSelect, toMessageDTO } from "../messages/messages.mapper.js";
 import { toUserDTO, userSelect } from "../users/users.mapper.js";
 import type { ListLinksQuery, ListMediaQuery, ListSavedQuery } from "./vault.schema.js";
 
 const KIND_TO_COLUMN = { image: "IMAGE", file: "FILE", audio: "AUDIO" } as const;
+
+/**
+ * Whether the message behind a vault row may be listed: not protected, not expired.
+ *
+ * A protected message's photos are withheld from everyone until each recipient
+ * opens it, and the vault shows the whole conversation's media to everyone — so
+ * they never appear here at all. An expired message no longer exists, whether or
+ * not the sweep has erased its files yet. See ADR 0023.
+ */
+function listableMessage(messageIdColumn: Prisma.Sql, now: Date): Prisma.Sql {
+	return Prisma.sql`EXISTS (
+		SELECT 1 FROM "Message" listed
+		WHERE listed.id = ${messageIdColumn}
+			AND NOT listed."isProtected"
+			AND (listed."expiresAt" IS NULL OR listed."expiresAt" > ${now})
+	)`;
+}
 
 export async function listConversationMedia(
 	userId: string,
@@ -43,6 +61,7 @@ export async function listConversationMedia(
 				SELECT 1 FROM "MessageHiddenFor" hidden
 				WHERE hidden."messageId" = attachment."messageId" AND hidden."userId" = ${userId}
 			)
+			AND ${listableMessage(Prisma.sql`attachment."messageId"`, new Date())}
 			${before ? Prisma.sql`AND (attachment."createdAt", attachment.id) < (${before.createdAt}, ${before.id})` : Prisma.empty}
 		ORDER BY attachment."createdAt" DESC, attachment.id DESC
 		LIMIT ${query.limit + 1}
@@ -119,7 +138,12 @@ export async function listConversationLinks(
 	const links = await prisma.messageLink.findMany({
 		where: {
 			conversationId,
-			message: { hiddenFor: { none: { userId } }, deletedAt: null },
+			message: {
+				hiddenFor: { none: { userId } },
+				deletedAt: null,
+				isProtected: false,
+				...unexpiredMessageWhere(),
+			},
 		},
 		orderBy: [{ createdAt: "desc" }, { id: "desc" }],
 		take: query.limit + 1,
@@ -153,6 +177,7 @@ export async function listSavedMessages(userId: string, query: ListSavedQuery): 
 	const messageFilter = {
 		deletedAt: null,
 		hiddenFor: { none: { userId } },
+		...unexpiredMessageWhere(),
 		conversation: { participants: { some: { userId } } },
 		...(query.conversationId && { conversationId: query.conversationId }),
 	};
@@ -186,7 +211,7 @@ export async function listSavedMessages(userId: string, query: ListSavedQuery): 
 		},
 	});
 	const results: MessageSearchResultDTO[] = stars.slice(0, query.limit).map(({ message }) => ({
-		message: toMessageDTO(message),
+		message: toMessageDTO(message, userId),
 		conversation: {
 			id: message.conversation.id,
 			isGroup: message.conversation.isGroup,
@@ -219,6 +244,7 @@ export async function getConversationVaultSummary(
 	conversationId: string,
 ): Promise<ConversationVaultSummaryDTO> {
 	await assertParticipant(userId, conversationId);
+	const now = new Date();
 	const rows = await prisma.$queryRaw<ConversationVaultSummaryDTO[]>`
 		SELECT
 			(
@@ -229,6 +255,7 @@ export async function getConversationVaultSummary(
 						SELECT 1 FROM "MessageHiddenFor" hidden
 						WHERE hidden."messageId" = attachment."messageId" AND hidden."userId" = ${userId}
 					)
+					AND ${listableMessage(Prisma.sql`attachment."messageId"`, now)}
 			) AS media,
 			(
 				SELECT COUNT(*)::int FROM "Attachment" attachment
@@ -238,6 +265,7 @@ export async function getConversationVaultSummary(
 						SELECT 1 FROM "MessageHiddenFor" hidden
 						WHERE hidden."messageId" = attachment."messageId" AND hidden."userId" = ${userId}
 					)
+					AND ${listableMessage(Prisma.sql`attachment."messageId"`, now)}
 			) AS files,
 			(
 				SELECT COUNT(*)::int FROM "Attachment" attachment
@@ -247,6 +275,7 @@ export async function getConversationVaultSummary(
 						SELECT 1 FROM "MessageHiddenFor" hidden
 						WHERE hidden."messageId" = attachment."messageId" AND hidden."userId" = ${userId}
 					)
+					AND ${listableMessage(Prisma.sql`attachment."messageId"`, now)}
 			) AS voice,
 			(
 				SELECT COUNT(*)::int FROM "MessageLink" link
@@ -257,6 +286,7 @@ export async function getConversationVaultSummary(
 						SELECT 1 FROM "MessageHiddenFor" hidden
 						WHERE hidden."messageId" = link."messageId" AND hidden."userId" = ${userId}
 					)
+					AND ${listableMessage(Prisma.sql`link."messageId"`, now)}
 			) AS links,
 			(
 				SELECT COUNT(*)::int FROM "MessageStar" star
@@ -268,6 +298,7 @@ export async function getConversationVaultSummary(
 						SELECT 1 FROM "MessageHiddenFor" hidden
 						WHERE hidden."messageId" = star."messageId" AND hidden."userId" = ${userId}
 					)
+					AND ${listableMessage(Prisma.sql`star."messageId"`, now)}
 			) AS saved
 	`;
 

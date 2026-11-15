@@ -1,6 +1,6 @@
 import type { ConversationDTO, MessageDTO } from "@chatty/shared-types";
 import { useCallback, useEffect, useRef } from "react";
-import { ATTACHMENT_PREVIEW_TEXT } from "../constants/message";
+import { ATTACHMENT_PREVIEW_TEXT, PROTECTED_MESSAGE_TEXT } from "../constants/message";
 import { NOTIFICATION_TAG_PREFIX } from "../constants/notifications";
 import { createNotificationTabCoordinator } from "../utils/notification-tab-coordinator";
 import { useMessageAlertPolicy } from "./use-message-alert-policy";
@@ -106,9 +106,11 @@ export function useMessageNotifications(
 						const { isMessagePreviewEnabled } = useNotificationSetting.getState();
 						try {
 							return new Notification(isMessagePreviewEnabled ? author.displayName : "Chatty", {
-								body: isMessagePreviewEnabled
-									? message.content || ATTACHMENT_PREVIEW_TEXT
-									: "New message",
+								body: !isMessagePreviewEnabled
+									? "New message"
+									: message.protection
+										? PROTECTED_MESSAGE_TEXT
+										: message.content || ATTACHMENT_PREVIEW_TEXT,
 								tag: `${NOTIFICATION_TAG_PREFIX}${message.conversationId}`,
 							});
 						} catch {

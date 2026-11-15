@@ -53,6 +53,11 @@ async function findMatchingMessageIds(currentUserId: string, query: SearchMessag
 			-- "An added Binh" is the log of something that happened, not something
 			-- anyone said. Searching your messages should not surface it.
 				AND m."kind" = 'USER'
+				-- A protected message's words are withheld from its recipients, and a
+				-- match — even one that only returns the cover — would tell them what
+				-- it says. Its author does not need search to find a 24-hour message.
+				AND NOT m."isProtected"
+				AND (m."expiresAt" IS NULL OR m."expiresAt" > ${new Date()})
 				AND NOT EXISTS (
 					SELECT 1 FROM "MessageHiddenFor" h
 					WHERE h."messageId" = m."id" AND h."userId" = ${currentUserId}
@@ -107,7 +112,7 @@ export async function searchMessages(currentUserId: string, query: SearchMessage
 	});
 
 	const results: MessageSearchResultDTO[] = messages.map((message) => ({
-		message: toMessageDTO(message),
+		message: toMessageDTO(message, currentUserId),
 		conversation: {
 			id: message.conversation.id,
 			isGroup: message.conversation.isGroup,

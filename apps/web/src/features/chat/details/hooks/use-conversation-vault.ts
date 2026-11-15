@@ -84,6 +84,9 @@ export function useConversationVault(conversationId: string, activeTab: VaultTab
 	useSocketEvent("message:hidden", (event) => {
 		if (event.conversationId === conversationId) refresh(event.messageId);
 	});
+	useSocketEvent("message:expired", (event) => {
+		if (event.conversationId === conversationId) refresh(event.messageId);
+	});
 	useSocketEvent("bookmark:changed", (event) => {
 		if (event.conversationId === conversationId) setRevision((value) => value + 1);
 	});
