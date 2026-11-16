@@ -1,7 +1,9 @@
+import type { NoteMusicSearchDTO } from "@chatty/shared-types";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import {
 	createStorySchema,
+	noteMusicQuerySchema,
 	replyToStorySchema,
 	setStoryAudienceSchema,
 	setStoryPeopleSchema,
@@ -31,6 +33,13 @@ export async function createStoryController(req: Request, res: Response): Promis
 		video ? { kind: "video", buffer: video.buffer } : photo ? { kind: "photo", buffer: photo.buffer } : undefined,
 	);
 	res.status(201).json(story);
+}
+
+export async function searchNoteMusicController(req: Request, res: Response): Promise<void> {
+	const { q } = noteMusicQuerySchema.parse(req.query);
+	const tracks = await storiesService.searchNoteMusic(q);
+	const body: NoteMusicSearchDTO = { tracks };
+	res.status(200).json(body);
 }
 
 export async function deleteStoryController(req: Request, res: Response): Promise<void> {

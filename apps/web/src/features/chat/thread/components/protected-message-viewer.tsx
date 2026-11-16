@@ -36,7 +36,7 @@ export function ProtectedMessageViewer({ content, viewerLabel, isOneTime, onClos
 
 	return (
 		<div
-			className="protected-viewer fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4"
+			className="protected-viewer backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4 backdrop-blur-xs"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -47,7 +47,7 @@ export function ProtectedMessageViewer({ content, viewerLabel, isOneTime, onClos
 				aria-modal="true"
 				aria-label="Protected message"
 				tabIndex={-1}
-				className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="relative flex shrink-0 items-center gap-2 border-b border-rule px-4 py-3">
 					<Lock aria-hidden="true" className="size-4 text-ink-soft" />

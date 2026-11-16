@@ -1140,15 +1140,35 @@ export interface StoryMediaDTO {
 	durationMs: number | null;
 }
 
+/**
+ * A song on a note: a track from Apple's catalogue with its 30-second preview
+ * (ADR 0026). Chosen by id; the server looks the rest up, so a note can only
+ * ever point a viewer's browser at Apple's own preview and artwork hosts.
+ */
+export interface NoteMusicDTO {
+	trackId: string;
+	title: string;
+	artist: string;
+	artworkUrl: string;
+	previewUrl: string;
+}
+
+/** `GET /stories/music?q=` — songs matching `q`, or what is popular in Vietnam when `q` is empty. */
+export interface NoteMusicSearchDTO {
+	tracks: NoteMusicDTO[];
+}
+
 export interface StoryDTO {
 	id: string;
 	author: UserDTO;
 	kind: StoryKind;
 	/** The caption of a photo, or the whole of a text story. */
 	text: string;
-	/** The colour behind a text story; null on a photo. */
+	/** The colour behind a text story from an older client; null on notes and photos. */
 	background: ConversationTheme | null;
 	media: StoryMediaDTO | null;
+	/** The song on a note, or null. */
+	music: NoteMusicDTO | null;
 	createdAt: string;
 	expiresAt: string;
 	/** Whether the person asking has already seen it. */

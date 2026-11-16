@@ -48,11 +48,7 @@ export function ConversationMessageTimerControl({
 				isDisabled={!canChange}
 				labelledBy="conversation-message-timer-label"
 			/>
-			<p className="note text-ink-faint">
-				{canChange
-					? "For new messages, for everyone. Everyone sees who changes it."
-					: "For new messages, for everyone. Only admins can change it."}
-			</p>
+			{!canChange && <p className="note text-ink-faint">Only admins can change this.</p>}
 			{error && (
 				<p role="alert" className="note text-signal">
 					{error}

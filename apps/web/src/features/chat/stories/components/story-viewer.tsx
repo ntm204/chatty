@@ -101,7 +101,7 @@ export function StoryViewer({
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
-				aria-label={`Stories from ${story.author.displayName}`}
+				aria-label={`Notes from ${story.author.displayName}`}
 				tabIndex={-1}
 				className="relative h-full w-full overflow-hidden outline-none sm:h-[min(860px,calc(100%-32px))] sm:max-w-[420px] sm:rounded-panel sm:ring-1 sm:ring-on-media/10"
 			>
@@ -124,12 +124,12 @@ export function StoryViewer({
 					<div className="flex items-center gap-2.5 text-on-media">
 						<Avatar user={story.author} size="sm" />
 						<span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-							{isMine ? "Your story" : story.author.displayName}
+							{isMine ? "Your note" : story.author.displayName}
 							<span className="meta ml-2 font-normal text-on-media/75">
 								{formatRelativeTime(story.createdAt)}
 							</span>
 						</span>
-						{story.kind === "video" && (
+						{(story.kind === "video" || story.music) && (
 							<Button
 								variant="ghost"
 								onClick={() => setIsMuted((current) => !current)}
@@ -142,7 +142,7 @@ export function StoryViewer({
 						<Button
 							variant="ghost"
 							onClick={onClose}
-							aria-label="Close stories"
+							aria-label="Close notes"
 							className="size-8 p-0 text-on-media hover:bg-on-media/15 hover:text-on-media"
 						>
 							<X className="size-4" />
@@ -163,23 +163,23 @@ export function StoryViewer({
 				>
 					<Button
 						variant="ghost"
-						aria-label="Previous story"
+						aria-label="Previous note"
 						onClick={(event) => {
 							if (event.detail === 0 || isTap()) goPrevious();
 						}}
 						className="h-full w-1/3 rounded-none p-0 hover:bg-transparent focus-visible:bg-on-media/10"
 					>
-						<span className="sr-only">Previous story</span>
+						<span className="sr-only">Previous note</span>
 					</Button>
 					<Button
 						variant="ghost"
-						aria-label="Next story"
+						aria-label="Next note"
 						onClick={(event) => {
 							if (event.detail === 0 || isTap()) goNext();
 						}}
 						className="h-full flex-1 rounded-none p-0 hover:bg-transparent focus-visible:bg-on-media/10"
 					>
-						<span className="sr-only">Next story</span>
+						<span className="sr-only">Next note</span>
 					</Button>
 				</div>
 

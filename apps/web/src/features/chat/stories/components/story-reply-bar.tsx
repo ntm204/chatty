@@ -66,7 +66,7 @@ export function StoryReplyBar({ story, onFocusChange }: StoryReplyBarProps) {
 					onBlur={() => onFocusChange(false)}
 					maxLength={4000}
 					placeholder={`Reply to ${story.author.displayName}`}
-					aria-label="Reply to story"
+					aria-label="Reply to note"
 					className="min-w-0 flex-1 rounded-full border border-on-media/40 bg-transparent px-4 py-2 text-sm text-on-media outline-none placeholder:text-on-media/60 focus:border-on-media"
 				/>
 				<Button

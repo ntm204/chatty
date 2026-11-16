@@ -57,14 +57,14 @@ export function ForwardMessagePanel({ message, currentUserId, onClose }: Forward
 	}
 
 	return (
-		<div className="absolute inset-0 z-40 flex items-center justify-center bg-scrim/20 p-4 dark:bg-scrim/50">
+		<div className="backdrop-fade absolute inset-0 z-40 flex items-center justify-center bg-scrim/20 p-4 backdrop-blur-xs dark:bg-scrim/50">
 			<div
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-label="Forward message"
 				tabIndex={-1}
-				className="flex h-[min(32rem,80dvh)] w-full max-w-sm flex-col overflow-hidden rounded-bubble border border-rule bg-paper-raised shadow-lift"
+				className="dialog-enter flex h-[min(32rem,80dvh)] w-full max-w-sm flex-col overflow-hidden rounded-bubble border border-rule bg-paper-raised shadow-lift"
 			>
 				<div className="flex items-center gap-3 border-b border-rule px-4 py-3">
 					<Forward className="size-4 text-ink-faint" />

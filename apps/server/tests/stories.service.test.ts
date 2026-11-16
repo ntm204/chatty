@@ -1,8 +1,9 @@
 import { rm, utimes } from "node:fs/promises";
 import sharp from "sharp";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findAttachmentPath } from "../src/lib/attachment-storage.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../src/lib/errors.js";
+import { clearMusicCatalogCache } from "../src/lib/music-catalog.js";
 import { sweepOrphanedAttachments } from "../src/lib/orphaned-uploads.js";
 import { prisma } from "../src/lib/prisma.js";
 import { createConversation } from "../src/modules/conversations/conversations.service.js";
@@ -16,6 +17,7 @@ import {
 	getStoryMediaFile,
 	listStoryViewers,
 	replyToStory,
+	searchNoteMusic,
 	setCloseFriends,
 	setStoryAudience,
 	setStoryHiddenFrom,
@@ -75,9 +77,9 @@ describe("posting a story", () => {
 		await expect(createStory(minh, { audience: "contacts", durationHours: 24 })).rejects.toBeInstanceOf(
 			ValidationError,
 		);
-		await expect(createStory(minh, { text: "hi", audience: "contacts", durationHours: 24 })).rejects.toThrow(
-			"A text story needs a background colour",
-		);
+		// A note needs no colour any more: it is drawn in a message bubble.
+		const plain = await createStory(minh, { text: "hi", audience: "contacts", durationHours: 24 });
+		expect(plain).toMatchObject({ kind: "text", text: "hi", background: null, music: null });
 
 		const story = await createStory(minh, text("Morning!"));
 		expect(story).toMatchObject({ kind: "text", text: "Morning!", background: "iris", audience: "contacts" });
@@ -105,6 +107,95 @@ describe("posting a story", () => {
 		expect(rooms).toEqual(expect.arrayContaining([`user:${minh}`, `user:${an}`]));
 		expect(rooms).not.toContain(`user:${binh}`);
 		expect(rooms).not.toContain(`user:${chi}`);
+	});
+});
+
+/** One catalogue song as Apple's lookup returns it. */
+function catalogSong(id: number, overrides: Record<string, unknown> = {}) {
+	return {
+		kind: "song",
+		trackId: id,
+		trackName: `Song ${id}`,
+		artistName: "Sơn Tùng M-TP",
+		artworkUrl100: `https://is1-ssl.mzstatic.com/image/thumb/${id}/100x100bb.jpg`,
+		previewUrl: `https://audio-ssl.itunes.apple.com/itunes-assets/${id}.m4a`,
+		...overrides,
+	};
+}
+
+function stubCatalog(handler: (url: string) => unknown) {
+	return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+		const body = handler(String(input));
+
+		return new Response(JSON.stringify(body), { status: body === null ? 500 : 200 });
+	});
+}
+
+describe("a note's song", () => {
+	beforeEach(() => clearMusicCatalogCache());
+	afterEach(() => vi.restoreAllMocks());
+
+	it("is looked up by id and stored, so viewers get Apple's preview — never a URL the poster typed", async () => {
+		const { minh, an } = await people();
+		const fetch = stubCatalog(() => ({ results: [catalogSong(42)] }));
+
+		const note = await createStory(minh, {
+			text: "",
+			musicTrackId: "42",
+			audience: "contacts",
+			durationHours: 24,
+		});
+		expect(fetch.mock.calls[0]?.[0]).toContain("lookup?id=42");
+		expect(note.music).toEqual({
+			trackId: "42",
+			title: "Song 42",
+			artist: "Sơn Tùng M-TP",
+			artworkUrl: "https://is1-ssl.mzstatic.com/image/thumb/42/200x200bb.jpg",
+			previewUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/42.m4a",
+		});
+		expect((await getStoryFeed(an)).authors[0]?.stories[0]?.music?.title).toBe("Song 42");
+	});
+
+	it("refuses a song that is missing, off Apple's hosts, or on a photo — and stores nothing", async () => {
+		const { minh } = await people();
+		stubCatalog((url) =>
+			url.includes("id=7")
+				? { results: [catalogSong(7, { previewUrl: "https://evil.example/track.m4a" })] }
+				: { results: [] },
+		);
+		const note = (musicTrackId: string) => ({
+			musicTrackId,
+			audience: "contacts" as const,
+			durationHours: 24 as const,
+		});
+
+		await expect(createStory(minh, note("1"))).rejects.toThrow("That song is not available");
+		await expect(createStory(minh, note("7"))).rejects.toThrow("That song is not available");
+		await expect(
+			createStory(minh, { ...note("1"), text: "x" }, { kind: "photo", buffer: await image() }),
+		).rejects.toThrow("Only a note can carry a song");
+		expect(await prisma.story.count()).toBe(0);
+		expect(() => createStorySchema.parse({ musicTrackId: "https://evil.example" })).toThrow();
+	});
+
+	it("searches by words, shows the Vietnamese chart with none, caches both, and says when Apple is down", async () => {
+		const fetch = stubCatalog((url) =>
+			url.includes("marketingtools")
+				? { feed: { results: [{ id: "5" }, { id: "6" }] } }
+				: url.includes("lookup")
+					? { results: [catalogSong(5), catalogSong(6), { kind: "podcast", trackId: 9 }] }
+					: { results: [catalogSong(1)] },
+		);
+
+		expect((await searchNoteMusic("")).map((track) => track.trackId)).toEqual(["5", "6"]);
+		expect((await searchNoteMusic("  Son Tung ")).map((track) => track.trackId)).toEqual(["1"]);
+		await searchNoteMusic("son tung");
+		expect(fetch).toHaveBeenCalledTimes(3);
+		expect(String(fetch.mock.calls[2]?.[0])).toContain("term=son%20tung");
+
+		clearMusicCatalogCache();
+		fetch.mockRejectedValue(new TypeError("offline"));
+		await expect(searchNoteMusic("anything")).rejects.toMatchObject({ statusCode: 503 });
 	});
 });
 

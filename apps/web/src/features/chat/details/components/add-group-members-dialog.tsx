@@ -25,7 +25,7 @@ export function AddGroupMembersDialog({
 	onClose,
 }: AddGroupMembersDialogProps) {
 	const close = useCallback(() => onClose(), [onClose]);
-	const ref = useDialog<HTMLDivElement>(close);
+	const ref = useDialog<HTMLDivElement>(close, { closeOnEscape: false });
 	const {
 		query,
 		setQuery,
@@ -96,7 +96,7 @@ export function AddGroupMembersDialog({
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4 backdrop-blur-xs"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -107,7 +107,7 @@ export function AddGroupMembersDialog({
 				aria-modal="true"
 				aria-label="Add people"
 				tabIndex={-1}
-				className="flex h-[75dvh] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex h-[75dvh] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="relative flex shrink-0 items-center justify-center border-b border-rule p-4">
 					<h2 className="text-base font-semibold">Add people</h2>

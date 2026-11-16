@@ -67,7 +67,7 @@ export function GlobalMessageSearch({
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 backdrop-blur-xs"
 			onPointerDown={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -78,7 +78,7 @@ export function GlobalMessageSearch({
 				aria-modal="true"
 				aria-label="Search all messages"
 				tabIndex={-1}
-				className="flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<header className="flex shrink-0 items-center gap-3 border-b border-rule px-4 py-3 focus-within:bg-paper-sunken/50">
 					<Search className="size-4 shrink-0 text-ink-faint" />

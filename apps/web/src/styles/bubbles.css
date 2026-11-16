@@ -140,3 +140,23 @@
 		transform: translateY(28px) scale(0.9);
 	}
 }
+
+/* ── Notes wear the message bubble (note-bubble.tsx) ──
+ * Centred over a face, so the tail's room is split across both sides instead of
+ * pushing the bubble off-centre; the small one in the stories row gets a smaller tail. */
+.note-bubble.chat-bubble-mine,
+.note-bubble.chat-bubble-theirs {
+	margin-inline: 0;
+}
+.note-bubble-sm::after {
+	width: 7px;
+	height: 11px;
+	-webkit-mask-size: 100% 100%;
+	mask-size: 100% 100%;
+}
+.note-bubble-sm.chat-bubble-mine::after {
+	right: -5px;
+}
+.note-bubble-sm.chat-bubble-theirs::after {
+	left: -5px;
+}

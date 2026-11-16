@@ -109,10 +109,15 @@ export function useComposerAttachments({
 		}
 
 		function canAcceptDrop(event: DragEvent) {
+			const container =
+				dropTargetRef.current?.closest(".conversation-pane") ??
+				dropTargetRef.current?.closest("section") ??
+				dropTargetRef.current;
+
 			return (
 				!isDisabled &&
 				event.target instanceof Node &&
-				Boolean(dropTargetRef.current?.contains(event.target)) &&
+				Boolean(container?.contains(event.target)) &&
 				!document.querySelector('[role="dialog"][aria-modal="true"]')
 			);
 		}

@@ -13,42 +13,28 @@ import type {
 	StoryDTO,
 	StoryFeedDTO,
 	StoryViewerDTO,
-	ConversationTheme,
+	NoteMusicSearchDTO,
 } from "@chatty/shared-types";
-import { request, get, post, STORY_PHOTO_FIELD, STORY_VIDEO_FIELD } from "./core";
+import { request, get, post } from "./core";
 
 export const storiesApi = {
 	getStoryFeed(): Promise<StoryFeedDTO> {
 		return get<StoryFeedDTO>("/stories");
 	},
 
-	/**
-	 * A photo or video story, multipart. A photo is already reduced by the
-	 * browser; a video goes as recorded and the server re-encodes it to 720p.
-	 */
-	createMediaStory(
-		kind: "photo" | "video",
-		file: File,
-		caption: string,
+	/** A note: words, a song from `searchNoteMusic`, or both. The server looks the song up by id. */
+	createNote(
+		text: string,
+		musicTrackId: string | null,
 		audience: StoryAudience,
 		durationHours: StoryDurationHours,
 	): Promise<StoryDTO> {
-		const body = new FormData();
-		body.append(kind === "video" ? STORY_VIDEO_FIELD : STORY_PHOTO_FIELD, file);
-		if (caption) body.append("text", caption);
-		body.append("audience", audience);
-		body.append("durationHours", String(durationHours));
-
-		return request<StoryDTO>("/stories", { method: "POST", body });
+		return post<StoryDTO>("/stories", { text, audience, durationHours, ...(musicTrackId && { musicTrackId }) });
 	},
 
-	createTextStory(
-		text: string,
-		background: ConversationTheme,
-		audience: StoryAudience,
-		durationHours: StoryDurationHours,
-	): Promise<StoryDTO> {
-		return post<StoryDTO>("/stories", { text, background, audience, durationHours });
+	/** Songs for a note: matches for `query`, or what is popular in Vietnam when it is empty. */
+	searchNoteMusic(query: string, signal?: AbortSignal): Promise<NoteMusicSearchDTO> {
+		return request<NoteMusicSearchDTO>(`/stories/music?q=${encodeURIComponent(query)}`, signal ? { signal } : {});
 	},
 
 	deleteStory(storyId: string): Promise<void> {

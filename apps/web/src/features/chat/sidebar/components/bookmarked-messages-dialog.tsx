@@ -48,14 +48,14 @@ export function BookmarkedMessagesDialog({ currentUserId, onClose, onSelectMessa
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4">
+		<div className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 backdrop-blur-xs">
 			<div
 				ref={ref}
 				role="dialog"
 				aria-modal="true"
 				aria-label="Bookmarked messages"
 				tabIndex={-1}
-				className="flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex h-[min(70dvh,28rem)] w-full max-w-lg flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<header className="flex items-center gap-3 border-b border-rule px-4 py-3">
 					<Bookmark className="size-4" />

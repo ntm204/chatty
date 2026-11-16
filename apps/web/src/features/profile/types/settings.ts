@@ -14,6 +14,8 @@ export interface SettingsNavigationItem {
 	id: SettingsSection;
 	label: string;
 	icon: LucideIcon;
+	/** Whether a divider rule should be drawn beneath this item. */
+	hasDividerAfter?: boolean;
 	/**
 	 * Set on the one row that ends an account. It is drawn in the signal colour
 	 * and separated by a rule — the only place in the nav either happens.

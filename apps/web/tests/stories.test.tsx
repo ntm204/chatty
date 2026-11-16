@@ -35,8 +35,9 @@ function story(id: string, author = an, overrides: Partial<StoryDTO> = {}): Stor
 		author,
 		kind: "text",
 		text: `story ${id}`,
-		background: "iris",
+		background: null,
 		media: null,
+		music: null,
 		createdAt: "2026-11-15T08:00:00.000Z",
 		expiresAt: LATER,
 		isViewed: false,
@@ -67,7 +68,7 @@ afterEach(() => vi.restoreAllMocks());
 async function renderBar(feed = feedWith()) {
 	const getFeed = vi.spyOn(api, "getStoryFeed").mockResolvedValue(feed);
 	render(<StoriesBar currentUser={me} />);
-	await screen.findByRole("button", { name: /An's story/ });
+	await screen.findByRole("button", { name: /An's note/ });
 
 	return { getFeed };
 }
@@ -114,43 +115,85 @@ describe("the stories row and viewer", () => {
 	it("shows a new-story tile and a ring per person, marking who has something new", async () => {
 		await renderBar();
 
-		expect(screen.getByRole("button", { name: "New story" })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "An's story, new" })).toBeInTheDocument();
-		expect(screen.queryByRole("button", { name: "Your story" })).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "New note" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "An's note, new" })).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Your note" })).not.toBeInTheDocument();
+	});
+
+	it("shows a story's words above the face in a message bubble, and invites a note on your own tile", async () => {
+		await renderBar();
+		const an = screen.getByRole("button", { name: "An's note, new" });
+		// The newest note is the one shown: stories arrive oldest first.
+		const bubble = within(an).getByText("story a2").closest(".note-bubble");
+		expect(bubble).toHaveClass("chat-bubble-theirs", "chat-bubble-tail");
+		expect(within(screen.getByRole("button", { name: "New note" })).getByText("Note…")).toBeInTheDocument();
 	});
 
 	it("plays a person's stories, marks each seen, moves on to the next person and closes at the end", async () => {
 		await renderBar();
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 
-		const dialog = await screen.findByRole("dialog", { name: "Stories from An" });
+		const dialog = await screen.findByRole("dialog", { name: "Notes from An" });
 		expect(within(dialog).getByText("story a1")).toBeInTheDocument();
 		expect(api.viewStory).toHaveBeenCalledWith("a1");
 
-		await userEvent.click(screen.getByRole("button", { name: "Next story" }));
-		expect(screen.getByText("story a2")).toBeInTheDocument();
-		await userEvent.click(screen.getByRole("button", { name: "Next story" }));
-		expect(screen.getByRole("dialog", { name: "Stories from Binh" })).toBeInTheDocument();
-		await userEvent.click(screen.getByRole("button", { name: "Previous story" }));
-		expect(screen.getByText("story a2")).toBeInTheDocument();
+		await userEvent.click(screen.getByRole("button", { name: "Next note" }));
+		expect(within(screen.getByRole("dialog")).getByText("story a2")).toBeInTheDocument();
+		await userEvent.click(screen.getByRole("button", { name: "Next note" }));
+		expect(screen.getByRole("dialog", { name: "Notes from Binh" })).toBeInTheDocument();
+		await userEvent.click(screen.getByRole("button", { name: "Previous note" }));
+		expect(within(screen.getByRole("dialog")).getByText("story a2")).toBeInTheDocument();
 
 		await userEvent.keyboard("{ArrowRight}{ArrowRight}");
 		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-		expect(screen.getByRole("button", { name: "An's story" })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "An's note" })).toBeInTheDocument();
+	});
+
+	it("plays a note's song while it is on screen, mutes on request, and stops when it closes", async () => {
+		const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+		const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+		const music = {
+			trackId: "42",
+			title: "Lạc Trôi",
+			artist: "Sơn Tùng M-TP",
+			artworkUrl: "https://is1-ssl.mzstatic.com/42.jpg",
+			previewUrl: "https://audio-ssl.itunes.apple.com/42.m4a",
+		};
+		await renderBar(
+			feedWith({ authors: [{ author: an, stories: [story("a1", an, { music })], hasUnseen: true }] }),
+		);
+		expect(
+			within(screen.getByRole("button", { name: "An's note, new" })).getByText("Lạc Trôi"),
+		).toBeInTheDocument();
+
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
+		const dialog = await screen.findByRole("dialog", { name: "Notes from An" });
+		expect(within(dialog).getByText("Lạc Trôi")).toBeInTheDocument();
+		await waitFor(() => expect(play).toHaveBeenCalled());
+
+		pause.mockClear();
+		await userEvent.click(within(dialog).getByRole("button", { name: "Mute" }));
+		expect(pause).toHaveBeenCalled();
+
+		pause.mockClear();
+		await userEvent.click(within(dialog).getByRole("button", { name: "Close notes" }));
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+		expect(pause).toHaveBeenCalled();
 	});
 
 	it("advances when the progress fills, and a long hold pauses without skipping", async () => {
 		await renderBar();
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
-		await screen.findByText("story a1");
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
+		const dialog = await screen.findByRole("dialog", { name: "Notes from An" });
+		await within(dialog).findByText("story a1");
 
 		const fill = document.querySelector(".story-progress-fill")!;
 		// jsdom has no AnimationEvent, so React listens for the prefixed name; fire both.
 		fireEvent.animationEnd(fill);
 		fireEvent(fill, new Event("webkitAnimationEnd", { bubbles: true }));
-		expect(screen.getByText("story a2")).toBeInTheDocument();
+		expect(within(screen.getByRole("dialog")).getByText("story a2")).toBeInTheDocument();
 
-		const next = screen.getByRole("button", { name: "Next story" });
+		const next = screen.getByRole("button", { name: "Next note" });
 		const now = Date.now();
 		const clock = vi.spyOn(Date, "now").mockReturnValue(now);
 		fireEvent.pointerDown(next.parentElement!);
@@ -158,15 +201,15 @@ describe("the stories row and viewer", () => {
 		clock.mockReturnValue(now + 600);
 		fireEvent.pointerUp(next.parentElement!);
 		fireEvent.click(next, { detail: 1 });
-		expect(screen.getByText("story a2")).toBeInTheDocument();
+		expect(within(screen.getByRole("dialog")).getByText("story a2")).toBeInTheDocument();
 	});
 
 	it("sends a reply or a reaction to the author as a message", async () => {
 		const reply = vi.spyOn(api, "replyToStory").mockResolvedValue({} as never);
 		await renderBar();
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 
-		await userEvent.type(await screen.findByLabelText("Reply to story"), "nice!");
+		await userEvent.type(await screen.findByLabelText("Reply to note"), "nice!");
 		await userEvent.click(screen.getByRole("button", { name: "Send reply" }));
 		expect(reply).toHaveBeenCalledWith("a1", "nice!");
 		expect(await screen.findByRole("status")).toHaveTextContent("Sent to An");
@@ -182,7 +225,7 @@ describe("the stories row and viewer", () => {
 		const remove = vi.spyOn(api, "deleteStory").mockResolvedValue(undefined);
 		await renderBar(feedWith({ mine: [own] }));
 
-		await userEvent.click(screen.getByRole("button", { name: "Your story" }));
+		await userEvent.click(screen.getByRole("button", { name: "Your note" }));
 		await userEvent.click(await screen.findByRole("button", { name: "2" }));
 		expect(await screen.findByRole("heading", { name: "Viewers" })).toBeInTheDocument();
 		expect(screen.getAllByText("An").length).toBeGreaterThan(0);
@@ -190,10 +233,10 @@ describe("the stories row and viewer", () => {
 
 		await userEvent.click(screen.getByRole("radio", { name: "Close friends" }));
 		expect(audience).toHaveBeenCalledWith("m1", "close_friends");
-		await userEvent.click(screen.getByRole("button", { name: "Delete story" }));
+		await userEvent.click(screen.getByRole("button", { name: "Delete note" }));
 		expect(remove).toHaveBeenCalledWith("m1");
 		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-		expect(screen.queryByRole("button", { name: "Your story" })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: "Your note" })).not.toBeInTheDocument();
 	});
 
 	it("refetches the row when the server nudges", async () => {
@@ -206,71 +249,75 @@ describe("the stories row and viewer", () => {
 });
 
 describe("posting", () => {
-	it("posts a text story on the chosen colour to the chosen audience", async () => {
+	it("posts a note to the chosen audience for the chosen lifetime", async () => {
 		const created = story("new", me, { audience: "close_friends" });
-		const post = vi.spyOn(api, "createTextStory").mockResolvedValue(created);
+		const post = vi.spyOn(api, "createNote").mockResolvedValue(created);
 		await renderBar();
 
-		await userEvent.click(screen.getByRole("button", { name: "New story" }));
-		const dialog = await screen.findByRole("dialog", { name: "New story" });
-		expect(within(dialog).getByRole("button", { name: "Share story" })).toBeDisabled();
-		await userEvent.click(within(dialog).getByRole("radio", { name: "Text" }));
-		await userEvent.type(within(dialog).getByLabelText("Story text"), "Good morning");
-		await userEvent.click(within(dialog).getByRole("radio", { name: "teal" }));
+		await userEvent.click(screen.getByRole("button", { name: "New note" }));
+		const dialog = await screen.findByRole("dialog", { name: "New note" });
+		expect(within(dialog).queryByRole("radio", { name: "Photo" })).not.toBeInTheDocument();
+		expect(within(dialog).getByRole("button", { name: "Share note" })).toBeDisabled();
+		await userEvent.type(within(dialog).getByLabelText("Note text"), "Good morning");
 		await userEvent.click(within(dialog).getByRole("radio", { name: "Close friends" }));
 		await userEvent.click(within(dialog).getByRole("radio", { name: "6 hours" }));
 		expect(within(dialog).getByRole("radio", { name: "6 hours" })).toHaveTextContent("6h");
-		await userEvent.click(within(dialog).getByRole("button", { name: "Share story" }));
+		await userEvent.click(within(dialog).getByRole("button", { name: "Share note" }));
 
-		expect(post).toHaveBeenCalledWith("Good morning", "teal", "close_friends", 6);
-		await waitFor(() => expect(screen.getByRole("button", { name: "Your story" })).toBeInTheDocument());
+		expect(post).toHaveBeenCalledWith("Good morning", null, "close_friends", 6);
+		await waitFor(() => expect(screen.getByRole("button", { name: "Your note" })).toBeInTheDocument());
 	});
 
-	it("posts a photo story with its caption, for 24 hours unless chosen otherwise", async () => {
-		URL.createObjectURL = vi.fn(() => "blob:preview");
-		URL.revokeObjectURL = vi.fn();
-		const post = vi.spyOn(api, "createMediaStory").mockResolvedValue(story("p", me, { kind: "photo" }));
+	it("finds a real song — the chart first, then a search — previews it, and posts a note that is only a song", async () => {
+		const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+		vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
+		const song = (trackId: string, title: string) => ({
+			trackId,
+			title,
+			artist: "Sơn Tùng M-TP",
+			artworkUrl: `https://is1-ssl.mzstatic.com/${trackId}.jpg`,
+			previewUrl: `https://audio-ssl.itunes.apple.com/${trackId}.m4a`,
+		});
+		const search = vi.spyOn(api, "searchNoteMusic").mockImplementation(async (query) => ({
+			tracks: query ? [song("42", "Lạc Trôi")] : [song("7", "Chúng Ta Của Hiện Tại")],
+		}));
+		const post = vi.spyOn(api, "createNote").mockResolvedValue(story("song", me));
 		await renderBar();
-		await userEvent.click(screen.getByRole("button", { name: "New story" }));
-		const dialog = await screen.findByRole("dialog", { name: "New story" });
+		await userEvent.click(screen.getByRole("button", { name: "New note" }));
+		const dialog = await screen.findByRole("dialog", { name: "New note" });
 
-		const photo = new File(["bytes"], "photo.png", { type: "image/png" });
-		await userEvent.upload(within(dialog).getByLabelText("Story photo"), photo);
-		expect(within(dialog).getByAltText("Selected photo")).toBeInTheDocument();
-		await userEvent.type(within(dialog).getByLabelText("Caption"), "view");
-		await userEvent.click(within(dialog).getByRole("button", { name: "Share story" }));
+		await userEvent.click(within(dialog).getByRole("button", { name: "Add a song" }));
+		const picker = await screen.findByRole("dialog", { name: "Add a song" });
+		expect(within(picker).getByText("Popular in Vietnam")).toBeInTheDocument();
+		expect(await within(picker).findByText("Chúng Ta Của Hiện Tại")).toBeInTheDocument();
 
-		await waitFor(() => expect(post).toHaveBeenCalled());
-		expect(post.mock.calls[0]?.[0]).toBe("photo");
-		expect(post.mock.calls[0]?.[2]).toBe("view");
-		expect(post.mock.calls[0]?.[3]).toBe("contacts");
-		expect(post.mock.calls[0]?.[4]).toBe(24);
+		await userEvent.type(within(picker).getByLabelText("Search songs"), "lac troi");
+		expect(await within(picker).findByText("Lạc Trôi")).toBeInTheDocument();
+		expect(search).toHaveBeenLastCalledWith("lac troi", expect.any(AbortSignal));
+		// One request for the typed words, not one per keystroke.
+		expect(search.mock.calls.filter(([query]) => query).length).toBe(1);
+
+		await userEvent.click(within(picker).getByRole("button", { name: "Play preview of Lạc Trôi" }));
+		expect(play).toHaveBeenCalled();
+		expect(within(picker).getByRole("button", { name: "Stop preview of Lạc Trôi" })).toBeInTheDocument();
+
+		await userEvent.click(within(picker).getByRole("button", { name: "Lạc Trôi by Sơn Tùng M-TP" }));
+		expect(screen.queryByRole("dialog", { name: "Add a song" })).not.toBeInTheDocument();
+		expect(within(dialog).getByText("Lạc Trôi")).toBeInTheDocument();
+		expect(within(dialog).getByRole("button", { name: "Change song" })).toBeInTheDocument();
+		await userEvent.click(within(dialog).getByRole("button", { name: "Share note" }));
+
+		await waitFor(() => expect(post).toHaveBeenCalledWith("", "42", "contacts", 24));
 	});
 
-	it("posts a video as recorded, previewing it muted, and drops a pick when switching type", async () => {
-		URL.createObjectURL = vi.fn(() => "blob:preview");
-		URL.revokeObjectURL = vi.fn();
-		const post = vi.spyOn(api, "createMediaStory").mockResolvedValue(story("v", me, { kind: "video" }));
+	it("says so when music is unavailable, and the note can still be posted without one", async () => {
+		vi.spyOn(api, "searchNoteMusic").mockRejectedValue(new Error("Music is not available right now."));
 		await renderBar();
-		await userEvent.click(screen.getByRole("button", { name: "New story" }));
-		const dialog = await screen.findByRole("dialog", { name: "New story" });
+		await userEvent.click(screen.getByRole("button", { name: "New note" }));
+		await userEvent.click(await screen.findByRole("button", { name: "Add a song" }));
 
-		await userEvent.upload(
-			within(dialog).getByLabelText("Story photo"),
-			new File(["p"], "p.png", { type: "image/png" }),
-		);
-		await userEvent.click(within(dialog).getByRole("radio", { name: "Video" }));
-		expect(within(dialog).queryByAltText("Selected photo")).not.toBeInTheDocument();
-		expect(within(dialog).getByRole("button", { name: "Share story" })).toBeDisabled();
-		expect(within(dialog).getByText("Choose a video · up to 15s")).toBeInTheDocument();
-
-		const clip = new File(["v"], "clip.mp4", { type: "video/mp4" });
-		await userEvent.upload(within(dialog).getByLabelText("Story video"), clip);
-		expect(within(dialog).getByLabelText("Selected video")).toHaveProperty("muted", true);
-		await userEvent.click(within(dialog).getByRole("radio", { name: "48 hours" }));
-		await userEvent.click(within(dialog).getByRole("button", { name: "Share story" }));
-
-		await waitFor(() => expect(post).toHaveBeenCalledWith("video", clip, "", "contacts", 48));
+		const picker = await screen.findByRole("dialog", { name: "Add a song" });
+		expect(await within(picker).findByRole("alert")).toHaveTextContent("Music is not available right now.");
 	});
 
 	it("edits the two private lists from the people you chat with", async () => {
@@ -288,7 +335,7 @@ describe("posting", () => {
 			"true",
 		);
 		await userEvent.click(screen.getByRole("switch", { name: "Binh in close friends" }));
-		await userEvent.click(screen.getByRole("radio", { name: "Hide stories from" }));
+		await userEvent.click(screen.getByRole("radio", { name: "Hide notes from" }));
 		await userEvent.click(screen.getByRole("switch", { name: "An in hidden" }));
 		await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
@@ -297,7 +344,7 @@ describe("posting", () => {
 	});
 });
 
-describe("a reply's story quote", () => {
+describe("a reply's note quote", () => {
 	it("shows the story while it lives, and only that it expired afterwards", () => {
 		const { rerender } = render(
 			<MessageStoryQuote
@@ -305,7 +352,7 @@ describe("a reply's story quote", () => {
 				isMine={false}
 			/>,
 		);
-		expect(screen.getByText("Replied to your story")).toBeInTheDocument();
+		expect(screen.getByText("Replied to your note")).toBeInTheDocument();
 		expect(document.querySelector("img")).toHaveAttribute("src", "http://x/thumb");
 
 		rerender(
@@ -314,7 +361,7 @@ describe("a reply's story quote", () => {
 				isMine
 			/>,
 		);
-		expect(screen.getByText("Story expired")).toBeInTheDocument();
+		expect(screen.getByText("Note expired")).toBeInTheDocument();
 		expect(document.querySelector("img")).toBeNull();
 	});
 
@@ -344,7 +391,7 @@ describe("a reply's story quote", () => {
 				],
 			}),
 		);
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 		const image = await screen.findByAltText("Story from An");
 		const menu = createEvent.contextMenu(image);
 		fireEvent(image, menu);
@@ -370,7 +417,7 @@ describe("video stories in the viewer", () => {
 		const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
 		const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
 		await renderBar(feedWith({ authors: [{ author: an, stories: [video], hasUnseen: true }] }));
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 
 		const element = (await screen.findByLabelText("Video story from An")) as HTMLVideoElement;
 		expect(element).toHaveAttribute("poster", "http://x/poster");
@@ -383,7 +430,7 @@ describe("video stories in the viewer", () => {
 		fireEvent(element, new Event("playing"));
 		expect(fill().style.animationPlayState).toBe("running");
 
-		await userEvent.click(screen.getByLabelText("Reply to story"));
+		await userEvent.click(screen.getByLabelText("Reply to note"));
 		expect(pause).toHaveBeenCalled();
 
 		await userEvent.click(screen.getByRole("button", { name: "Mute" }));
@@ -397,7 +444,7 @@ describe("video stories in the viewer", () => {
 			.mockRejectedValueOnce(new Error("NotAllowedError"))
 			.mockResolvedValue(undefined);
 		await renderBar(feedWith({ authors: [{ author: an, stories: [video], hasUnseen: true }] }));
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 
 		expect(await screen.findByRole("button", { name: "Unmute" })).toBeInTheDocument();
 		expect(play).toHaveBeenCalledTimes(2);
@@ -426,7 +473,7 @@ describe("video stories in the viewer", () => {
 		await renderBar(
 			feedWith({ authors: [{ author: an, stories: [photo("p1"), photo("p2"), photo("p3")], hasUnseen: true }] }),
 		);
-		await userEvent.click(screen.getByRole("button", { name: "An's story, new" }));
+		await userEvent.click(screen.getByRole("button", { name: "An's note, new" }));
 		await screen.findByRole("dialog");
 
 		expect(created).toEqual(["http://x/p2"]);

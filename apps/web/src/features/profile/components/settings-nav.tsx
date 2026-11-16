@@ -34,9 +34,6 @@ export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps)
 
 					return (
 						<Fragment key={item.id}>
-							{/* The rule is what makes the last row read as a different
-							    kind of thing from the three above it. */}
-							{item.isDestructive && <div className="mx-3 my-2 h-px bg-rule-soft" />}
 							<Button
 								variant="ghost"
 								onClick={() => onSelect(item.id)}
@@ -57,6 +54,8 @@ export function SettingsNav({ user, activeSection, onSelect }: SettingsNavProps)
 								/>
 								{item.label}
 							</Button>
+							{/* Subtle dividers between logical categories (Account, Privacy, Preferences) */}
+							{item.hasDividerAfter && <div className="mx-3 my-2 h-px bg-rule-soft" />}
 						</Fragment>
 					);
 				})}

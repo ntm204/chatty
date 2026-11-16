@@ -46,11 +46,7 @@ export function ConversationSharingControl({
 					onChange={(isAllowed) => void change(!isAllowed)}
 				/>
 			</div>
-			<p className="note text-ink-faint">
-				{canChange
-					? "Off stops everyone forwarding or saving messages from this chat. Screenshots are still possible."
-					: "Only admins can change this."}
-			</p>
+			{!canChange && <p className="note text-ink-faint">Only admins can change this.</p>}
 			{error && (
 				<p role="alert" className="note text-signal">
 					{error}

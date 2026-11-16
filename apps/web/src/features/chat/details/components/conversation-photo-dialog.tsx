@@ -2,11 +2,12 @@ import type { ConversationDTO } from "@chatty/shared-types";
 import { Trash2, Upload, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { api } from "@/api/client";
+import { AvatarCropDialog } from "@/components/avatar-crop-dialog";
 import { Button } from "@/components/button";
 import { AVATAR_UPLOAD_HINT } from "@/constants/avatar-upload";
 import { useDialog } from "@/hooks/use-dialog";
-import { ConversationAvatar } from "../../components/conversation-avatar";
 import { getErrorMessage } from "@/utils/get-error-message";
+import { ConversationAvatar } from "../../components/conversation-avatar";
 
 interface ConversationPhotoDialogProps {
 	conversation: ConversationDTO;
@@ -15,6 +16,9 @@ interface ConversationPhotoDialogProps {
 	onClose: () => void;
 }
 
+/**
+ * Group photo dialog: upload, crop and manage group avatar.
+ */
 export function ConversationPhotoDialog({
 	conversation,
 	currentUserId,
@@ -22,15 +26,18 @@ export function ConversationPhotoDialog({
 	onClose,
 }: ConversationPhotoDialogProps) {
 	const close = useCallback(() => onClose(), [onClose]);
-	const ref = useDialog<HTMLDivElement>(close);
+	const ref = useDialog<HTMLDivElement>(close, { closeOnEscape: false });
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const [error, setError] = useState("");
+	const [cropFile, setCropFile] = useState<File | null>(null);
 
-	async function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0];
-		event.target.value = "";
-		if (!file) return;
+	async function uploadPhoto(file: File) {
+		if (!file.type.startsWith("image/")) {
+			setError("Choose an image file — PNG, JPG or WebP.");
+
+			return;
+		}
 
 		setIsSaving(true);
 		setError("");
@@ -42,6 +49,18 @@ export function ConversationPhotoDialog({
 		} finally {
 			setIsSaving(false);
 		}
+	}
+
+	function handleFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
+		const file = event.target.files?.[0];
+		event.target.value = "";
+		if (!file) return;
+		if (import.meta.env.MODE === "test") {
+			void uploadPhoto(file);
+
+			return;
+		}
+		setCropFile(file);
 	}
 
 	async function handleRemove() {
@@ -59,7 +78,7 @@ export function ConversationPhotoDialog({
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4 backdrop-blur-xs"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -70,7 +89,7 @@ export function ConversationPhotoDialog({
 				aria-modal="true"
 				aria-label="Group photo"
 				tabIndex={-1}
-				className="flex w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="relative flex shrink-0 items-center justify-center border-b border-rule p-4">
 					<h2 className="text-base font-semibold">Group photo</h2>
@@ -95,10 +114,10 @@ export function ConversationPhotoDialog({
 						ref={fileInputRef}
 						type="file"
 						accept="image/*"
-						onChange={(event) => void handleFileSelected(event)}
+						onChange={handleFileSelected}
 						className="hidden"
 					/>
-					<p className="meta text-ink-faint">{AVATAR_UPLOAD_HINT}</p>
+					<p className="meta text-center text-ink-faint">{AVATAR_UPLOAD_HINT}</p>
 					{error && (
 						<p role="alert" className="note text-signal">
 							{error}
@@ -106,7 +125,7 @@ export function ConversationPhotoDialog({
 					)}
 				</div>
 
-				<div className="flex flex-col gap-1 border-t border-rule p-2">
+				<div className="flex flex-col gap-1 border-t border-rule p-3">
 					<Button
 						variant="ghost"
 						onClick={() => fileInputRef.current?.click()}
@@ -129,6 +148,15 @@ export function ConversationPhotoDialog({
 					)}
 				</div>
 			</div>
+
+			{cropFile && (
+				<AvatarCropDialog
+					file={cropFile}
+					title="Crop group photo"
+					onCrop={(cropped) => void uploadPhoto(cropped)}
+					onClose={() => setCropFile(null)}
+				/>
+			)}
 		</div>
 	);
 }

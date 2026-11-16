@@ -14,12 +14,12 @@ export function KeyboardShortcutsPanel({ onClose }: KeyboardShortcutsPanelProps)
 		<div
 			ref={dialogRef}
 			tabIndex={-1}
-			className="absolute inset-0 z-50 flex items-center justify-center bg-scrim/20 p-4 dark:bg-scrim/50"
+			className="backdrop-fade absolute inset-0 z-50 flex items-center justify-center bg-scrim/20 p-4 backdrop-blur-xs dark:bg-scrim/50"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Keyboard shortcuts"
 		>
-			<div className="w-full max-w-sm rounded-bubble border border-rule bg-paper-raised p-4 shadow-lift">
+			<div className="dialog-enter w-full max-w-sm rounded-bubble border border-rule bg-paper-raised p-4 shadow-lift">
 				<div className="mb-3 flex items-center">
 					<h2 className="flex-1 text-sm font-semibold">Keyboard shortcuts</h2>
 					<Button variant="ghost" onClick={onClose} aria-label="Close shortcuts" className="size-7 p-0">

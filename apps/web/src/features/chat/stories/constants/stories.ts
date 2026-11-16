@@ -1,22 +1,10 @@
-import type { ConversationTheme, StoryAudience, StoryFeedDTO } from "@chatty/shared-types";
+import type { StoryAudience, StoryFeedDTO } from "@chatty/shared-types";
 
 /** How long one story stays on screen before the next one. */
 export const STORY_DURATION_MS = 5_000;
 
 /** Reactions a viewer can send in one tap; each becomes a direct message. */
 export const QUICK_STORY_REACTIONS = ["❤️", "😂", "😮", "😢", "👏", "🔥"];
-
-/** The palette a text story can sit on — the same tokens as chat themes. */
-export const STORY_BACKGROUNDS: ConversationTheme[] = [
-	"iris",
-	"azure",
-	"teal",
-	"moss",
-	"fern",
-	"amber",
-	"clay",
-	"plum",
-];
 
 export const STORY_AUDIENCE_OPTIONS: { value: StoryAudience; label: string }[] = [
 	{ value: "contacts", label: "People you chat with" },

@@ -843,7 +843,7 @@ model Story {
   kind            StoryKind
   /// The caption of a photo, or the whole of a text story.
   text            String             @default("")
-  /// The colour behind a text story; null on a photo.
+  /// The colour behind a text story from an older client; null on notes and photos.
   background      ConversationTheme?
   /// Storage key of the photo — the same pipeline as attachments, served by its
   /// own token-checked route so the attachment endpoint never serves it.
@@ -854,6 +854,13 @@ model Story {
   mediaDurationMs Int?
   /// The stored media's size, kept so storage per story can be measured (ADR 0016).
   mediaByteSize   Int?
+  /// The song on a note (ADR 0026): an Apple catalogue track, copied when posted
+  /// so the row never depends on the catalogue answering later.
+  musicTrackId    String?
+  musicTitle      String?
+  musicArtist     String?
+  musicArtworkUrl String?
+  musicPreviewUrl String?
   /// Changeable while the story is live.
   audience        StoryAudience      @default(CONTACTS)
   createdAt       DateTime           @default(now()) @db.Timestamptz(3)

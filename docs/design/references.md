@@ -41,7 +41,7 @@ copy rules; not its look, which is sharper and colder than Chatty's paper surfac
 - Badge = text label on an entity (20px high, max 160px, ≥ 8px from neighbours); Pill = a count (20px high, 10px radius, padding 2px 6px); Status hint = 8px dot + label for a resource's state. → Chatty: apply the split — "Admin", "Bot", "Muted" are badges; unread numbers are pills; online is a dot.
 - Solid pill for a single standout count; subtle pill when many counts sit together (e.g. list rows). → Chatty: apply — muted chats' unread pill should be subtle (grey), unmuted solid.
 - Badges are not interactive (hover may reveal info only). → Chatty: done.
-- Cap counts (Masala gives no number). → Chatty: done (`MAX_UNREAD_BADGE_COUNT = 99`, tab title "99+").
+- Cap counts (Masala gives no number). → Chatty: done (tab title "99+"; rows now show a dot instead — see 2026-11-15 below).
 
 ### Chips
 <https://design.innovaccer.com/components/chips/usage/>
@@ -206,3 +206,51 @@ How the three lay out a chat-list row's small parts, and the arrangement Chatty 
 - Messenger lets you hide activity signals. → Chatty: typing indicator and read receipts, both symmetric.
 - One-tap choices save at once instead of behind a Save button; mutually exclusive options are one compact
   segmented track rather than a row of outlined pills.
+
+## Conversation row, simplified — owner review — 2026-11-15
+
+- Supersedes the count pill and the separate "@" badge above. Unread is one 8px dot (grey when muted); a
+  mention replaces the dot with "@"; a pin shows only when nothing is unread. The name and preview already
+  turn bold, so a red number was the loudest thing in every row; the count is spoken to screen readers.
+- One mark at most, in a fixed-width right column, so every preview truncates at the same edge.
+- The time follows the preview ("… · 5m"), Messenger's placement: it reads as part of the last message and
+  leaves the right edge one mark (dot, "@", tick or pin) centred on the row. Hidden while typing or drafting.
+- No row tint for a mention and no "You:" prefix: the tick in the right column already says the last message
+  was yours. A group's last speaker is shown by the name the group sees, not their handle.
+- The folder tabs mark Unread with a dot too, outside the label's box, so the tabs keep one width.
+
+## Reels Studio & Animations — Instagram, TikTok, WeChat, animations.dev — 2026-11-15
+
+- Reels vs Status posts: Short-form visual storytelling focuses on vertical 9:16 video and photo viewports, not text-heavy web forms.
+- Caption overlay: In TikTok and Instagram Reels, captions live directly over the media with frosted glass backing, reflecting how viewers experience them.
+- Direct drop zone: Dragging media onto the 9:16 frame or group avatars activates fluid reactive borders and instant preview.
+- animations.dev collapse standard: Accordion/disclosure animations use CSS grid rows (`0fr` to `1fr`) with `cubic-bezier(0.16, 1, 0.3, 1)` and `min-height: 0` inner wrappers for layout stability.
+- Dialog and modal transitions: Smooth spring-like deceleration (`dialog-enter` 220ms and `backdrop-fade` 180ms) avoid jarring jumps.
+- Accidental Escape dismissal prevention: Form-entry and media-creation modals guard against accidental keystroke dismissals.
+
+## Instagram Notes Ultra-Minimal & Circular Avatar Cropper — 2026-11-15
+
+- **Instagram Notes Pure UX**: Notes are ultra-minimal, ephemeral thought bubbles attached directly above the user's avatar in the inbox tray. Stripped of all video/photo and rainbow color clutter — crisp, clean neutral paper bubble (`bg-paper-raised text-ink border border-rule shadow-modal`).
+- **24-Hour Default Lifetime**: Notes automatically default to 24 hours just like Instagram, removing unnecessary duration pickers from the primary experience.
+- **Music Soundtrack Integration**: Users can attach trending or custom music tracks (`title · artist`) with animated equalizer sound waves (`NoteMusicBadge`), interactive Web Audio melodic chime previews, and remove actions.
+- **Trending Keyword Easter Eggs**: Typing trending/viral keywords dynamically triggers magical ambient particle micro-animations:
+  - `snow`, `winter`, `tuyết`, `lạnh` → Falling snow particles ❄️
+  - `love`, `heart`, `crush`, `yêu`, `tim` → Floating pink hearts 💖
+  - `party`, `celebrate`, `sinh nhật`, `quẩy` → Confetti explosion 🎉
+  - `fire`, `lit`, `hot`, `cháy` → Flame embers 🔥
+  - `coffee`, `morning`, `cà phê` → Warm morning steam ☕
+  - `star`, `magic`, `sao` → Starlight shimmer ✨
+  - `music`, `lofi`, `chill` → Melodic sound wave pulses 🎵
+- **Circular Avatar Cropper (`AvatarCropDialog`)**: Replaced bulky dashed drop zones with an interactive, high-precision circular crop modal. Features touch/pointer drag panning with strict edge bounds, mouse wheel & range slider zoom (1x–3x), 90° clockwise rotation, and HTML5 canvas 512x512 JPEG export.
+
+
+
+## Notes in the message bubble — Instagram Notes, owner review — 2026-11-16
+
+- A note is a message said to everyone, so it uses the message bubble (`NoteBubble`): the same 18px corners,
+  colours and tail. Yours is in your message colour, others' in the received one. No thought-cloud dots,
+  border or shadow.
+- The row reserves a fixed slot above every face, so faces line up whether or not someone has a note. Text
+  is two lines at most, or one when a song sits under it; the row shows the newest note.
+- The composer writes straight into the bubble the note will appear in, above your face, so what you type
+  is what people see.

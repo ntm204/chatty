@@ -478,6 +478,15 @@ binary kiểu Kiwi đạt được (chỉ còn giá trị):
 HTTP đã nén Brotli: binary chỉ bớt ~260 B/trang (13%). Socket: bớt ~280 B/tin — 1 000 tin ≈ 280 KB. Phần lớn byte
 là dữ liệu lặp (`author` 27% trang, URL ký của `attachments` 22%), thứ nén đã xử lý. Kết luận: chưa đủ để đổi.
 
+### Note có nhạc thật và bong bóng note — 2026-11-16
+
+macOS, Node 26, Chromium của Playwright, API/DB dev. `npm run verify:full`: qua (web 720, server 565, audit
+0). `npm run test:e2e -- --project=chromium`: 114/115; `scroll-history` (cuộn ngắt cú nhảy) hỏng một lần khi cả
+bộ chạy, chạy riêng 2/2 qua — ghi nhận là nhạy thời gian khi tải nặng, chưa sửa. Gọi API thật: bảng xếp hạng
+Việt Nam 25 bài, tìm "lac troi" ra bài đúng, đăng note chỉ có nhạc lưu đủ 5 trường, track id sai bị từ chối;
+file preview tải được (200, ~1 MB). Kết nối đầu tới Apple từ máy này có lúc quá 5 s, nên timeout là 10 s.
+Ảnh chụp sáng/tối: hàng note, màn chọn nhạc, màn soạn, màn xem. Chưa thử WebKit cho phát âm thanh.
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

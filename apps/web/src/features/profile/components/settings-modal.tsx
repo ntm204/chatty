@@ -43,7 +43,7 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 
 	return (
 		<div
-			className="fixed inset-0 z-40 flex items-center justify-center bg-scrim/30 p-4 dark:bg-scrim/55"
+			className="backdrop-fade fixed inset-0 z-40 flex items-center justify-center bg-scrim/30 p-4 backdrop-blur-xs dark:bg-scrim/55"
 			onPointerDown={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}

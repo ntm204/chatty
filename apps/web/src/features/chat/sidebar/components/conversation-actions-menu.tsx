@@ -45,17 +45,20 @@ export function ConversationActionsMenu({
 				variant="ghost"
 				role="menuitem"
 				onClick={onPreview}
-				className="w-full justify-start px-2.5 py-2 text-ink"
+				className="w-full justify-start gap-2.5 px-2.5 py-2 text-ink"
 			>
 				<Eye className="size-4 text-ink-faint" />
 				Preview
 			</Button>
+
+			<div className="my-1 h-px bg-rule-soft" />
+
 			<Button
 				variant="ghost"
 				role="menuitem"
 				disabled={isSaving}
 				onClick={onTogglePin}
-				className="w-full justify-start px-2.5 py-2 text-ink"
+				className="w-full justify-start gap-2.5 px-2.5 py-2 text-ink"
 			>
 				<Pin className={cn("size-4", isPinned && "fill-current text-signal")} />
 				{isPinned ? "Unpin" : "Pin conversation"}
@@ -65,7 +68,7 @@ export function ConversationActionsMenu({
 				role="menuitem"
 				disabled={isSaving}
 				onClick={onToggleArchive}
-				className="w-full justify-start px-2.5 py-2 text-ink"
+				className="w-full justify-start gap-2.5 px-2.5 py-2 text-ink"
 			>
 				<Archive className="size-4 text-ink-faint" />
 				{isArchived ? "Unarchive" : "Archive"}
@@ -75,7 +78,7 @@ export function ConversationActionsMenu({
 				role="menuitem"
 				disabled={isSaving}
 				onClick={onChooseMute}
-				className="w-full justify-start px-2.5 py-2 text-ink"
+				className="w-full justify-start gap-2.5 px-2.5 py-2 text-ink"
 			>
 				<BellOff className={cn("size-4", isMuted ? "text-signal" : "text-ink-faint")} />
 				{isMuted ? "Muted" : "Mute"}
@@ -87,7 +90,7 @@ export function ConversationActionsMenu({
 					disabled={isSaving}
 					onClick={onToggleRestrict}
 					aria-description="Keep direct messages without alerts or unread badges. Shared groups are not affected."
-					className="w-full justify-start px-2.5 py-2 text-ink"
+					className="w-full justify-start gap-2.5 px-2.5 py-2 text-ink"
 				>
 					<EyeOff className="size-4 text-ink-faint" />
 					{isRestricted ? "Unrestrict" : "Restrict"}
@@ -101,7 +104,7 @@ export function ConversationActionsMenu({
 					// Blocking asks; unblocking does not.
 					onClick={isBlocked ? onUnblock : onRequestBlock}
 					// Kept apart from reversible housekeeping actions.
-					className="w-full justify-start border-t border-rule-soft px-2.5 py-2 text-signal"
+					className="w-full justify-start gap-2.5 border-t border-rule-soft px-2.5 py-2 text-signal"
 				>
 					<Ban className="size-4" />
 					{isBlocked ? "Unblock" : "Block"}

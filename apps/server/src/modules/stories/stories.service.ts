@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import {
 	type MessageDTO,
+	type NoteMusicDTO,
 	type StoryAudienceSettingsDTO,
 	type StoryAuthorDTO,
 	type StoryDTO,
@@ -20,6 +21,7 @@ import { prisma } from "../../lib/prisma.js";
 import { getOptionalIO, userRoom } from "../../lib/socket-bus.js";
 import { themeFromWire } from "../../lib/theme-wire.js";
 import { saveStoryVideo } from "../../lib/video-storage.js";
+import { lookupNoteMusic, searchNoteMusic as searchCatalog } from "../../lib/music-catalog.js";
 import { createConversation, listContactIds } from "../conversations/conversations.service.js";
 import { sendMessage } from "../messages/messages.service.js";
 import { toUserDTO, userSelect } from "../users/users.mapper.js";
@@ -151,8 +153,10 @@ export async function createStory(
 	media?: StoryMediaUpload,
 ): Promise<StoryDTO> {
 	const text = input.text?.trim() ?? "";
-	if (!media && !text) throw new ValidationError("A story needs a photo, a video or some text");
-	if (!media && !input.background) throw new ValidationError("A text story needs a background colour");
+	if (media && input.musicTrackId) throw new ValidationError("Only a note can carry a song");
+	if (!media && !text && !input.musicTrackId) throw new ValidationError("A note needs some words or a song");
+	// Looked up before anything is stored: a song that cannot be found fails the post cleanly.
+	const music = input.musicTrackId ? await lookupNoteMusic(input.musicTrackId) : null;
 
 	const mediaId = media ? randomUUID() : null;
 	try {
@@ -168,6 +172,13 @@ export async function createStory(
 				kind: media ? (media.kind === "video" ? "VIDEO" : "PHOTO") : "TEXT",
 				text,
 				background: !media && input.background ? themeFromWire(input.background) : null,
+				...(music && {
+					musicTrackId: music.trackId,
+					musicTitle: music.title,
+					musicArtist: music.artist,
+					musicArtworkUrl: music.artworkUrl,
+					musicPreviewUrl: music.previewUrl,
+				}),
 				...(mediaId && stored
 					? {
 							mediaId,
@@ -189,6 +200,11 @@ export async function createStory(
 		if (mediaId) await deleteAttachment(mediaId).catch(() => undefined);
 		throw error;
 	}
+}
+
+/** Songs for a note's picker: matches for the words, or what is popular in Vietnam. */
+export function searchNoteMusic(query: string): Promise<NoteMusicDTO[]> {
+	return searchCatalog(query);
 }
 
 async function loadOwnStory(authorId: string, storyId: string) {

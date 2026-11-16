@@ -15,6 +15,17 @@ export const SETTINGS_NAVIGATION: SettingsNavigationItem[] = [
 		icon: CircleUserRound,
 	},
 	{
+		id: "email",
+		label: "Email",
+		icon: Mail,
+	},
+	{
+		id: "security",
+		label: "Password",
+		icon: Lock,
+		hasDividerAfter: true,
+	},
+	{
 		id: "privacy",
 		label: "Privacy",
 		icon: Shield,
@@ -28,6 +39,7 @@ export const SETTINGS_NAVIGATION: SettingsNavigationItem[] = [
 		id: "restricted",
 		label: "Restricted people",
 		icon: EyeOff,
+		hasDividerAfter: true,
 	},
 	{
 		id: "appearance",
@@ -35,19 +47,10 @@ export const SETTINGS_NAVIGATION: SettingsNavigationItem[] = [
 		icon: Palette,
 	},
 	{
-		id: "email",
-		label: "Email",
-		icon: Mail,
-	},
-	{
 		id: "notifications",
 		label: "Notifications",
 		icon: Bell,
-	},
-	{
-		id: "security",
-		label: "Password",
-		icon: Lock,
+		hasDividerAfter: true,
 	},
 	{
 		id: "danger",

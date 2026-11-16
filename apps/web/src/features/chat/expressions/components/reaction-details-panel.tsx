@@ -50,7 +50,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 dark:bg-scrim/55"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 backdrop-blur-xs dark:bg-scrim/55"
 			onPointerDown={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -61,7 +61,7 @@ export function ReactionDetailsPanel({ reactions, users, currentUserId, onClose 
 				aria-modal="true"
 				aria-labelledby={titleId}
 				tabIndex={-1}
-				className="flex h-[min(70vh,32rem)] w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
+				className="dialog-enter flex h-[min(70vh,32rem)] w-full max-w-sm flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
 			>
 				<header className="flex shrink-0 items-start justify-between gap-4 border-b border-rule px-6 py-5">
 					<div className="min-w-0">

@@ -10,8 +10,13 @@ import { useEffect, useRef } from "react";
 const FOCUSABLE_SELECTOR =
 	"button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
+interface UseDialogOptions {
+	/** If false, pressing Escape will not close the dialog. Defaults to true. */
+	closeOnEscape?: boolean;
+}
+
 /**
- * Escape to close, Tab wrapped inside the panel, focus moved into it on open.
+ * Escape to close (optional), Tab wrapped inside the panel, focus moved into it on open.
  *
  * Extracted because the edit-history dialog and the settings dialog need the
  * identical thing and live in different features, which is exactly the case the
@@ -21,10 +26,13 @@ const FOCUSABLE_SELECTOR =
  * The caller owns the state: this closes nothing itself, it calls `onClose`.
  * Callback changes must not reset focus while somebody is editing inside it.
  */
-export function useDialog<T extends HTMLElement>(onClose: () => void) {
+export function useDialog<T extends HTMLElement>(onClose: () => void, options: UseDialogOptions = {}) {
 	const dialogRef = useRef<T>(null);
 	const onCloseRef = useRef(onClose);
 	onCloseRef.current = onClose;
+	const closeOnEscape = options.closeOnEscape ?? true;
+	const closeOnEscapeRef = useRef(closeOnEscape);
+	closeOnEscapeRef.current = closeOnEscape;
 
 	useEffect(() => {
 		const opener = document.activeElement;
@@ -36,6 +44,7 @@ export function useDialog<T extends HTMLElement>(onClose: () => void) {
 			const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
 			if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
 			if (event.key === "Escape") {
+				if (!closeOnEscapeRef.current) return;
 				event.preventDefault();
 				event.stopPropagation();
 				onCloseRef.current();

@@ -1,10 +1,7 @@
-import { Check, CheckCheck, Pin } from "lucide-react";
+import { AtSign, Check, CheckCheck, Pin } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { MAX_UNREAD_BADGE_COUNT } from "../constants/conversation-list";
-import { formatRelativeTime } from "../../utils";
 
 interface ConversationRowMetaProps {
-	updatedAt: string | null;
 	unreadCount: number;
 	isMuted: boolean;
 	isMentioned: boolean;
@@ -14,57 +11,41 @@ interface ConversationRowMetaProps {
 }
 
 /**
- * The right-hand column of a conversation row, Telegram's arrangement: ticks
- * and time on the name's line, the count (or the pin) on the preview's. One
- * block, so on hover it steps aside as a whole for the actions button instead
- * of the button landing on top of the count. Colour is spent on the count
- * alone — the time stays grey even when something is unread.
+ * The right-hand edge of a conversation row: one mark at most, centred on the
+ * row, as Messenger does — a dot for unread, "@" for a mention, your last
+ * message's ticks, or a pin for a pinned chat with nothing else to say. The
+ * time lives in the preview line instead ("text · 5m"), so this column is a
+ * single narrow lane and every preview truncates at the same edge.
+ *
+ * A dot, not a count: the name and preview already turn bold when something is
+ * unread. The count is still spoken to screen readers.
  */
-export function ConversationRowMeta({
-	updatedAt,
-	unreadCount,
-	isMuted,
-	isMentioned,
-	isPinned,
-	tick,
-}: ConversationRowMetaProps) {
+export function ConversationRowMeta({ unreadCount, isMuted, isMentioned, isPinned, tick }: ConversationRowMetaProps) {
 	const hasUnread = unreadCount > 0;
-	const count = unreadCount > MAX_UNREAD_BADGE_COUNT ? `${MAX_UNREAD_BADGE_COUNT}+` : String(unreadCount);
 
 	return (
-		<span className="conversation-row-meta flex shrink-0 flex-col items-end justify-between self-stretch py-0.5">
-			<span className="conversation-row-time flex h-5 items-center gap-0.5 text-[11px] tabular-nums text-ink-faint">
-				{tick === "read" && <CheckCheck role="img" aria-label="Read" className="size-3.5 text-heading" />}
-				{tick === "sent" && <Check role="img" aria-label="Sent" className="size-3.5" />}
-				{updatedAt && formatRelativeTime(updatedAt)}
-			</span>
-			<span className="flex h-5 items-center gap-1">
-				{isMentioned && (
-					<span
-						role="img"
-						aria-label="You were mentioned"
-						className="meta flex size-[18px] items-center justify-center rounded-full bg-signal font-semibold text-paper-raised"
-					>
-						@
-					</span>
-				)}
-				{hasUnread && (
-					<span
-						aria-label={`${unreadCount} unread messages`}
-						// Muted chats count in grey: present, but not asking.
-						className={cn(
-							"meta flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 font-semibold text-paper-raised",
-							isMuted ? "bg-ink-faint" : "bg-signal",
-						)}
-					>
-						{count}
-					</span>
-				)}
-				{/* A pinned chat with nothing new says so where the count would be. */}
-				{!hasUnread && isPinned && (
-					<Pin role="img" aria-label="Pinned" className="size-3.5 rotate-45 text-ink-faint" />
-				)}
-			</span>
+		<span className="conversation-row-meta flex w-4 shrink-0 items-center justify-center self-center">
+			{hasUnread && isMentioned ? (
+				<AtSign
+					role="img"
+					aria-label={`You were mentioned, ${unreadCount} unread messages`}
+					className={cn("size-3.5", isMuted ? "text-ink-faint" : "text-signal")}
+					strokeWidth={2.5}
+				/>
+			) : hasUnread ? (
+				<span
+					role="img"
+					aria-label={`${unreadCount} unread messages`}
+					// Muted chats mark in grey: present, but not asking.
+					className={cn("size-2 rounded-full", isMuted ? "bg-ink-faint" : "bg-signal")}
+				/>
+			) : tick === "read" ? (
+				<CheckCheck role="img" aria-label="Read" className="size-3.5 text-heading" />
+			) : tick === "sent" ? (
+				<Check role="img" aria-label="Sent" className="size-3.5 text-ink-faint" />
+			) : (
+				isPinned && <Pin role="img" aria-label="Pinned" className="size-3.5 rotate-45 text-ink-faint" />
+			)}
 		</span>
 	);
 }

@@ -9,6 +9,7 @@ import {
 	getStoryMediaController,
 	listStoryViewersController,
 	replyToStoryController,
+	searchNoteMusicController,
 	setCloseFriendsController,
 	setStoryAudienceController,
 	setStoryHiddenController,
@@ -25,6 +26,8 @@ storiesRouter.get("/", getStoryFeedController);
 // Multipart with a "photo" or "video" field for a media story, or JSON for a text one.
 storiesRouter.post("/", uploadStoryMedia, createStoryController);
 storiesRouter.get("/audience", getStoryAudienceSettingsController);
+// Before "/:storyId": songs for a note, proxied so the catalogue's rate limit and host checks live in one place.
+storiesRouter.get("/music", searchNoteMusicController);
 storiesRouter.put("/audience/close-friends", setCloseFriendsController);
 storiesRouter.put("/audience/hidden", setStoryHiddenController);
 storiesRouter.delete("/:storyId", deleteStoryController);

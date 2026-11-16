@@ -42,12 +42,26 @@ export function Disclosure({
 				variant="ghost"
 				onClick={toggle}
 				aria-expanded={isOpen}
-				className="w-full justify-between px-3 py-2 text-sm font-medium text-ink-soft"
+				className="w-full justify-between px-3 py-2 text-sm font-medium text-ink-soft hover:text-ink"
 			>
 				{label}
-				<ChevronDown className={cn("size-4 text-ink-faint transition-transform", isOpen && "rotate-180")} />
+				<ChevronDown
+					className={cn(
+						"size-4 text-ink-faint transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+						isOpen && "rotate-180",
+					)}
+				/>
 			</Button>
-			{isOpen && children}
+			<div
+				className={cn(
+					"grid transition-[grid-template-rows,opacity] duration-250 ease-[cubic-bezier(0.16,1,0.3,1)]",
+					isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0 pointer-events-none",
+				)}
+			>
+				<div className="min-h-0 overflow-hidden" aria-hidden={!isOpen}>
+					{children}
+				</div>
+			</div>
 		</div>
 	);
 }

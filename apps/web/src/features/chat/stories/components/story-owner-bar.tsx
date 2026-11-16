@@ -62,7 +62,7 @@ export function StoryOwnerBar({ story, onShowViewers, onChanged, onDeleted }: St
 							onDeleted(story.id);
 						})
 					}
-					aria-label="Delete story"
+					aria-label="Delete note"
 					className="size-9 p-0 text-on-media hover:bg-on-media/15 hover:text-on-media"
 				>
 					<Trash2 className="size-4" />

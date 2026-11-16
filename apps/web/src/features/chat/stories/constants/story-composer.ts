@@ -1,11 +1,5 @@
-import type { StoryDurationHours, StoryKind } from "@chatty/shared-types";
+import type { StoryDurationHours } from "@chatty/shared-types";
 import type { StoryPeopleList } from "../types/story-audience";
-
-export const STORY_KIND_OPTIONS: { value: StoryKind; label: string }[] = [
-	{ value: "photo", label: "Photo" },
-	{ value: "video", label: "Video" },
-	{ value: "text", label: "Text" },
-];
 
 /** How long a story lasts — the compact labels, spoken in full. */
 export const STORY_DURATION_OPTIONS: { value: StoryDurationHours; label: string; accessibleLabel: string }[] = [
@@ -17,5 +11,8 @@ export const STORY_DURATION_OPTIONS: { value: StoryDurationHours; label: string;
 
 export const STORY_PEOPLE_LIST_OPTIONS: { value: StoryPeopleList; label: string }[] = [
 	{ value: "close_friends", label: "Close friends" },
-	{ value: "hidden", label: "Hide stories from" },
+	{ value: "hidden", label: "Hide notes from" },
 ];
+
+/** How long the music search waits after the last keystroke, so typing a title is one request. */
+export const NOTE_MUSIC_SEARCH_DEBOUNCE_MS = 300;

@@ -193,7 +193,7 @@ export function ConversationActions({ conversation, currentUserId, onPreview }: 
 						aria-label="Conversation actions"
 						aria-busy={isSaving}
 						style={menuPosition}
-						className="fixed z-50 w-52 overflow-hidden rounded-panel border border-rule bg-paper-raised p-1.5 shadow-lift"
+						className="popover-enter fixed z-50 w-52 overflow-hidden rounded-panel border border-rule bg-paper-raised p-1.5 shadow-lift"
 					>
 						{isChoosingMute ? (
 							<ConversationMuteMenu

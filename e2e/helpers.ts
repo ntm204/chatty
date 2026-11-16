@@ -86,8 +86,8 @@ export async function register(page: Page, user: TestUser): Promise<void> {
  * if that event stopped firing this is the only test that would notice.
  */
 export async function openConversationWith(page: Page, peer: TestUser): Promise<void> {
-	// The stories row names people too ("Minh's story"); a conversation row is the other one.
-	const row = page.getByRole("button", { name: new RegExp(`^(?!.*'s story).*${peer.displayName}`) });
+	// The stories row names people too ("Minh's note"); a conversation row is the other one.
+	const row = page.getByRole("button", { name: new RegExp(`^(?!.*'s note).*${peer.displayName}`) });
 	// Route changes render a frame behind the URL; wait until what is painted is
 	// what the address says, then decide. A visible row is always clicked (opening
 	// the open thread is a no-op); a phone that hides the list while a thread is open

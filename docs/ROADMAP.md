@@ -58,6 +58,14 @@ The conversation background remains unchanged. The header and pin bar float over
 a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
+## November 16 — Notes with real music — `done`
+
+The owner chose notes only: no photo or video in the app. A note is words, a song, or both, drawn in the
+message bubble (same corners, colours and tail) above the author's face; the composer writes straight into
+that bubble. Songs come from Apple's catalogue through the API ([ADR 0026](adr/0026-note-music.md)): search,
+or what is popular in Vietnam, each with a 30-second preview that plays while the note is open. The API keeps
+photo and video stories, unused by the web app, until a later clean-up removes them.
+
 ## November 15 — Stories — `done`
 
 Batch 1 built as designed below ([ADR 0025](adr/0025-stories.md)). Batch 2, the same day: video stories

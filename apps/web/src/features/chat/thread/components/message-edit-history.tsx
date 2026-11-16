@@ -51,7 +51,7 @@ export function MessageEditHistory({ conversationId, messageId, onClose }: Messa
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 dark:bg-scrim/55"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/30 p-4 backdrop-blur-xs dark:bg-scrim/55"
 			onPointerDown={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -62,7 +62,7 @@ export function MessageEditHistory({ conversationId, messageId, onClose }: Messa
 				aria-modal="true"
 				aria-labelledby={titleId}
 				tabIndex={-1}
-				className="flex max-h-[min(70vh,36rem)] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
+				className="dialog-enter flex max-h-[min(70vh,36rem)] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper shadow-modal outline-none"
 			>
 				<header className="flex shrink-0 items-start justify-between gap-4 border-b border-rule px-6 py-5">
 					<div className="min-w-0">

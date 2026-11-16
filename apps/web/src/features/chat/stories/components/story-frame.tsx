@@ -1,7 +1,10 @@
 import type { StoryDTO } from "@chatty/shared-types";
 import { useEffect, useRef } from "react";
-import { cn } from "@/utils/cn";
-import { CONVERSATION_THEME_CLASSES } from "../../constants/conversation-theme";
+import { Avatar } from "@/components/avatar";
+import { detectNoteEasterEgg } from "../utils/detect-note-easter-egg";
+import { NoteEasterEggParticles } from "./note-easter-egg-particles";
+import { NoteBubble } from "./note-bubble";
+import { NoteMusicBadge } from "./note-music-badge";
 
 interface StoryFrameProps {
 	story: StoryDTO;
@@ -16,8 +19,7 @@ interface StoryFrameProps {
 
 /**
  * What a story shows: a photo or video, fitted whole with its caption over a
- * soft scrim, or words centred on their colour. Media is never cropped — a
- * story cut to fill the frame loses whatever the author framed it around.
+ * soft scrim, or a note: its words in a message bubble above the author's face.
  */
 export function StoryFrame({ story, isPaused, isMuted, onBufferingChange, onAutoplayMuted }: StoryFrameProps) {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,7 +60,6 @@ export function StoryFrame({ story, isPaused, isMuted, onBufferingChange, onAuto
 						onWaiting={() => onBufferingChange(true)}
 						onPlaying={() => onBufferingChange(false)}
 						onContextMenu={blockSave}
-						// No controls: the story's own clock, tap zones and pause are the controls.
 						controlsList="nodownload noplaybackrate"
 						disablePictureInPicture
 						className="max-h-full max-w-full object-contain"
@@ -80,18 +81,39 @@ export function StoryFrame({ story, isPaused, isMuted, onBufferingChange, onAuto
 			</div>
 		);
 	}
-	const theme = CONVERSATION_THEME_CLASSES[story.background ?? "iris"];
+
+	const thought = story.text;
+	const easterEgg = thought ? detectNoteEasterEgg(thought) : null;
 
 	return (
-		<div className={cn("flex h-full w-full items-center justify-center px-8", theme.bubble)}>
-			<p
-				className={cn(
-					"font-content max-w-md text-center text-[26px]/[1.35] font-semibold whitespace-pre-wrap wrap-anywhere",
-					theme.bubbleInk,
-				)}
-			>
-				{story.text}
-			</p>
+		<div className="flex h-full w-full flex-col items-center justify-center px-6">
+			<div className="flex flex-col items-center gap-3">
+				<NoteBubble isMine={false} size="lg" className="relative max-w-xs">
+					{easterEgg && <NoteEasterEggParticles type={easterEgg.type} />}
+					{easterEgg && (
+						<p className="mb-2 text-center text-xs text-ink-soft">
+							{easterEgg.emoji} {easterEgg.label}
+						</p>
+					)}
+					{thought && (
+						<p className="font-content text-center text-lg/[1.45] font-medium whitespace-pre-wrap wrap-anywhere">
+							{thought}
+						</p>
+					)}
+					{story.music && (
+						<div className={thought ? "mt-3 flex justify-center" : "flex justify-center"}>
+							<NoteMusicBadge track={story.music} isAutoPlaying={!isPaused && !isMuted} />
+						</div>
+					)}
+				</NoteBubble>
+
+				<div className="flex flex-col items-center gap-1">
+					<Avatar user={story.author} size="lg" />
+					<span className="text-sm font-semibold text-on-media drop-shadow-xs">
+						{story.author.displayName}
+					</span>
+				</div>
+			</div>
 		</div>
 	);
 }

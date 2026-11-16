@@ -39,7 +39,7 @@ export function MessageStoryQuote({ storyReply, isMine }: MessageStoryQuoteProps
 				</span>
 			)}
 			<span className="eyebrow opacity-70">
-				{storyReply.isExpired ? "Story expired" : isMine ? "You replied to a story" : "Replied to your story"}
+				{storyReply.isExpired ? "Note expired" : isMine ? "You replied to a note" : "Replied to your note"}
 			</span>
 		</div>
 	);

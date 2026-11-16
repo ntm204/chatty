@@ -1,4 +1,4 @@
-import type { StoryDTO, StoryMediaDTO } from "@chatty/shared-types";
+import type { NoteMusicDTO, StoryDTO, StoryMediaDTO } from "@chatty/shared-types";
 import type { ConversationTheme, StoryAudience, StoryKind } from "@prisma/client";
 import { buildStoryMediaUrls } from "../../lib/story-media.js";
 import { themeToWire } from "../../lib/theme-wire.js";
@@ -13,6 +13,11 @@ export const storySelect = {
 	mediaWidth: true,
 	mediaHeight: true,
 	mediaDurationMs: true,
+	musicTrackId: true,
+	musicTitle: true,
+	musicArtist: true,
+	musicArtworkUrl: true,
+	musicPreviewUrl: true,
 	audience: true,
 	createdAt: true,
 	expiresAt: true,
@@ -28,6 +33,11 @@ export interface StoryRow {
 	mediaWidth: number | null;
 	mediaHeight: number | null;
 	mediaDurationMs: number | null;
+	musicTrackId: string | null;
+	musicTitle: string | null;
+	musicArtist: string | null;
+	musicArtworkUrl: string | null;
+	musicPreviewUrl: string | null;
 	audience: StoryAudience;
 	createdAt: Date;
 	expiresAt: Date;
@@ -45,6 +55,20 @@ function toStoryMediaDTO(row: StoryRow): StoryMediaDTO {
 		width: row.mediaWidth,
 		height: row.mediaHeight,
 		durationMs: isVideo ? row.mediaDurationMs : null,
+	};
+}
+
+function toNoteMusicDTO(row: StoryRow): NoteMusicDTO | null {
+	if (!row.musicTrackId || !row.musicTitle || !row.musicArtist || !row.musicArtworkUrl || !row.musicPreviewUrl) {
+		return null;
+	}
+
+	return {
+		trackId: row.musicTrackId,
+		title: row.musicTitle,
+		artist: row.musicArtist,
+		artworkUrl: row.musicArtworkUrl,
+		previewUrl: row.musicPreviewUrl,
 	};
 }
 
@@ -70,6 +94,7 @@ export function toStoryDTO(row: StoryRow, { viewerId, isViewed, viewCount }: Sto
 		text: row.text,
 		background: row.background ? themeToWire(row.background) : null,
 		media: row.mediaId ? toStoryMediaDTO(row) : null,
+		music: toNoteMusicDTO(row),
 		createdAt: row.createdAt.toISOString(),
 		expiresAt: row.expiresAt.toISOString(),
 		isViewed: isMine || isViewed,

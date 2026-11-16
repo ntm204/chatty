@@ -12,6 +12,11 @@ const AUDIENCES = ["contacts", "close_friends"] as const;
 export const createStorySchema = z.object({
 	text: z.string().max(STORY_TEXT_MAX_LENGTH).optional(),
 	background: z.enum(THEMES).optional(),
+	/** A song from `GET /stories/music`, by id only — the server looks up the rest. */
+	musicTrackId: z
+		.string()
+		.regex(/^\d{1,20}$/u)
+		.optional(),
 	audience: z.enum(AUDIENCES).default("contacts"),
 	// Multipart sends numbers as strings; one of the offered lifetimes or nothing (24h).
 	durationHours: z.coerce
@@ -36,3 +41,5 @@ export const storyMediaQuerySchema = z.object({
 	token: z.string().min(1),
 	size: z.enum(["thumb", "poster"]).optional(),
 });
+
+export const noteMusicQuerySchema = z.object({ q: z.string().max(100).default("") });

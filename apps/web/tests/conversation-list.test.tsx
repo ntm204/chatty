@@ -101,8 +101,9 @@ describe("ConversationList", () => {
 			],
 		});
 
-		expect(screen.getByRole("img", { name: "You were mentioned" })).toHaveTextContent("@");
-		expect(screen.getByLabelText("3 unread messages")).toHaveTextContent("3");
+		// One mark, not two: the mention replaces the unread dot and still says the count.
+		expect(screen.getByRole("img", { name: "You were mentioned, 3 unread messages" })).toBeInTheDocument();
+		expect(screen.queryByLabelText("3 unread messages")).not.toBeInTheDocument();
 		expect(screen.queryByText("Mention")).not.toBeInTheDocument();
 	});
 
@@ -121,11 +122,29 @@ describe("ConversationList", () => {
 		expect(screen.getByRole("img", { name: "Sent" })).toBeInTheDocument();
 	});
 
-	it("counts a muted chat in grey and keeps the time out of colour", () => {
+	it("names a group's last speaker by the name the group sees, not their handle", () => {
+		const an = { ...makeParticipant("an", "An Nguyen"), nickname: "Annie" };
+		renderList({
+			conversations: [
+				makeConversation({
+					isGroup: true,
+					name: "Weekend trip",
+					participants: [makeParticipant("minh", "Minh"), an, makeParticipant("binh", "Binh")],
+					lastMessage: makeMessage("m1", "an", "Book the car?"),
+				}),
+			],
+		});
+
+		expect(screen.getByText("Annie:")).toBeInTheDocument();
+		expect(screen.queryByText("an:")).not.toBeInTheDocument();
+	});
+
+	it("marks unread with a dot that speaks the count, grey for a muted chat", () => {
 		renderList({
 			conversations: [{ ...conversation, unreadCount: 2, mutedUntil: "9999-12-31T23:59:59.999Z" }],
 		});
 		expect(screen.getByLabelText("2 unread messages")).toHaveClass("bg-ink-faint");
+		expect(screen.getByLabelText("2 unread messages")).toHaveTextContent("");
 		expect(screen.getByRole("img", { name: "Muted" })).toBeInTheDocument();
 	});
 });

@@ -8,9 +8,20 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
-- Video stories: up to 15 seconds, re-encoded to 720p with a poster, playing as soon as they start to load;
-  mute and pause follow the story. Any story can last 6, 12, 24 or 48 hours.
-- The sidebar's Unread tab shows a small dot instead of a count, keeping the tabs evenly sized.
+- Notes replace photo and video stories in the app (ADR 0026): words written into the same bubble a
+  message uses, floating above your face in the row, with an optional song — a real track from Apple's
+  catalogue, searched or picked from what is popular in Vietnam, playing its 30-second preview while the note
+  is open (mute in the viewer). Audience, "hide from", replies as messages and a 6–48 hour lifetime stay as
+  they were. Keyword easter eggs add a small animation to a note.
+- Circular photo cropper (`AvatarCropDialog`): professional circular avatar cropping modal with touch/pointer drag pan, rule-of-thirds grid alignment guide, range slider and step buttons with zoom percentage (100%–300%), 90° clockwise rotation, horizontal flip, one-tap reset, and 512x512 high-resolution canvas export for profile and group avatars.
+- Animations standard (animations.dev): all accordion and collapse sections use CSS Grid `0fr` to `1fr` transitions with `cubic-bezier(0.16, 1, 0.3, 1)` and `min-height: 0` wrappers. Dialogs and modals feature smooth spring-like deceleration (`dialog-enter` 220ms and `backdrop-fade` 180ms).
+- Form dismissal protection: input, crop, and composer modals prevent accidental data loss on Escape key presses (`closeOnEscape: false`).
+
+- Video stories (server side, no longer offered by the app — see notes above): up to 15 seconds, re-encoded
+  to 720p with a poster. Any story can last 6, 12, 24 or 48 hours.
+- Calmer sidebar rows: unread is a dot instead of a red count (a mention shows "@" instead), the time follows
+  the preview ("… · 5m", as Messenger does) so the right column holds one mark at a fixed width, there is no mention tint or "You:" prefix, and a group's last
+  speaker is shown by name. The Unread tab is marked with a dot instead of a count.
 - Stories (ADR 0025): post a photo or text story for 24 hours from the row above your chats, to everyone you
   chat with or to close friends, with a private "hide from" list. Watch the row person by person; reply or
   react and it arrives as a direct message quoting the story. See who viewed yours (when receipts are on),

@@ -6,6 +6,7 @@ Accepted (2026-11-15). Batch 1: photo and text stories. Adds `Story`, `StoryView
 `StoryHiddenFrom` and `Message.replyToStoryId` / `Message.isStoryReply` in migration `20261115120000_stories`.
 Batch 2, the same day: video stories and a choice of lifetime (`20261115140000_story_video_and_lifetimes`,
 `20261115150000_story_lifetime_upper_bound`).
+2026-11-16: the web app offers notes only (words and a song, ADR 0026); photo and video remain in the API.
 
 ## Context
 

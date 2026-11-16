@@ -247,7 +247,7 @@
 @keyframes popover-enter {
 	from {
 		opacity: 0;
-		transform: translateY(4px) scale(0.985);
+		transform: translateY(4px) scale(0.95);
 	}
 
 	to {
@@ -257,7 +257,42 @@
 }
 
 @utility popover-enter {
-	animation: popover-enter 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	animation: popover-enter 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Dialog & modal open transitions following animations.dev principles:
+ * Snappy spring-like deceleration (cubic-bezier(0.16, 1, 0.3, 1)) with subtle vertical drift
+ * and scale settling into place without abrupt jarring jumps.
+ */
+@keyframes dialog-enter {
+	from {
+		opacity: 0;
+		transform: translateY(6px) scale(0.96);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@utility dialog-enter {
+	animation: dialog-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes backdrop-fade {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+@utility backdrop-fade {
+	animation: backdrop-fade 180ms ease-out;
 }
 
 /*
@@ -367,6 +402,8 @@
 		transition: none;
 	}
 	.popover-enter,
+	.dialog-enter,
+	.backdrop-fade,
 	.media-enter {
 		animation: none;
 	}

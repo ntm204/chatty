@@ -25,9 +25,9 @@ the external conditions in [Deployment](docs/DEPLOYMENT.md).
   voice messages with seeking and playback speed, stickers.
 - **Reliability**: a durable offline outbox that resends exactly once, retryable uploads, a
   session that survives network drops, and an offline app shell.
-- **Stories**: photo, text and short video stories lasting 6–48 hours, for the people you chat with or
-  your close friends, with replies that arrive as direct messages and a viewers list that follows read
-  receipts.
+- **Notes**: a few words and an optional song (30-second previews from Apple's catalogue) in a bubble
+  above your face for 6–48 hours, for the people you chat with or your close friends, with replies that
+  arrive as direct messages and a viewers list that follows read receipts.
 - **Groups**: admin/member roles, invite policy, shared nicknames and message color, a media, file
   and link vault per conversation.
 - **Privacy and accounts**: disappearing messages (per chat, or as your default for new chats) and

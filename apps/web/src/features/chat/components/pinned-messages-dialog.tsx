@@ -25,7 +25,7 @@ export function PinnedMessagesDialog({
 	// The blurred pin bar creates a containing block; the modal belongs to the viewport.
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
+			className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4 backdrop-blur-xs"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) onClose();
 			}}
@@ -39,7 +39,7 @@ export function PinnedMessagesDialog({
 				// A fixed height rather than a max — a modal that grows and shrinks with
 				// how many messages happen to be pinned reads as the interface
 				// resizing itself under the reader. See conventions/frontend.md.
-				className="flex h-[75dvh] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex h-[75dvh] w-full max-w-md flex-col overflow-hidden rounded-panel border border-rule bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="relative flex shrink-0 items-center justify-center border-b border-rule p-4">
 					<h2 className="text-base font-semibold">Pinned messages</h2>

@@ -60,7 +60,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-end justify-center bg-scrim/40 p-4 sm:items-center"
+			className="backdrop-fade fixed inset-0 z-50 flex items-end justify-center bg-scrim/40 p-4 backdrop-blur-xs sm:items-center"
 			onClick={(event) => {
 				if (event.target === event.currentTarget) close();
 			}}
@@ -71,7 +71,7 @@ export function ConversationThemeDialog({ conversation, onClose }: ConversationT
 				aria-modal="true"
 				aria-label="Chat theme"
 				tabIndex={-1}
-				className="flex max-h-[calc(100dvh-32px)] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-paper-raised shadow-modal outline-none"
+				className="dialog-enter flex max-h-[calc(100dvh-32px)] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-paper-raised shadow-modal outline-none"
 			>
 				<div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-3">
 					<h2 className="text-base font-semibold text-heading">Chat theme</h2>

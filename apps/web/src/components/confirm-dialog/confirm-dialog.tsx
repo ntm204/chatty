@@ -50,14 +50,14 @@ export function ConfirmDialog({
 	}, [dialogRef]);
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/20 px-4 dark:bg-scrim/50">
+		<div className="backdrop-fade fixed inset-0 z-50 flex items-center justify-center bg-scrim/20 px-4 backdrop-blur-xs dark:bg-scrim/50">
 			<div
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-label={title}
 				tabIndex={-1}
-				className="flex w-full max-w-[380px] flex-col gap-4 rounded-bubble border border-rule bg-paper-raised p-5 outline-none"
+				className="dialog-enter flex w-full max-w-[380px] flex-col gap-4 rounded-bubble border border-rule bg-paper-raised p-5 shadow-modal outline-none"
 			>
 				<div className="flex flex-col gap-1.5">
 					<h2 className="font-display text-[20px] leading-tight tracking-tight">{title}</h2>
