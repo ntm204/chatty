@@ -8,11 +8,22 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
-- Notes replace photo and video stories in the app (ADR 0026): words written into the same bubble a
-  message uses, floating above your face in the row, with an optional song — a real track from Apple's
-  catalogue, searched or picked from what is popular in Vietnam, playing its 30-second preview while the note
-  is open (mute in the viewer). Audience, "hide from", replies as messages and a 6–48 hour lifetime stay as
-  they were. Keyword easter eggs add a small animation to a note.
+- Privacy, laid out as on Instagram: grouped rows (who sees your activity, who sees your notes, how others
+  can interact with you), each showing its current value and opening its own page. Close friends and
+  "Hide notes from" are picked from a searchable list with round checks, saved on each tap; blocked and
+  restricted accounts moved into Privacy.
+- The default chat background is Telegram's classic sage-and-meadow gradient with a denser doodle pattern,
+  and your bubbles on it are its pale green.
+- Sidebar polish: one 16px content edge from the wordmark to the account row, a quiet compose icon in place
+  of the yellow "New chat" pill, a flat account row, and softer row hovers. Folder tabs are soft chips:
+  Groups and Direct appear only once they hold a chat, a dot marks each folder with something unread, and
+  arrow keys move between them. The notes row is compact — row-sized faces, a smaller bubble overlapping
+  the top of the face, as on Messenger.
+- Notes, as on Messenger (ADR 0026): one note per person, up to 60 characters and an optional song, in a
+  thought bubble above your face for 24 hours; a new note replaces the last. Tap someone's note to like it
+  with a heart or reply (the reply arrives in your chat); tap yours to see who liked it, leave a new one or
+  delete it. Songs are real tracks from Apple's catalogue — search, or what is popular in Vietnam — playing
+  their 30-second preview while the note is open. Photo and video stories are no longer offered.
 - Circular photo cropper (`AvatarCropDialog`): professional circular avatar cropping modal with touch/pointer drag pan, rule-of-thirds grid alignment guide, range slider and step buttons with zoom percentage (100%–300%), 90° clockwise rotation, horizontal flip, one-tap reset, and 512x512 high-resolution canvas export for profile and group avatars.
 - Animations standard (animations.dev): all accordion and collapse sections use CSS Grid `0fr` to `1fr` transitions with `cubic-bezier(0.16, 1, 0.3, 1)` and `min-height: 0` wrappers. Dialogs and modals feature smooth spring-like deceleration (`dialog-enter` 220ms and `backdrop-fade` 180ms).
 - Form dismissal protection: input, crop, and composer modals prevent accidental data loss on Escape key presses (`closeOnEscape: false`).

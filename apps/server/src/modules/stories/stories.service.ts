@@ -4,12 +4,14 @@
  */
 import { randomUUID } from "node:crypto";
 import {
+	NOTE_TEXT_MAX_LENGTH,
 	type MessageDTO,
 	type NoteMusicDTO,
 	type StoryAudienceSettingsDTO,
 	type StoryAuthorDTO,
 	type StoryDTO,
 	type StoryFeedDTO,
+	type StoryLikeDTO,
 	type StoryViewerDTO,
 } from "@chatty/shared-types";
 import type { Prisma, StoryAudience } from "@prisma/client";
@@ -104,18 +106,26 @@ export async function getStoryFeed(viewerId: string): Promise<StoryFeedDTO> {
 		prisma.story.findMany({
 			where: { authorId: viewerId, expiresAt: { gt: now } },
 			orderBy: { createdAt: "asc" },
-			select: { ...storySelect, _count: { select: { views: { where: { isShared: true } } } } },
+			select: { ...storySelect, _count: { select: { views: { where: { isShared: true } }, likes: true } } },
 		}),
 		prisma.story.findMany({
 			where: await viewableStoryWhere(viewerId, now),
 			orderBy: { createdAt: "asc" },
-			select: { ...storySelect, views: { where: { viewerId }, select: { viewerId: true } } },
+			select: {
+				...storySelect,
+				views: { where: { viewerId }, select: { viewerId: true } },
+				likes: { where: { userId: viewerId }, select: { userId: true } },
+			},
 		}),
 	]);
 
 	const byAuthor = new Map<string, StoryAuthorDTO>();
 	for (const row of theirs) {
-		const story = toStoryDTO(row, { viewerId, isViewed: row.views.length > 0 });
+		const story = toStoryDTO(row, {
+			viewerId,
+			isViewed: row.views.length > 0,
+			isLiked: row.likes.length > 0,
+		});
 		const group = byAuthor.get(row.author.id);
 		if (group) {
 			group.stories.push(story);
@@ -127,7 +137,9 @@ export async function getStoryFeed(viewerId: string): Promise<StoryFeedDTO> {
 	const latest = (group: StoryAuthorDTO) => group.stories.at(-1)?.createdAt ?? "";
 
 	return {
-		mine: mine.map((row) => toStoryDTO(row, { viewerId, isViewed: true, viewCount: row._count.views })),
+		mine: mine.map((row) =>
+			toStoryDTO(row, { viewerId, isViewed: true, viewCount: row._count.views, likeCount: row._count.likes }),
+		),
 		authors: [...byAuthor.values()].sort(
 			(left, right) =>
 				Number(right.hasUnseen) - Number(left.hasUnseen) || latest(right).localeCompare(latest(left)),
@@ -155,6 +167,9 @@ export async function createStory(
 	const text = input.text?.trim() ?? "";
 	if (media && input.musicTrackId) throw new ValidationError("Only a note can carry a song");
 	if (!media && !text && !input.musicTrackId) throw new ValidationError("A note needs some words or a song");
+	if (!media && text.length > NOTE_TEXT_MAX_LENGTH) {
+		throw new ValidationError(`A note is at most ${NOTE_TEXT_MAX_LENGTH} characters`);
+	}
 	// Looked up before anything is stored: a song that cannot be found fails the post cleanly.
 	const music = input.musicTrackId ? await lookupNoteMusic(input.musicTrackId) : null;
 
@@ -193,9 +208,21 @@ export async function createStory(
 			},
 			select: storySelect,
 		});
-		nudge(authorId, await listAudienceIds(authorId, row.audience));
+		// One note per person, as on Messenger: a new one replaces the last. Its likes go with it.
+		const replaced = media
+			? []
+			: await prisma.story.findMany({
+					where: { authorId, kind: "TEXT", id: { not: row.id } },
+					select: { id: true, audience: true },
+				});
+		if (replaced.length > 0) {
+			await prisma.story.deleteMany({ where: { id: { in: replaced.map((note) => note.id) } } });
+		}
+		const audiences = new Set([row.audience, ...replaced.map((note) => note.audience)]);
+		const reach = await Promise.all([...audiences].map((audience) => listAudienceIds(authorId, audience)));
+		nudge(authorId, reach.flat());
 
-		return toStoryDTO(row, { viewerId: authorId, isViewed: true, viewCount: 0 });
+		return toStoryDTO(row, { viewerId: authorId, isViewed: true, viewCount: 0, likeCount: 0 });
 	} catch (error) {
 		if (mediaId) await deleteAttachment(mediaId).catch(() => undefined);
 		throw error;
@@ -237,7 +264,7 @@ export async function setStoryAudience(
 	const row = await prisma.story.update({
 		where: { id: storyId },
 		data: { audience },
-		select: { ...storySelect, _count: { select: { views: { where: { isShared: true } } } } },
+		select: { ...storySelect, _count: { select: { views: { where: { isShared: true } }, likes: true } } },
 	});
 	if (story.audience !== audience) {
 		const [before, after] = await Promise.all([
@@ -247,7 +274,12 @@ export async function setStoryAudience(
 		nudge(authorId, [...before, ...after]);
 	}
 
-	return toStoryDTO(row, { viewerId: authorId, isViewed: true, viewCount: row._count.views });
+	return toStoryDTO(row, {
+		viewerId: authorId,
+		isViewed: true,
+		viewCount: row._count.views,
+		likeCount: row._count.likes,
+	});
 }
 
 async function loadViewableStory(viewerId: string, storyId: string) {
@@ -319,6 +351,31 @@ export async function replyToStory(viewerId: string, storyId: string, content: s
 }
 
 /** The people your stories can reach, and the two private lists drawn from them. */
+/** A heart on someone's note. Idempotent; the author's row refetches so their count moves. */
+export async function likeStory(viewerId: string, storyId: string): Promise<void> {
+	const story = await loadViewableStory(viewerId, storyId);
+	await prisma.storyLike.createMany({ data: [{ storyId, userId: viewerId }], skipDuplicates: true });
+	nudge(story.authorId, [story.authorId]);
+}
+
+export async function unlikeStory(viewerId: string, storyId: string): Promise<void> {
+	const story = await loadViewableStory(viewerId, storyId);
+	await prisma.storyLike.deleteMany({ where: { storyId, userId: viewerId } });
+	nudge(story.authorId, [story.authorId]);
+}
+
+/** Who liked one of your notes, newest first. Likes are public to the author, unlike views. */
+export async function listStoryLikes(authorId: string, storyId: string): Promise<StoryLikeDTO[]> {
+	await loadOwnStory(authorId, storyId);
+	const likes = await prisma.storyLike.findMany({
+		where: { storyId },
+		orderBy: { likedAt: "desc" },
+		select: { likedAt: true, user: { select: userSelect } },
+	});
+
+	return likes.map((like) => ({ user: toUserDTO(like.user, true), likedAt: like.likedAt.toISOString() }));
+}
+
 export async function getStoryAudienceSettings(userId: string): Promise<StoryAudienceSettingsDTO> {
 	const contactIds = (await listContactIds(userId)).filter((id) => id !== userId);
 	const [contacts, user] = await Promise.all([

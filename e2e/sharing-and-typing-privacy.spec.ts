@@ -33,8 +33,12 @@ test("turning off forwarding and typing applies to both people at once", async (
 
 	// Minh turns forwarding off; it covers the message already sent.
 	const settings = await openPrivacy(minhPage);
+	await settings.getByRole("button", { name: /^Forwarding/ }).click();
 	await settings.getByRole("switch", { name: "Allow forwarding" }).click();
 	await expect(settings.getByRole("switch", { name: "Allow forwarding" })).toHaveAttribute("aria-checked", "false");
+	await settings.getByRole("button", { name: "Back to privacy" }).click();
+	await expect(settings.getByRole("button", { name: "Forwarding, Off" })).toBeVisible();
+	await settings.getByRole("button", { name: /^Typing indicator/ }).click();
 	await settings.getByRole("switch", { name: "Typing indicator" }).click();
 	await expect(settings.getByRole("switch", { name: "Typing indicator" })).toHaveAttribute("aria-checked", "false");
 	await minhPage.getByRole("button", { name: "Close settings" }).click();

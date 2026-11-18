@@ -7,12 +7,15 @@ import {
 	getStoryAudienceSettingsController,
 	getStoryFeedController,
 	getStoryMediaController,
+	listStoryLikesController,
 	listStoryViewersController,
+	likeStoryController,
 	replyToStoryController,
 	searchNoteMusicController,
 	setCloseFriendsController,
 	setStoryAudienceController,
 	setStoryHiddenController,
+	unlikeStoryController,
 	viewStoryController,
 } from "./stories.controller.js";
 
@@ -36,3 +39,6 @@ storiesRouter.put("/:storyId/audience", setStoryAudienceController);
 storiesRouter.post("/:storyId/view", viewStoryController);
 storiesRouter.get("/:storyId/viewers", listStoryViewersController);
 storiesRouter.post("/:storyId/reply", replyToStoryController);
+storiesRouter.put("/:storyId/like", likeStoryController);
+storiesRouter.delete("/:storyId/like", unlikeStoryController);
+storiesRouter.get("/:storyId/likes", listStoryLikesController);

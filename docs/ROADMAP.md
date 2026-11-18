@@ -58,6 +58,23 @@ The conversation background remains unchanged. The header and pin bar float over
 a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
+## November 18 — Privacy like Instagram, Telegram background, sidebar polish — `done`
+
+Privacy became Instagram's grouped list with a page per setting; close friends and "Hide notes from" are
+a searchable people list saved on each tap (shared `PeoplePicker`, `useStoryPeopleLists`), and blocked and
+restricted accounts moved inside Privacy. The default chat background uses Telegram's classic colours with a
+denser pattern. The sidebar got one content edge, an icon compose button and a flat account row; the notes
+row is shorter.
+
+## November 16 — Notes like Messenger — `done`
+
+The owner asked for Messenger's notes, feature for feature: one note per person (a new one replaces the
+last), at most 60 characters, a fixed 24 hours, a thought bubble with two trailing circles, no rings and no
+full-screen viewer. Tapping a note opens a sheet (bottom on a phone) with a heart and "Reply to…"; the heart
+becomes send while typing. Your own note shows who liked it, "Leave a new note" and "Delete note". Likes are
+a new `StoryLike` table (`20261116120000_note_likes`); only the author sees who. Keyword easter eggs and
+the 6–48 hour choice are gone, as Messenger has neither.
+
 ## November 16 — Notes with real music — `done`
 
 The owner chose notes only: no photo or video in the app. A note is words, a song, or both, drawn in the

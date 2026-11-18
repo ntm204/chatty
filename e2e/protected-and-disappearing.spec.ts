@@ -95,6 +95,7 @@ test("disappearing timer and protected messages work across two people, honestly
 		await author.getByLabel("Account settings").click();
 		const settings = author.getByRole("dialog");
 		await settings.getByRole("button", { name: "Privacy" }).click();
+		await settings.getByRole("button", { name: /^Disappearing messages/ }).click();
 		await settings.getByRole("radio", { name: "7 days" }).click();
 		await expect(settings.getByRole("radio", { name: "7 days" })).toHaveAttribute("aria-checked", "true");
 		await author.getByRole("button", { name: "Close settings" }).click();

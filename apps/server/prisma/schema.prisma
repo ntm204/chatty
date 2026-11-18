@@ -78,6 +78,7 @@ model User {
   messageViews        MessageView[]
   stories             Story[]
   storyViews          StoryView[]
+  storyLikes          StoryLike[]
   closeFriends        CloseFriend[]             @relation("CloseFriendsOf")
   closeFriendOf       CloseFriend[]             @relation("CloseFriendOn")
   storyHiddenFrom     StoryHiddenFrom[]         @relation("StoryHidesFrom")
@@ -868,6 +869,7 @@ model Story {
 
   author  User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   views   StoryView[]
+  likes   StoryLike[]
   replies Message[]   @relation("StoryReplies")
 
   @@index([authorId, expiresAt])
@@ -886,6 +888,19 @@ model StoryView {
   viewer User  @relation(fields: [viewerId], references: [id], onDelete: Cascade)
 
   @@id([storyId, viewerId])
+}
+
+/// One person liking one note (Messenger's heart). Only the author sees who.
+model StoryLike {
+  storyId String
+  userId  String
+  likedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+  @@index([userId])
 }
 
 /// One person on someone's close-friends list. Private to the list's owner.

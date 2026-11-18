@@ -65,6 +65,8 @@
 	--color-tint-amber: #f8d77c;
 	--color-tint-amber-ink: #65430d;
 	--color-tint-moss: #c9deb0;
+	/* Your bubble on the default (Telegram classic) wallpaper: its pale green, not the app accent. */
+	--color-wallpaper-mine: #d4f2b8;
 	--color-tint-moss-ink: #34552c;
 	--color-tint-plum: #f3c3d8;
 	--color-tint-plum-ink: #763051;
@@ -155,6 +157,7 @@
 	--color-tint-amber: #554425;
 	--color-tint-amber-ink: #f5d58f;
 	--color-tint-moss: #374c36;
+	--color-wallpaper-mine: var(--color-block);
 	--color-tint-moss-ink: #c4e1ac;
 	--color-tint-plum: #55344b;
 	--color-tint-plum-ink: #f1c5de;

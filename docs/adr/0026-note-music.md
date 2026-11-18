@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted (2026-11-16). Migrations `20261116090000_note_music` and `20261116091000_note_shape`.
+Accepted (2026-11-16). Migrations `20261116090000_note_music`, `20261116091000_note_shape` and
+`20261116120000_note_likes`.
 
 ## Context
 
@@ -29,11 +30,13 @@ player is heavy and tracks the viewer).
   cover and preview URL into the row, so a note can only point a viewer at `audio-ssl.itunes.apple.com`
   and `*.mzstatic.com` — never a URL the poster typed — and keeps working if the catalogue is down later.
   A database check keeps the five fields all-or-nothing and only on a note.
-- **Playback**: one shared audio element; a preview plays while the note is open in the viewer, stops on
-  pause, mute, next or close, and the picker previews one row at a time. The CSP allows those two hosts
+- **Playback**: one shared audio element; a preview plays while the note's sheet is open and stops
+  when it closes or the play button is pressed; the picker previews one row at a time. The CSP allows those two hosts
   for `media-src` and `img-src` only.
-- **Design**: the note wears the message bubble (`NoteBubble`), not a bubble of its own: yours in your
-  message colour, others' in the received one.
+- **Shape, as on Messenger** (owner, same day): one note per person — posting replaces the last, with its
+  likes; at most 60 characters (`NOTE_TEXT_MAX_LENGTH`); a fixed 24 hours. A heart is a `StoryLike` row,
+  visible as a list to the author only; a reply goes to the direct chat as before. The web row shows a
+  thought bubble (`NoteThoughtBubble`) above each face and opens a sheet, not a full-screen viewer.
 
 ## Consequences
 

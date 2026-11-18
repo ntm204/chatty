@@ -1,1 +1,1 @@
-export { StoriesBar } from "./stories-bar";
+export { NotesBar } from "./notes-bar";

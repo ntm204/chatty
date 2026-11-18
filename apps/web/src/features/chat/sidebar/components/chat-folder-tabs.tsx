@@ -1,28 +1,48 @@
+import type { KeyboardEvent } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { CHAT_FOLDERS } from "../constants/conversation-list";
-import type { ChatFolder } from "../types/conversation-list";
+import type { ChatFolder, FolderSummary } from "../types/conversation-list";
+import { visibleFolders } from "../utils/summarize-folders";
 
 interface ChatFolderTabsProps {
 	folder: ChatFolder;
-	/** How many chats have unread messages: a dot on the Unread tab, the number for screen readers. */
-	unreadCount: number;
+	summary: Record<ChatFolder, FolderSummary>;
 	onChange: (folder: ChatFolder) => void;
 }
 
 /**
- * The sidebar's folder tabs: a quiet underlined row, Telegram-style.
+ * The sidebar's folders as Messenger's soft chips: the open one filled, the
+ * rest plain text until hovered.
  *
- * Unread is a dot, not a count. A number widened one tab and pulled the row off
- * balance, and it repeated what every row's own badge already says; the dot sits
- * outside the label's box, so all four tabs keep the same rhythm whether or not
- * anything is unread.
+ * Smart about what it shows: Groups and Direct appear only once they hold a
+ * chat, and a small dot marks every folder (but All) holding something unread —
+ * the place to look, without a number widening the chip. Left and right arrows
+ * move between folders, as in any tab row.
  */
-export function ChatFolderTabs({ folder, unreadCount, onChange }: ChatFolderTabsProps) {
+export function ChatFolderTabs({ folder, summary, onChange }: ChatFolderTabsProps) {
+	const folders = CHAT_FOLDERS.filter(({ id }) => visibleFolders(summary, folder).includes(id));
+
+	function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+		if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+		event.preventDefault();
+		const index = folders.findIndex(({ id }) => id === folder);
+		const next = folders[(index + (event.key === "ArrowRight" ? 1 : -1) + folders.length) % folders.length]!;
+		onChange(next.id);
+		event.currentTarget.querySelector<HTMLElement>(`[data-folder="${next.id}"]`)?.focus();
+	}
+
 	return (
-		<div role="tablist" aria-label="Chat folders" className="flex shrink-0 gap-1 border-b border-rule-soft px-3">
-			{CHAT_FOLDERS.map((option) => {
+		<div
+			role="tablist"
+			aria-label="Chat folders"
+			onKeyDown={onKeyDown}
+			className="flex shrink-0 gap-1 overflow-x-auto px-3 pt-1 pb-2 scrollbar-none"
+		>
+			{folders.map((option) => {
 				const isSelected = option.id === folder;
+				const unread = summary[option.id].unread;
+				const hasDot = option.id !== "all" && unread > 0;
 
 				return (
 					<Button
@@ -30,29 +50,24 @@ export function ChatFolderTabs({ folder, unreadCount, onChange }: ChatFolderTabs
 						variant="ghost"
 						role="tab"
 						aria-selected={isSelected}
+						tabIndex={isSelected ? 0 : -1}
+						data-folder={option.id}
 						onClick={() => onChange(option.id)}
 						className={cn(
-							"relative h-9 gap-1.5 rounded-none px-2.5 py-0 text-[13px] hover:bg-transparent",
-							isSelected ? "font-semibold text-heading" : "font-medium text-ink-faint hover:text-ink",
+							"relative h-8 shrink-0 gap-1.5 rounded-full px-3.5 py-0 text-[13px] transition-colors",
+							isSelected
+								? "bg-selection font-semibold text-heading hover:bg-selection"
+								: "font-medium text-ink-soft hover:bg-paper-sunken hover:text-ink",
 						)}
 					>
-						<span className="relative">
-							{option.label}
-							{option.id === "unread" && unreadCount > 0 && (
-								<>
-									<span
-										aria-hidden="true"
-										className="absolute -top-0.5 -right-2 size-1.5 rounded-full bg-signal"
-									/>
-									<span className="sr-only">, {unreadCount} chats</span>
-								</>
-							)}
-						</span>
-						{isSelected && (
-							<span
-								aria-hidden="true"
-								className="absolute inset-x-2 bottom-0 h-[3px] rounded-t-full bg-heading"
-							/>
+						{option.label}
+						{hasDot && (
+							<>
+								<span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-signal" />
+								<span className="sr-only">
+									, {unread} {unread === 1 ? "chat" : "chats"}
+								</span>
+							</>
 						)}
 					</Button>
 				);

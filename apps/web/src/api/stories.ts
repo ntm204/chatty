@@ -1,5 +1,5 @@
 /**
- * 24-hour stories: the row, posting, views, viewers, audience and replies.
+ * Notes (stories on the wire): the row, posting, likes, views, audience and replies.
  * Composed into the public `api` object in ./client.ts. See ADR 0025.
  */
 import type {
@@ -8,10 +8,10 @@ import type {
 	SetStoryAudienceRequest,
 	SetStoryPeopleRequest,
 	StoryAudience,
-	StoryDurationHours,
 	StoryAudienceSettingsDTO,
 	StoryDTO,
 	StoryFeedDTO,
+	StoryLikeDTO,
 	StoryViewerDTO,
 	NoteMusicSearchDTO,
 } from "@chatty/shared-types";
@@ -23,13 +23,21 @@ export const storiesApi = {
 	},
 
 	/** A note: words, a song from `searchNoteMusic`, or both. The server looks the song up by id. */
-	createNote(
-		text: string,
-		musicTrackId: string | null,
-		audience: StoryAudience,
-		durationHours: StoryDurationHours,
-	): Promise<StoryDTO> {
-		return post<StoryDTO>("/stories", { text, audience, durationHours, ...(musicTrackId && { musicTrackId }) });
+	createNote(text: string, musicTrackId: string | null, audience: StoryAudience): Promise<StoryDTO> {
+		// No lifetime is sent: a note lasts the server's default 24 hours, as on Messenger.
+		return post<StoryDTO>("/stories", { text, audience, ...(musicTrackId && { musicTrackId }) });
+	},
+
+	likeStory(storyId: string): Promise<void> {
+		return request<void>(`/stories/${storyId}/like`, { method: "PUT" });
+	},
+
+	unlikeStory(storyId: string): Promise<void> {
+		return request<void>(`/stories/${storyId}/like`, { method: "DELETE" });
+	},
+
+	listStoryLikes(storyId: string): Promise<StoryLikeDTO[]> {
+		return get<StoryLikeDTO[]>(`/stories/${storyId}/likes`);
 	},
 
 	/** Songs for a note: matches for `query`, or what is popular in Vietnam when it is empty. */

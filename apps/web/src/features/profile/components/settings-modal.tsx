@@ -7,14 +7,12 @@ import { useDialog } from "@/hooks/use-dialog";
 import { SETTINGS_NAVIGATION } from "../constants/settings";
 import type { SettingsSection } from "../types/settings";
 import { AppearanceSettings } from "./appearance-settings";
-import { BlockedUsersSettings } from "./blocked-users-settings";
 import { ChangeEmailForm } from "./change-email-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccountForm } from "./delete-account-form";
 import { NotificationSettings } from "./notification-settings";
 import { PrivacySettings } from "./privacy-settings";
 import { ProfileForm } from "./profile-form";
-import { RestrictedUsersSettings } from "./restricted-users-settings";
 import { SettingsNav } from "./settings-nav";
 
 interface SettingsModalProps {
@@ -91,8 +89,6 @@ export function SettingsModal({ user, onClose }: SettingsModalProps) {
 							</>
 						)}
 						{activeSection === "privacy" && <PrivacySettings user={user} />}
-						{activeSection === "blocked" && <BlockedUsersSettings />}
-						{activeSection === "restricted" && <RestrictedUsersSettings />}
 						{activeSection === "appearance" && <AppearanceSettings />}
 						{activeSection === "email" && <ChangeEmailForm user={user} />}
 						{activeSection === "notifications" && <NotificationSettings />}

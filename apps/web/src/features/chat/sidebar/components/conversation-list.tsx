@@ -167,7 +167,7 @@ export function ConversationList({
 							// A conversation row is a full-width, left-aligned block, not a
 							// centred action. twMerge lets these win over Button's defaults.
 							className={cn(
-								"conversation-row relative w-full items-center justify-start gap-3 px-2.5 py-2 text-left font-normal",
+								"conversation-row relative w-full items-center justify-start gap-3 px-2 py-2 text-left font-normal",
 								isSelected ? "bg-paper-sunken hover:bg-paper-sunken" : "hover:bg-transparent",
 							)}
 						>

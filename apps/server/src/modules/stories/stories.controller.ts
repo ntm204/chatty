@@ -71,6 +71,24 @@ export async function replyToStoryController(req: Request, res: Response): Promi
 	res.status(201).json(await storiesService.replyToStory(req.userId!, storyId, input.content));
 }
 
+export async function likeStoryController(req: Request, res: Response): Promise<void> {
+	const { storyId } = storyParamsSchema.parse(req.params);
+	await storiesService.likeStory(req.userId!, storyId);
+	res.status(204).end();
+}
+
+export async function unlikeStoryController(req: Request, res: Response): Promise<void> {
+	const { storyId } = storyParamsSchema.parse(req.params);
+	await storiesService.unlikeStory(req.userId!, storyId);
+	res.status(204).end();
+}
+
+export async function listStoryLikesController(req: Request, res: Response): Promise<void> {
+	const { storyId } = storyParamsSchema.parse(req.params);
+	res.setHeader("Cache-Control", "no-store");
+	res.status(200).json(await storiesService.listStoryLikes(req.userId!, storyId));
+}
+
 export async function getStoryAudienceSettingsController(req: Request, res: Response): Promise<void> {
 	res.status(200).json(await storiesService.getStoryAudienceSettings(req.userId!));
 }

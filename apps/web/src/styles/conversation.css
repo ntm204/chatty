@@ -286,18 +286,3 @@
 		display: none !important;
 	}
 }
-
-/* A story's progress segment fills over its duration; the animation's end is
- * the cue to advance, so it runs even under reduced motion — it is a clock,
- * not decoration — but as a plain linear fill with nothing else moving. */
-.story-progress-fill {
-	transform: scaleX(0);
-	animation-name: story-progress;
-	animation-timing-function: linear;
-	animation-fill-mode: forwards;
-}
-@keyframes story-progress {
-	to {
-		transform: scaleX(1);
-	}
-}

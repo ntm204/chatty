@@ -15,12 +15,15 @@ import {
 	getStoryAudienceSettings,
 	getStoryFeed,
 	getStoryMediaFile,
+	likeStory,
+	listStoryLikes,
 	listStoryViewers,
 	replyToStory,
 	searchNoteMusic,
 	setCloseFriends,
 	setStoryAudience,
 	setStoryHiddenFrom,
+	unlikeStory,
 	viewStory,
 } from "../src/modules/stories/stories.service.js";
 import { createStorySchema } from "../src/modules/stories/stories.schema.js";
@@ -107,6 +110,45 @@ describe("posting a story", () => {
 		expect(rooms).toEqual(expect.arrayContaining([`user:${minh}`, `user:${an}`]));
 		expect(rooms).not.toContain(`user:${binh}`);
 		expect(rooms).not.toContain(`user:${chi}`);
+	});
+});
+
+describe("notes, as on Messenger", () => {
+	it("keeps one note per person — a new one replaces the last, and at most 60 characters", async () => {
+		const { minh, an } = await people();
+		const first = await createStory(minh, text("first thought"));
+		await likeStory(an, first.id);
+		const second = await createStory(minh, text("second thought"));
+
+		const feed = await getStoryFeed(an);
+		expect(feed.authors[0]?.stories.map((note) => note.id)).toEqual([second.id]);
+		expect((await getStoryFeed(minh)).mine.map((note) => note.id)).toEqual([second.id]);
+		expect(await prisma.storyLike.count()).toBe(0);
+		await expect(createStory(minh, text("x".repeat(61)))).rejects.toThrow("A note is at most 60 characters");
+	});
+
+	it("lets the audience like a note once; only the author sees who, and a stranger cannot", async () => {
+		const { minh, an, binh, chi } = await people();
+		const note = await createStory(minh, text("coffee?"));
+		fakeIO.emits.length = 0;
+
+		await likeStory(an, note.id);
+		await likeStory(an, note.id);
+		await likeStory(binh, note.id);
+		await expect(likeStory(chi, note.id)).rejects.toBeInstanceOf(NotFoundError);
+		expect(storyNudges().flatMap((emit) => emit.room as unknown as string[])).toEqual(
+			expect.arrayContaining([`user:${minh}`]),
+		);
+
+		expect((await getStoryFeed(an)).authors[0]?.stories[0]).toMatchObject({ isLiked: true });
+		expect((await getStoryFeed(an)).authors[0]?.stories[0]?.likeCount).toBeUndefined();
+		expect((await getStoryFeed(minh)).mine[0]).toMatchObject({ likeCount: 2, isLiked: false });
+		expect((await listStoryLikes(minh, note.id)).map((like) => like.user.id)).toEqual([binh, an]);
+		await expect(listStoryLikes(an, note.id)).rejects.toBeInstanceOf(NotFoundError);
+
+		await unlikeStory(an, note.id);
+		expect((await getStoryFeed(an)).authors[0]?.stories[0]?.isLiked).toBe(false);
+		expect((await getStoryFeed(minh)).mine[0]?.likeCount).toBe(1);
 	});
 });
 

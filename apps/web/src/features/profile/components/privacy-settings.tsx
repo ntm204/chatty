@@ -1,21 +1,22 @@
 import type { CurrentUserDTO, UpdateProfileRequest } from "@chatty/shared-types";
 import { useRef, useState } from "react";
 import { api } from "@/api/client";
-import { MessageTimerPicker } from "@/components/message-timer-picker";
-import { SegmentedControl } from "@/components/segmented-control";
-import { Switch } from "@/components/switch";
 import { useAuth } from "@/hooks/use-auth";
+import { useStoryPeopleLists } from "@/hooks/use-story-people-lists";
 import { getErrorMessage } from "@/utils/get-error-message";
-import { PRESENCE_VISIBILITY_OPTIONS } from "../constants/presence-visibility";
+import type { PrivacyPage } from "../types/settings";
 import { pick } from "../utils/pick";
-import { PrivacySettingRow } from "./privacy-setting-row";
+import { PrivacyMenu } from "./privacy-menu";
+import { PrivacyPageView } from "./privacy-page-view";
 
 interface PrivacySettingsProps {
 	user: CurrentUserDTO;
 }
 
 /**
- * Who sees what you do, and what others may do with what you write.
+ * Who sees what you do, and what others may do with what you write — laid out
+ * as Instagram does: a grouped list showing each current value, and a page per
+ * setting. Blocked and restricted accounts live here too, as they do there.
  *
  * Every control applies the moment it changes — no Save button for choices that
  * are each one tap. The new value shows at once and rolls back with a reason if
@@ -25,6 +26,8 @@ interface PrivacySettingsProps {
 export function PrivacySettings({ user }: PrivacySettingsProps) {
 	const setCurrentUser = useAuth((state) => state.setCurrentUser);
 	const [error, setError] = useState("");
+	const [page, setPage] = useState<PrivacyPage | null>(null);
+	const lists = useStoryPeopleLists();
 	// One request at a time, in the order chosen, so a quick second tap cannot
 	// land before the first and leave the server holding the older value.
 	const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -47,70 +50,20 @@ export function PrivacySettings({ user }: PrivacySettingsProps) {
 	}
 
 	return (
-		<div className="flex flex-col divide-y divide-rule-soft">
-			<PrivacySettingRow
-				label="Read receipts"
-				description="Off hides your “Seen” from everyone, and hides theirs from you."
-				control={
-					<Switch
-						label="Read receipts"
-						isOn={user.readReceiptsEnabled}
-						onChange={(readReceiptsEnabled) => void save({ readReceiptsEnabled })}
-					/>
-				}
-			/>
-			<PrivacySettingRow
-				label="Typing indicator"
-				description="Off hides that you're typing, and hides others typing from you."
-				control={
-					<Switch
-						label="Typing indicator"
-						isOn={user.typingIndicatorsEnabled}
-						onChange={(typingIndicatorsEnabled) => void save({ typingIndicatorsEnabled })}
-					/>
-				}
-			/>
-			<PrivacySettingRow
-				label="Allow forwarding"
-				description="Off stops others forwarding your messages, including ones already sent. Copying text and screenshots can't be fully stopped."
-				control={
-					<Switch
-						label="Allow forwarding"
-						isOn={user.allowMessageForwarding}
-						onChange={(allowMessageForwarding) => void save({ allowMessageForwarding })}
-					/>
-				}
-			/>
-			<PrivacySettingRow
-				label="Last seen"
-				labelId="privacy-last-seen"
-				description="Online status is still shown while you're connected."
-				isStacked
-				control={
-					<SegmentedControl
-						options={PRESENCE_VISIBILITY_OPTIONS}
-						value={user.presenceVisibility}
-						labelledBy="privacy-last-seen"
-						onChange={(presenceVisibility) => void save({ presenceVisibility })}
-					/>
-				}
-			/>
-			<PrivacySettingRow
-				label="Disappearing messages for new chats"
-				labelId="privacy-message-timer"
-				description="Chats you start use this. They show it as your default for every new chat, so nobody reads it as aimed at them."
-				isStacked
-				control={
-					<MessageTimerPicker
-						value={user.defaultMessageTimerSeconds}
-						labelledBy="privacy-message-timer"
-						onChange={(defaultMessageTimerSeconds) => void save({ defaultMessageTimerSeconds })}
-					/>
-				}
-			/>
-			{error && (
+		<div className="flex flex-col">
+			{page ? (
+				<PrivacyPageView page={page} user={user} lists={lists} save={save} onBack={() => setPage(null)} />
+			) : (
+				<PrivacyMenu
+					user={user}
+					closeFriendCount={lists.settings ? lists.selected.close_friends.size : null}
+					hiddenCount={lists.settings ? lists.selected.hidden.size : null}
+					onOpen={setPage}
+				/>
+			)}
+			{(error || lists.error) && (
 				<p role="alert" className="pt-4 text-[13px] text-signal">
-					{error}
+					{error || lists.error}
 				</p>
 			)}
 		</div>

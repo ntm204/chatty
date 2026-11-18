@@ -18,26 +18,27 @@ test("a note reaches the people you chat with, and its replies land in a convers
 	await startDirectChat(author, an);
 	await openConversationWith(friend, minh);
 
-	// ── Post a note, then a second one for six hours ──
+	// ── Post a note, then a new one that replaces it (one note per person) ──
 	await author.getByRole("button", { name: "New note" }).click();
 	let composer = author.getByRole("dialog", { name: "New note" });
 	await composer.getByLabel("Note text").fill("Coffee at nine?");
-	await composer.getByRole("button", { name: "Share note" }).click();
+	await composer.getByRole("button", { name: "Share" }).click();
 	await expect(composer).toHaveCount(0);
-	await expect(author.getByRole("button", { name: "Your note" })).toBeVisible();
+	const mine = author.getByRole("button", { name: "Your note" });
+	await expect(mine).toContainText("Coffee at nine?");
 
-	await author.getByRole("button", { name: "New note" }).click();
+	await mine.click();
+	await author.getByRole("dialog", { name: "Your note" }).getByRole("button", { name: "Leave a new note" }).click();
 	composer = author.getByRole("dialog", { name: "New note" });
-	await composer.getByLabel("Note text").fill("The view from here");
-	await composer.getByRole("radio", { name: "6 hours" }).click();
-	await composer.getByRole("button", { name: "Share note" }).click();
+	await expect(composer.getByText(/It replaces your current note/)).toBeVisible();
+	await composer.getByLabel("Note text").fill("Ai đi cà phê không?");
+	await composer.getByRole("button", { name: "Share" }).click();
 	await expect(composer).toHaveCount(0);
+	await expect(mine).toContainText("Ai đi cà phê không?");
 
-	// ── The friend sees it live; a stranger never does ──
-	const ring = friend.getByRole("button", { name: `${minh.displayName}'s note, new` });
-	await expect(ring).toBeVisible();
-	// Both notes must have reached the friend's row before playing it: the second
-	// post's nudge is debounced, so it can trail the ring by a moment.
+	// ── The friend sees only the newest note, live; a stranger never does ──
+	const tile = friend.getByRole("button", { name: `${minh.displayName}'s note` });
+	await expect(tile).toContainText("Ai đi cà phê không?");
 	await expect
 		.poll(() =>
 			friend.evaluate(async (apiUrl) => {
@@ -45,51 +46,39 @@ test("a note reaches the people you chat with, and its replies land in a convers
 				const feed = await (
 					await fetch(`${apiUrl}/stories`, { headers: { Authorization: `Bearer ${token}` } })
 				).json();
+				const notes = feed.authors[0]?.stories ?? [];
 
-				const stories = feed.authors[0]?.stories ?? [];
-				const last = stories[1];
-
-				return last
-					? `${stories.length}:${Math.round((Date.parse(last.expiresAt) - Date.parse(last.createdAt)) / 3_600_000)}h`
-					: "";
+				return notes.length === 1
+					? `${notes[0].text}:${Math.round((Date.parse(notes[0].expiresAt) - Date.parse(notes[0].createdAt)) / 3_600_000)}h`
+					: String(notes.length);
 			}, API_URL),
 		)
-		.toBe("2:6h");
-	await friend.reload();
-	await expect(ring).toBeVisible();
+		.toBe("Ai đi cà phê không?:24h");
 	await expect(stranger.getByRole("button", { name: new RegExp(`${minh.displayName}'s note`) })).toHaveCount(0);
 
-	await ring.click();
-	const viewer = friend.getByRole("dialog", { name: `Notes from ${minh.displayName}` });
-	await expect(viewer.getByText("Coffee at nine?")).toBeVisible();
-	await viewer.getByRole("button", { name: "Next note" }).click();
-	await expect(viewer.getByText("The view from here")).toBeVisible();
-	await viewer.getByRole("button", { name: "Previous note" }).click();
-	await viewer.getByLabel("Reply to note").fill("Yes please");
-	await viewer.getByRole("button", { name: "Send reply" }).click();
-	await expect(viewer.getByRole("status")).toHaveText(`Sent to ${minh.displayName}`);
+	// ── A heart, then a reply that lands in the chat ──
+	await tile.click();
+	const sheet = friend.getByRole("dialog", { name: `${minh.displayName}'s note` });
+	await sheet.getByRole("button", { name: "Like note" }).click();
+	await expect(sheet.getByRole("button", { name: "Unlike note" })).toHaveAttribute("aria-pressed", "true");
+	await sheet.getByLabel("Reply to note").fill("Có nha");
+	await sheet.getByRole("button", { name: "Send reply" }).click();
+	await expect(sheet.getByRole("status")).toHaveText(`Sent to ${minh.displayName}`);
 	await friend.keyboard.press("Escape");
-	await expect(viewer).toHaveCount(0);
-	await expect(friend.getByRole("button", { name: `${minh.displayName}'s note` })).toBeVisible();
+	await expect(sheet).toHaveCount(0);
 
-	// ── The reply is a direct message quoting the note ──
 	const thread = author.getByLabel("Message history");
-	await expect(thread.getByText("Yes please")).toBeVisible();
+	await expect(thread.getByText("Có nha")).toBeVisible();
 	await expect(thread.getByText("Replied to your note")).toBeVisible();
 
-	// ── The author sees who viewed it, then deletes it ──
-	await author.getByRole("button", { name: "Your note" }).click();
-	const own = author.getByRole("dialog", { name: `Notes from ${minh.displayName}` });
-	await own.getByRole("button", { name: "1", exact: true }).click();
-	await expect(own.getByRole("heading", { name: "Viewers" })).toBeVisible();
-	// The viewers sheet is the one list under its heading; the reply bar may name the same person.
-	await expect(
-		own.getByRole("heading", { name: "Viewers" }).locator("../..").getByText(an.displayName, { exact: true }),
-	).toBeVisible();
-	await own.getByRole("button", { name: "Close viewers" }).click();
+	// ── The author sees who liked it, then deletes it ──
+	await mine.click();
+	const own = author.getByRole("dialog", { name: "Your note" });
+	await expect(own.getByText("Liked by 1")).toBeVisible();
+	await expect(own.getByText(an.displayName, { exact: true })).toBeVisible();
 	await own.getByRole("button", { name: "Delete note" }).click();
-	await own.getByRole("button", { name: "Delete note" }).click();
+	await author.getByRole("dialog", { name: "Delete note?" }).getByRole("button", { name: "Delete note" }).click();
 	await expect(own).toHaveCount(0);
-	await expect(author.getByRole("button", { name: "Your note" })).toHaveCount(0);
+	await expect(author.getByRole("button", { name: "New note" })).toBeVisible();
 	await expect(friend.getByRole("button", { name: new RegExp(`${minh.displayName}'s note`) })).toHaveCount(0);
 });

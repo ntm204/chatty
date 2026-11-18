@@ -245,12 +245,31 @@ How the three lay out a chat-list row's small parts, and the arrangement Chatty 
 
 
 
-## Notes in the message bubble — Instagram Notes, owner review — 2026-11-16
+## Notes like Messenger — owner review — 2026-11-16
 
-- A note is a message said to everyone, so it uses the message bubble (`NoteBubble`): the same 18px corners,
-  colours and tail. Yours is in your message colour, others' in the received one. No thought-cloud dots,
-  border or shadow.
-- The row reserves a fixed slot above every face, so faces line up whether or not someone has a note. Text
-  is two lines at most, or one when a song sits under it; the row shows the newest note.
-- The composer writes straight into the bubble the note will appear in, above your face, so what you type
-  is what people see.
+- Supersedes "Notes in the message bubble" (same day): the owner asked for Messenger's notes exactly. The
+  note is a thought bubble — rounded card, hairline border, small shadow, two circles trailing down-left to
+  the face — not a speech bubble.
+- Row: your tile first ("Share a thought…" and a plus when empty), then one note per person, newest first;
+  no story rings. A fixed slot above each face keeps faces in line; two lines of text, or one with a song.
+- A note opens a sheet (from the bottom on a phone): the note large over the face, name and time, then a
+  "Reply to…" field with a heart beside it that becomes send while typing. Your own note's sheet lists who
+  liked it, with "Leave a new note" and "Delete note".
+- Composer: X, "New note", Share in the header; the thought typed into the bubble above your face with a
+  60-character count; "Add a song" and the audience as two chips underneath.
+
+## Privacy like Instagram, Telegram's classic background, sidebar edge — owner review — 2026-11-18
+
+- Privacy is a grouped list, not a page of switches: each row is icon, name, current value (faint, right) and
+  a chevron to a page with one sentence and the control. Choices with explanations use a full-width radio
+  list (round mark on the right); people lists use a search field and rows with a round check, saved on tap.
+  A long value truncates before a name does.
+- Default chat background: Telegram's classic day colours (#dbddbb, #6ba587, #d5d88d, #88b884) and night set
+  (#fec496, #dd6cb9, #962fbf, #4f5bd5); our own doodles at 260px with a stronger soft-light, so the pattern
+  reads as a darker shade of the colours under it. Your bubble on it is its pale green.
+- Sidebar: one 16px content edge for every section; header actions are two 36px icon buttons (More,
+  compose); the account row is flat under a hairline.
+- Folder tabs (same day, second pass): Messenger's soft chips — the open one filled with the selection
+  colour, the rest text until hovered; no rule under the row. Groups and Direct show only once they hold a
+  chat (or while open); a dot, never a number, marks a folder with unread chats (muted ones excluded).
+- Notes row, compact: faces at the chat-row size (44px), 74px tiles, a 10.5px bubble overlapping the face.

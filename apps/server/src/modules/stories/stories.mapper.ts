@@ -77,6 +77,9 @@ interface StoryViewerContext {
 	isViewed: boolean;
 	/** Shared views, counted only for the author's own stories. */
 	viewCount?: number;
+	isLiked?: boolean;
+	/** Likes, counted only for the author's own notes. */
+	likeCount?: number;
 }
 
 /**
@@ -84,7 +87,10 @@ interface StoryViewerContext {
  * the author chose and who looked — facts for the author alone, so they ride
  * only on the author's own copy.
  */
-export function toStoryDTO(row: StoryRow, { viewerId, isViewed, viewCount }: StoryViewerContext): StoryDTO {
+export function toStoryDTO(
+	row: StoryRow,
+	{ viewerId, isViewed, viewCount, isLiked = false, likeCount }: StoryViewerContext,
+): StoryDTO {
 	const isMine = row.author.id === viewerId;
 
 	return {
@@ -99,9 +105,11 @@ export function toStoryDTO(row: StoryRow, { viewerId, isViewed, viewCount }: Sto
 		expiresAt: row.expiresAt.toISOString(),
 		isViewed: isMine || isViewed,
 		isSaveAllowed: isMine || row.author.allowMessageForwarding,
+		isLiked: !isMine && isLiked,
 		...(isMine && {
 			audience: row.audience === "CLOSE_FRIENDS" ? ("close_friends" as const) : ("contacts" as const),
 			viewCount: viewCount ?? 0,
+			likeCount: likeCount ?? 0,
 		}),
 	};
 }

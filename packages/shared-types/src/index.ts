@@ -1128,6 +1128,9 @@ export const STORY_VIDEO_MAX_SECONDS = 15;
 /** The longest caption or text story. */
 export const STORY_TEXT_MAX_LENGTH = 500;
 
+/** The longest note, as on Messenger: a thought, not a post. */
+export const NOTE_TEXT_MAX_LENGTH = 60;
+
 export interface StoryMediaDTO {
 	/** The photo, or the video file (H.264/AAC MP4). */
 	url: string;
@@ -1175,6 +1178,10 @@ export interface StoryDTO {
 	isViewed: boolean;
 	/** Whether the person asking may save its photo — false when its author turned forwarding off. */
 	isSaveAllowed: boolean;
+	/** Whether the person asking has liked it; always false on your own. */
+	isLiked: boolean;
+	/** Only on your own: how many people liked it. */
+	likeCount?: number;
 	/** Only on your own stories: who it is shown to. */
 	audience?: StoryAudience;
 	/** Only on your own stories: how many people opened it and shared that they did. */
@@ -1192,6 +1199,12 @@ export interface StoryAuthorDTO {
 export interface StoryFeedDTO {
 	mine: StoryDTO[];
 	authors: StoryAuthorDTO[];
+}
+
+/** One like on your note, newest first. */
+export interface StoryLikeDTO {
+	user: UserDTO;
+	likedAt: string;
 }
 
 export interface StoryViewerDTO {

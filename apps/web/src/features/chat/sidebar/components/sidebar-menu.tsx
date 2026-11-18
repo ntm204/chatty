@@ -58,9 +58,9 @@ export function SidebarMenu({
 				aria-label="More"
 				aria-haspopup="menu"
 				aria-expanded={isOpen}
-				className="size-8 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+				className="size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
 			>
-				<MoreHorizontal className="size-4" />
+				<MoreHorizontal className="size-[18px]" />
 			</Button>
 			<div
 				role="menu"

@@ -487,6 +487,21 @@ Việt Nam 25 bài, tìm "lac troi" ra bài đúng, đăng note chỉ có nhạc
 file preview tải được (200, ~1 MB). Kết nối đầu tới Apple từ máy này có lúc quá 5 s, nên timeout là 10 s.
 Ảnh chụp sáng/tối: hàng note, màn chọn nhạc, màn soạn, màn xem. Chưa thử WebKit cho phát âm thanh.
 
+### Note giống Messenger — 2026-11-16
+
+`npm run verify:full`: qua (web 714, server 567, audit 0). `npm run test:e2e -- --project=chromium`: 115/115.
+`e2e/stories.spec.ts` đi trọn luồng: đăng, thay note (một note mỗi người, 24 giờ), người khác thả tim và
+trả lời, câu trả lời vào chat, chủ note thấy "Liked by 1", xoá. Ảnh chụp: hàng note sáng/tối, màn soạn, bảng
+xem note (desktop và điện thoại tối), bảng note của mình. Chưa thử WebKit.
+
+### Privacy kiểu Instagram, nền Telegram, sidebar — 2026-11-18
+
+`npm run verify:full`: qua (web 716, server 567, audit 0). `npm run test:e2e -- --project=chromium`: 115/115
+(trước khi dời hai hàm phụ ra utils — thay đổi chỉ là vị trí code). Ảnh chụp: trang Privacy và trang con (sáng,
+tối, điện thoại), khung chat sáng/tối với nền mới, sidebar sáng/tối/điện thoại. Chưa thử WebKit.
+Lượt hai (tab dạng chip, note gọn): `verify:full` qua (web 718, server 567, audit 0); e2e Chromium 114/115,
+lỗi duy nhất là `chat-extras` bấm tab Groups nay đã ẩn khi chưa có nhóm — sửa spec theo hành vi mới, chạy lại qua.
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

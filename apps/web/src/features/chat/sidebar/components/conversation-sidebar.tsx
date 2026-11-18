@@ -1,6 +1,6 @@
 import type { ConversationDTO, CurrentUserDTO } from "@chatty/shared-types";
 import { Link } from "react-router-dom";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, SquarePen } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
@@ -14,8 +14,9 @@ import { isSavedConversation } from "../../utils/is-saved-conversation";
 import { useState } from "react";
 import type { ChatFolder } from "../types/conversation-list";
 import { isInFolder } from "../utils/filter-by-folder";
+import { summarizeFolders } from "../utils/summarize-folders";
 import { ChatFolderTabs } from "./chat-folder-tabs";
-import { StoriesBar } from "../../stories/components";
+import { NotesBar } from "../../stories/components";
 import { ARCHIVE_EMPTY_STATE, FOLDER_EMPTY_STATES } from "../constants/conversation-list";
 
 interface ConversationSidebarProps {
@@ -86,7 +87,7 @@ export function ConversationSidebar({
 			<div className="sidebar-brand">
 				<Brand />
 				<h1 className="sr-only">{isShowingArchived ? "Archived chats" : "Chats"}</h1>
-				<span className="ml-auto flex items-center gap-1.5">
+				<span className="ml-auto flex items-center gap-0.5">
 					<SidebarMenu
 						currentUserId={currentUser.id}
 						onOpenNotes={onConversationStarted}
@@ -96,12 +97,15 @@ export function ConversationSidebar({
 						}}
 						onShowKeyboardShortcuts={onShowKeyboardShortcuts}
 					/>
+					{/* Messenger's and Telegram's compose mark: a quiet icon beside "More",
+					    so nothing in the header shouts louder than the list it heads. */}
 					<Button
 						variant="ghost"
-						className="sidebar-brand-label"
+						aria-label="New chat"
 						onClick={() => document.getElementById("global-conversation-search")?.focus()}
+						className="size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
 					>
-						New chat
+						<SquarePen className="size-[18px]" />
 					</Button>
 				</span>
 			</div>
@@ -111,11 +115,13 @@ export function ConversationSidebar({
 				onOpenMessageSearch={onOpenMessageSearch}
 			/>
 
-			{!isShowingArchived && <StoriesBar currentUser={currentUser} />}
+			{!isShowingArchived && <NotesBar currentUser={currentUser} />}
 			{!isShowingArchived && (
 				<ChatFolderTabs
 					folder={folder}
-					unreadCount={conversations.filter((conversation) => conversation.unreadCount > 0).length}
+					summary={summarizeFolders(
+						conversations.filter((conversation) => !isSavedConversation(conversation, currentUser.id)),
+					)}
 					onChange={setFolder}
 				/>
 			)}
@@ -153,16 +159,16 @@ export function ConversationSidebar({
 			{/* Pinned to the bottom, where an account lives in every application
 			    shell people already use. It sat in the header before, which put the
 			    thing you touch least at the top of the thing you scan most. */}
-			<div className="sidebar-account flex shrink-0 items-center gap-1 border-t border-rule-soft py-2 pr-2 pl-1.5">
+			<div className="sidebar-account flex shrink-0 items-center gap-1 border-t border-rule-soft py-2 pr-2.5 pl-2.5">
 				{/* The whole profile opens the settings, as in every messenger. */}
 				<Link
 					to="/profile"
 					// Keeps the open thread behind the dialog and lets closing return to it.
 					state={{ conversationId: selectedConversationId }}
 					aria-label="Account settings"
-					className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1 transition hover:bg-ink/5"
+					className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 transition-colors hover:bg-paper-sunken"
 				>
-					<Avatar user={currentUser} size="md" />
+					<Avatar user={currentUser} size="sm" />
 					<span className="min-w-0 flex-1">
 						<span className="font-content block truncate text-[13px] leading-tight font-semibold text-ink">
 							{currentUser.displayName}
@@ -170,7 +176,12 @@ export function ConversationSidebar({
 						<span className="meta block truncate text-ink-faint">@{currentUser.handle}</span>
 					</span>
 				</Link>
-				<Button variant="ghost" onClick={onSignOut} aria-label="Sign out" className="size-8 shrink-0 p-0">
+				<Button
+					variant="ghost"
+					onClick={onSignOut}
+					aria-label="Sign out"
+					className="size-9 shrink-0 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+				>
 					<LogOut className="size-4" />
 				</Button>
 			</div>

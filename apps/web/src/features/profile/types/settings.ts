@@ -1,7 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 
-export type SettingsSection =
-	"profile" | "privacy" | "blocked" | "restricted" | "appearance" | "email" | "notifications" | "security" | "danger";
+export type SettingsSection = "profile" | "privacy" | "appearance" | "email" | "notifications" | "security" | "danger";
+
+/** A page inside Privacy, Instagram-style: the list is the menu, each row opens one of these. */
+export type PrivacyPage =
+	| "active_status"
+	| "read_receipts"
+	| "typing"
+	| "sharing"
+	| "disappearing"
+	| "close_friends"
+	| "hidden"
+	| "restricted"
+	| "blocked";
 
 /**
  * One row of the settings dialog's left-hand nav, and the heading it opens.

@@ -11,9 +11,11 @@ import type { WallpaperKey, WallpaperSet } from "../types/theme";
  * read CSS custom properties.
  */
 export const CHAT_WALLPAPERS: Record<WallpaperKey, WallpaperSet> = {
+	// Telegram's "classic" day colours — sage, meadow, straw, moss — and its night set of peach, rose,
+	// violet and indigo, the backgrounds people know a chat app by.
 	default: {
-		light: ["#f6dca6", "#d9c8f6", "#f5c3d6", "#bfe0f4"],
-		dark: ["#8f7cf0", "#e58fb6", "#f2c45a", "#5ab4e6"],
+		light: ["#dbddbb", "#6ba587", "#d5d88d", "#88b884"],
+		dark: ["#fec496", "#dd6cb9", "#962fbf", "#4f5bd5"],
 	},
 	azure: { light: ["#bfe0f8", "#a9d4f0", "#dbeefc", "#b7c9f5"], dark: ["#4fa3ff", "#38c6ff", "#7d8cff", "#2ee6d6"] },
 	amber: { light: ["#fbe0a0", "#f8cf8a", "#fdf0c4", "#f6d3a6"], dark: ["#ffc65c", "#ff9f45", "#ffd98a", "#f27d52"] },

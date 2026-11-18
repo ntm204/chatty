@@ -78,7 +78,8 @@ test.describe("restricting", () => {
 		await expect(maiPage.getByRole("menu")).toHaveCount(0, { timeout: 15_000 });
 
 		await maiPage.getByLabel("Account settings").click();
-		await maiPage.getByRole("button", { name: "Restricted people" }).click();
+		await maiPage.getByRole("button", { name: "Privacy", exact: true }).click();
+		await maiPage.getByRole("button", { name: "Restricted accounts" }).click();
 		// Scoped to the dialog: Linh's name also appears in the sidebar row and
 		// the conversation header behind it.
 		const settingsDialog = maiPage.getByRole("dialog");

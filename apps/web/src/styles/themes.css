@@ -64,18 +64,20 @@
 	width: 100%;
 	height: 100%;
 }
+/* Telegram's day pattern reads as a darker shade of the colours under it, dense
+ * and small; soft-light at this strength gives that without a grey cast. */
 .chat-wallpaper-pattern {
-	background: var(--chat-doodles) 0 0 / 300px 300px repeat;
-	opacity: 0.2;
+	background: var(--chat-doodles) 0 0 / 260px 260px repeat;
+	opacity: 0.55;
 	mix-blend-mode: soft-light;
 }
 [data-theme="dark"] .chat-wallpaper:not(.chat-wallpaper-still) {
 	background: var(--color-paper);
 }
 [data-theme="dark"] .chat-wallpaper:not(.chat-wallpaper-still) .chat-wallpaper-gradient {
-	-webkit-mask: var(--chat-doodles) 0 0 / 300px 300px repeat;
-	mask: var(--chat-doodles) 0 0 / 300px 300px repeat;
-	opacity: 0.3;
+	-webkit-mask: var(--chat-doodles) 0 0 / 260px 260px repeat;
+	mask: var(--chat-doodles) 0 0 / 260px 260px repeat;
+	opacity: 0.42;
 }
 [data-theme="dark"] .chat-wallpaper-pattern {
 	display: none;
@@ -117,6 +119,7 @@
 [data-conversation-theme="default"] {
 	--chat-accent: var(--color-paper-raised);
 	--chat-complement: var(--color-paper-raised);
+	--chat-mine: var(--color-wallpaper-mine);
 }
 .theme-choice {
 	/* Selection changes immediately; only the hover wash eases between colors. */

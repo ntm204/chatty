@@ -16,3 +16,9 @@ export interface ConversationListEmptyState {
 	title: string;
 	description: string;
 }
+
+/** What a folder tab needs to know: whether the folder has chats at all, and how many are unread. */
+export interface FolderSummary {
+	total: number;
+	unread: number;
+}

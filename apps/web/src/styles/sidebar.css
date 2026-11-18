@@ -12,12 +12,14 @@
 	border-radius: 20px;
 	box-shadow: 0 2px 8px color-mix(in srgb, var(--color-brand-navy) 3%, transparent);
 }
+/* Every section of the column starts its content 16px in — wordmark, search,
+ * notes, tabs, faces — so the eye runs down one edge. */
 .sidebar-brand {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	min-height: 64px;
-	padding: 16px 16px 12px 20px;
+	min-height: 60px;
+	padding: 12px 10px 8px 16px;
 }
 .sidebar-brand .brand {
 	font-size: 24px;
@@ -25,15 +27,6 @@
 .sidebar-brand .brand-symbol {
 	width: 28px;
 	height: 23px;
-}
-.sidebar-brand-label {
-	padding: 6px 12px;
-	color: var(--color-accent-ink);
-	background: var(--color-accent);
-	border-radius: 20px;
-	font-size: 12px;
-	font-weight: 600;
-	white-space: nowrap;
 }
 .people-search {
 	border-radius: 28px;
@@ -47,6 +40,7 @@
 .conversation-row {
 	min-height: 64px;
 	border-radius: 12px;
+	transition: background-color 120ms ease;
 }
 .conversation-row:hover {
 	background: var(--color-paper);
@@ -75,12 +69,10 @@
 .conversation-row[aria-current="page"]:hover {
 	background: var(--color-selection);
 }
+/* You, at the foot of the column: a quiet row under a hairline, not a card —
+ * the account is the thing you touch least, so it is the least loud. */
 .sidebar-account {
-	margin: 8px;
-	border: 0;
-	background: var(--color-paper);
-	border-radius: 14px;
-	padding-inline: 13px;
+	margin: 0;
 }
 .sidebar-account :is(a, button) {
 	color: var(--color-heading);
@@ -103,12 +95,8 @@
 		box-shadow: none;
 	}
 	.sidebar-account {
-		margin-bottom: max(8px, env(safe-area-inset-bottom));
+		padding-bottom: max(8px, env(safe-area-inset-bottom));
 	}
-}
-.sidebar-brand-label:hover {
-	background: var(--color-accent-hover);
-	color: var(--color-accent-ink);
 }
 
 /* The resize handle fills the gutter between panels. At rest it is invisible;

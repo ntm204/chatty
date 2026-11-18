@@ -11,13 +11,15 @@ interface Stories {
 	refresh: () => void;
 	/** Marks a story seen at once and tells the server; the ring updates without waiting. */
 	markViewed: (story: StoryDTO) => void;
-	/** Puts a story you just posted or changed in place, ahead of the nudge that follows. */
+	/** Puts the note you just posted in place of your last one, ahead of the nudge that follows. */
 	upsertMine: (story: StoryDTO) => void;
+	/** Shows a heart at once; the server call runs alongside and is undone if it fails. */
+	setLiked: (story: StoryDTO, isLiked: boolean) => void;
 	removeMine: (storyId: string) => void;
 }
 
 /**
- * The stories row for the signed-in person.
+ * The notes row for the signed-in person.
  *
  * The server's `story:changed` only says "refetch" — the row is filtered per
  * viewer, so a broadcast copy could not be right for everyone — and a burst of
@@ -91,17 +93,26 @@ export function useStories(currentUserId: string): Stories {
 	}, []);
 
 	const upsertMine = useCallback((story: StoryDTO) => {
-		setFeed((current) => ({
-			...current,
-			mine: current.mine.some((item) => item.id === story.id)
-				? current.mine.map((item) => (item.id === story.id ? story : item))
-				: [...current.mine, story],
-		}));
+		// One note per person: the server has already replaced the last one.
+		setFeed((current) => ({ ...current, mine: [story] }));
+	}, []);
+
+	const setLiked = useCallback((story: StoryDTO, isLiked: boolean) => {
+		const apply = (value: boolean) =>
+			setFeed((current) => ({
+				...current,
+				authors: current.authors.map((group) => ({
+					...group,
+					stories: group.stories.map((item) => (item.id === story.id ? { ...item, isLiked: value } : item)),
+				})),
+			}));
+		apply(isLiked);
+		(isLiked ? api.likeStory(story.id) : api.unlikeStory(story.id)).catch(() => apply(!isLiked));
 	}, []);
 
 	const removeMine = useCallback((storyId: string) => {
 		setFeed((current) => ({ ...current, mine: current.mine.filter((item) => item.id !== storyId) }));
 	}, []);
 
-	return { feed, refresh, markViewed, upsertMine, removeMine };
+	return { feed, refresh, markViewed, upsertMine, setLiked, removeMine };
 }
