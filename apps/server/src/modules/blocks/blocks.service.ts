@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma.js";
 import { getOptionalIO, userRoom } from "../../lib/socket-bus.js";
 import { toUserDTO, userSelect } from "../users/users.mapper.js";
 import type { ListBlockedUsersQuery } from "./blocks.schema.js";
+import { severRelationships } from "../friends/friends.service.js";
 
 type BlockReader = Pick<Prisma.TransactionClient, "userBlock">;
 
@@ -227,6 +228,8 @@ export async function blockUser(currentUserId: string, targetUserId: string): Pr
 			update: {},
 			select: { id: true },
 		});
+		// A block ends any friendship, request or follow between the two, as on Facebook.
+		await severRelationships(transaction, currentUserId, targetUserId);
 	});
 
 	await syncDirectConversationRooms(currentUserId, targetUserId);

@@ -10,6 +10,7 @@ import {
 	muteConversationSchema,
 	pinConversationSchema,
 	renameConversationSchema,
+	setInfoPolicySchema,
 	setInvitePolicySchema,
 	setMessageTimerSchema,
 	setSharingRestrictionSchema,
@@ -171,6 +172,16 @@ export async function setParticipantRoleController(req: Request, res: Response):
 export async function setInvitePolicyController(req: Request, res: Response): Promise<void> {
 	const input = setInvitePolicySchema.parse(req.body);
 	const conversation = await conversationsService.setGroupInvitePolicy(
+		req.userId!,
+		req.params.conversationId as string,
+		input,
+	);
+	res.status(200).json(conversation);
+}
+
+export async function setInfoPolicyController(req: Request, res: Response): Promise<void> {
+	const input = setInfoPolicySchema.parse(req.body);
+	const conversation = await conversationsService.setGroupInfoPolicy(
 		req.userId!,
 		req.params.conversationId as string,
 		input,

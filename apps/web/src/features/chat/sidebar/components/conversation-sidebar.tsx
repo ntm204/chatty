@@ -17,6 +17,8 @@ import { isInFolder } from "../utils/filter-by-folder";
 import { summarizeFolders } from "../utils/summarize-folders";
 import { ChatFolderTabs } from "./chat-folder-tabs";
 import { NotesBar } from "../../stories/components";
+import { FriendsDialog } from "../../friends/components";
+import { useFriends } from "../../friends/hooks";
 import { ARCHIVE_EMPTY_STATE, FOLDER_EMPTY_STATES } from "../constants/conversation-list";
 
 interface ConversationSidebarProps {
@@ -63,6 +65,8 @@ export function ConversationSidebar({
 	className,
 }: ConversationSidebarProps) {
 	const [folder, setFolder] = useState<ChatFolder>("all");
+	const [isFriendsOpen, setIsFriendsOpen] = useState(false);
+	const { friends, requests } = useFriends();
 
 	return (
 		<aside
@@ -96,16 +100,18 @@ export function ConversationSidebar({
 							if (!isShowingArchived) onToggleArchived();
 						}}
 						onShowKeyboardShortcuts={onShowKeyboardShortcuts}
+						onShowFriends={() => setIsFriendsOpen(true)}
+						friendRequestCount={requests?.incoming.length ?? 0}
 					/>
-					{/* Messenger's and Telegram's compose mark: a quiet icon beside "More",
-					    so nothing in the header shouts louder than the list it heads. */}
+					{/* The column's one splash of the brand yellow: compose, the action the
+					    sidebar exists for — a round mark rather than a wide pill. */}
 					<Button
 						variant="ghost"
 						aria-label="New chat"
 						onClick={() => document.getElementById("global-conversation-search")?.focus()}
-						className="size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+						className="sidebar-compose size-9 rounded-full p-0"
 					>
-						<SquarePen className="size-[18px]" />
+						<SquarePen className="size-[17px]" strokeWidth={2.25} />
 					</Button>
 				</span>
 			</div>
@@ -185,6 +191,14 @@ export function ConversationSidebar({
 					<LogOut className="size-4" />
 				</Button>
 			</div>
+			{isFriendsOpen && (
+				<FriendsDialog
+					currentUserId={currentUser.id}
+					friends={friends}
+					requests={requests}
+					onClose={() => setIsFriendsOpen(false)}
+				/>
+			)}
 		</aside>
 	);
 }

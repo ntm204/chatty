@@ -179,6 +179,7 @@ export function makeConversation(overrides: Partial<ConversationDTO> = {}): Conv
 		isGroup: false,
 		name: null,
 		invitePolicy: "everyone",
+		infoPolicy: "managers",
 		avatarUrl: null,
 		themeColor: null,
 		quickReactionEmoji: null,

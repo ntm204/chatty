@@ -155,6 +155,7 @@ describe("useConversationList event reducer", () => {
 			conversationId: "first",
 			name: "Renamed",
 			invitePolicy: "managers",
+			infoPolicy: "everyone",
 			avatarUrl: null,
 			themeColor: null,
 			quickReactionEmoji: null,
@@ -166,6 +167,7 @@ describe("useConversationList event reducer", () => {
 		expect(view.result.current.conversations[0]).toMatchObject({
 			name: "Renamed",
 			invitePolicy: "managers",
+			infoPolicy: "everyone",
 			unreadCount: 1,
 		});
 	});

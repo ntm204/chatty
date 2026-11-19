@@ -52,7 +52,12 @@ describe("ConversationCustomizePanel, rename", () => {
 	it("renames a group with the trimmed input", async () => {
 		const user = userEvent.setup();
 		render(
-			<ConversationCustomizePanel conversation={group} currentUserId="minh" onlineUserIds={new Set()} isAdmin />,
+			<ConversationCustomizePanel
+				conversation={group}
+				currentUserId="minh"
+				onlineUserIds={new Set()}
+				canEditInfo
+			/>,
 		);
 
 		await user.click(screen.getByRole("button", { name: /Rename/ }));
@@ -71,7 +76,7 @@ describe("ConversationCustomizePanel, rename", () => {
 				conversation={group}
 				currentUserId="an"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 
@@ -84,7 +89,7 @@ describe("ConversationCustomizePanel, rename", () => {
 				conversation={direct}
 				currentUserId="minh"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 
@@ -99,13 +104,18 @@ describe("ConversationCustomizePanel, photo", () => {
 				conversation={group}
 				currentUserId="an"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 		expect(screen.getByRole("button", { name: "Group photo" })).toBeDisabled();
 
 		rerender(
-			<ConversationCustomizePanel conversation={direct} currentUserId="minh" onlineUserIds={new Set()} isAdmin />,
+			<ConversationCustomizePanel
+				conversation={direct}
+				currentUserId="minh"
+				onlineUserIds={new Set()}
+				canEditInfo
+			/>,
 		);
 		expect(screen.queryByRole("button", { name: "Group photo" })).not.toBeInTheDocument();
 	});
@@ -113,7 +123,12 @@ describe("ConversationCustomizePanel, photo", () => {
 	it("uploads a photo when an admin picks a file", async () => {
 		const user = userEvent.setup();
 		render(
-			<ConversationCustomizePanel conversation={group} currentUserId="minh" onlineUserIds={new Set()} isAdmin />,
+			<ConversationCustomizePanel
+				conversation={group}
+				currentUserId="minh"
+				onlineUserIds={new Set()}
+				canEditInfo
+			/>,
 		);
 
 		await user.click(screen.getByRole("button", { name: "Group photo" }));
@@ -135,7 +150,7 @@ describe("ConversationCustomizePanel, theme", () => {
 				conversation={group}
 				currentUserId="an"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 
@@ -153,7 +168,7 @@ describe("ConversationCustomizePanel, theme", () => {
 				conversation={group}
 				currentUserId="an"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 		await user.click(screen.getByRole("button", { name: /Chat theme: Default/ }));
@@ -180,7 +195,7 @@ describe("ConversationCustomizePanel, nicknames", () => {
 				conversation={group}
 				currentUserId="an"
 				onlineUserIds={new Set()}
-				isAdmin={false}
+				canEditInfo={false}
 			/>,
 		);
 

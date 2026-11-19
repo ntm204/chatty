@@ -3,7 +3,6 @@ import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
 import { CHAT_FOLDERS } from "../constants/conversation-list";
 import type { ChatFolder, FolderSummary } from "../types/conversation-list";
-import { visibleFolders } from "../utils/summarize-folders";
 
 interface ChatFolderTabsProps {
 	folder: ChatFolder;
@@ -12,16 +11,14 @@ interface ChatFolderTabsProps {
 }
 
 /**
- * The sidebar's folders as Messenger's soft chips: the open one filled, the
- * rest plain text until hovered.
- *
- * Smart about what it shows: Groups and Direct appear only once they hold a
- * chat, and a small dot marks every folder (but All) holding something unread —
- * the place to look, without a number widening the chip. Left and right arrows
- * move between folders, as in any tab row.
+ * The four folders as one quiet track split into equal parts — the open one
+ * lifts onto paper, the rest stay as text. Equal widths keep the row still as
+ * folders are switched; a small dot marks every folder (but All) holding
+ * something unread, the place to look without a number widening a part. Left
+ * and right arrows move between folders, as in any tab row.
  */
 export function ChatFolderTabs({ folder, summary, onChange }: ChatFolderTabsProps) {
-	const folders = CHAT_FOLDERS.filter(({ id }) => visibleFolders(summary, folder).includes(id));
+	const folders = CHAT_FOLDERS;
 
 	function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 		if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
@@ -37,7 +34,7 @@ export function ChatFolderTabs({ folder, summary, onChange }: ChatFolderTabsProp
 			role="tablist"
 			aria-label="Chat folders"
 			onKeyDown={onKeyDown}
-			className="flex shrink-0 gap-1 overflow-x-auto px-3 pt-1 pb-2 scrollbar-none"
+			className="mx-4 mt-1 mb-2 grid shrink-0 grid-cols-4 gap-0.5 rounded-full bg-paper-sunken p-[3px]"
 		>
 			{folders.map((option) => {
 				const isSelected = option.id === folder;
@@ -54,13 +51,13 @@ export function ChatFolderTabs({ folder, summary, onChange }: ChatFolderTabsProp
 						data-folder={option.id}
 						onClick={() => onChange(option.id)}
 						className={cn(
-							"relative h-8 shrink-0 gap-1.5 rounded-full px-3.5 py-0 text-[13px] transition-colors",
+							"relative h-7 min-w-0 gap-1 rounded-full px-1 py-0 text-[12.5px] transition-[background-color,color,box-shadow]",
 							isSelected
-								? "bg-selection font-semibold text-heading hover:bg-selection"
-								: "font-medium text-ink-soft hover:bg-paper-sunken hover:text-ink",
+								? "bg-paper-raised font-semibold text-heading shadow-reaction hover:bg-paper-raised"
+								: "font-medium text-ink-soft hover:bg-transparent hover:text-ink",
 						)}
 					>
-						{option.label}
+						<span className="truncate">{option.label}</span>
 						{hasDot && (
 							<>
 								<span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-signal" />

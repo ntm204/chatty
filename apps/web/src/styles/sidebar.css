@@ -28,6 +28,21 @@
 	width: 28px;
 	height: 23px;
 }
+.sidebar-compose,
+.sidebar-compose:hover {
+	color: var(--color-accent-ink);
+	background: var(--color-accent);
+	box-shadow: 0 1px 2px color-mix(in srgb, var(--color-accent-ink) 14%, transparent);
+	transition:
+		background-color 150ms ease,
+		transform 150ms ease;
+}
+.sidebar-compose:hover {
+	background: var(--color-accent-hover);
+}
+.sidebar-compose:active {
+	transform: scale(0.94);
+}
 .people-search {
 	border-radius: 28px;
 	background: var(--color-paper);

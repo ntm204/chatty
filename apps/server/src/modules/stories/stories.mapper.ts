@@ -72,6 +72,13 @@ function toNoteMusicDTO(row: StoryRow): NoteMusicDTO | null {
 	};
 }
 
+const AUDIENCE_TO_WIRE: Record<StoryAudience, StoryDTO["audience"] & string> = {
+	CONTACTS: "contacts",
+	CLOSE_FRIENDS: "close_friends",
+	FRIENDS: "friends",
+	FOLLOWERS: "followers",
+};
+
 interface StoryViewerContext {
 	viewerId: string;
 	isViewed: boolean;
@@ -107,7 +114,7 @@ export function toStoryDTO(
 		isSaveAllowed: isMine || row.author.allowMessageForwarding,
 		isLiked: !isMine && isLiked,
 		...(isMine && {
-			audience: row.audience === "CLOSE_FRIENDS" ? ("close_friends" as const) : ("contacts" as const),
+			audience: AUDIENCE_TO_WIRE[row.audience],
 			viewCount: viewCount ?? 0,
 			likeCount: likeCount ?? 0,
 		}),

@@ -8,7 +8,7 @@ export { ConversationPhotoDialog } from "./conversation-photo-dialog";
 export { ConversationQuickActions } from "./conversation-quick-actions";
 export { ConversationRenameDialog } from "./conversation-rename-dialog";
 export { ConversationVaultPanel } from "./conversation-vault-panel";
-export { GroupInvitePolicyControl } from "./group-invite-policy-control";
+export { GroupPermissionsControl } from "./group-permissions-control";
 export { GroupMemberRow } from "./group-member-row";
 export { GroupMembersPanel } from "./group-members-panel";
 export { VaultCategoryList } from "./vault-category-list";

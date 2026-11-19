@@ -47,7 +47,7 @@ test.describe("a group with an owner", () => {
 		await expect(messages(owner.page).getByText("see you all")).toBeVisible({ timeout: 15_000 });
 
 		await leaver.page.getByRole("button", { name: "Group members" }).click();
-		await leaver.page.getByRole("button", { name: "Members", exact: true }).click();
+		await leaver.page.getByRole("button", { name: /^Chat members/ }).click();
 		await leaver.page.getByRole("button", { name: "Leave group" }).click();
 		// Leaving is irreversible from here, so it asks first (phase 19). This
 		// spec is why the confirmation could not ship unnoticed: every unit test
@@ -118,7 +118,7 @@ test.describe("a group with an owner", () => {
 		await expect(member.page.getByRole("button", { name: /Rename/ })).toBeDisabled();
 		await expect(member.page.getByText(/only group admins can rename/i)).toBeVisible();
 
-		await member.page.getByRole("button", { name: "Members", exact: true }).click();
+		await member.page.getByRole("button", { name: /^Chat members/ }).click();
 		await expect(
 			member.page.getByRole("menuitem", { name: `Remove ${third.user.displayName} from the group` }),
 		).toBeHidden();
@@ -139,14 +139,14 @@ test.describe("a group with an owner", () => {
 		await openConversationNamed(member.page, GROUP_NAME);
 
 		await owner.page.getByRole("button", { name: "Group members" }).click();
-		await owner.page.getByRole("button", { name: "Members", exact: true }).click();
+		await owner.page.getByRole("button", { name: /^Chat members/ }).click();
 		await owner.page.getByRole("button", { name: `Actions for ${admin.user.displayName}` }).click();
 		await owner.page.getByRole("menuitem", { name: `Make ${admin.user.displayName} an admin` }).click();
-		await owner.page.getByRole("button", { name: "Group options" }).click();
+		await owner.page.getByRole("button", { name: "Group permissions" }).click();
 		await owner.page.getByRole("switch", { name: "Only admins can add people" }).click();
 
 		await admin.page.getByRole("button", { name: "Group members" }).click();
-		await admin.page.getByRole("button", { name: "Members", exact: true }).click();
+		await admin.page.getByRole("button", { name: /^Chat members/ }).click();
 		// Two "Admin" badges now — the owner is symmetric with any other admin, see ADR 0021.
 		// Exactly two: `.first()` passed on the owner's badge alone, which hid a Safari
 		// menu that closed before "Make admin" could be clicked.
@@ -156,7 +156,7 @@ test.describe("a group with an owner", () => {
 		await expect(admin.page.getByRole("button", { name: "Add people" })).toBeEnabled();
 
 		await member.page.getByRole("button", { name: "Group members" }).click();
-		await member.page.getByRole("button", { name: "Members", exact: true }).click();
+		await member.page.getByRole("button", { name: /^Chat members/ }).click();
 		await expect(member.page.getByRole("button", { name: "Add people" })).toBeDisabled({ timeout: 15_000 });
 		await expect(member.page.getByText(/only admins add people/i)).toBeVisible();
 

@@ -1,11 +1,13 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Camera } from "lucide-react";
+import { Camera, Pencil } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/utils/cn";
+import { Button } from "@/components/button";
 import { ConversationAvatar } from "../../components/conversation-avatar";
 import { getConversationTitle, getDirectPeer } from "../../utils";
 import { isSavedConversation } from "../../utils/is-saved-conversation";
+import { getGroupPermissions } from "../utils/group-permissions";
 import { ConversationPhotoDialog } from "./conversation-photo-dialog";
+import { ConversationRenameDialog } from "./conversation-rename-dialog";
 
 interface ConversationDetailsIdentityProps {
 	conversation: ConversationDTO;
@@ -13,53 +15,67 @@ interface ConversationDetailsIdentityProps {
 	onlineUserIds: Set<string>;
 }
 
-/** Conversation header identity with camera quick-action for group admins. */
+/**
+ * The face and name at the top of the details panel, as on Messenger. Whoever
+ * the group lets change its info gets a camera on the photo and a pencil by the
+ * name — the edit sits on the thing it edits.
+ */
 export function ConversationDetailsIdentity({
 	conversation,
 	currentUserId,
 	onlineUserIds,
 }: ConversationDetailsIdentityProps) {
 	const peer = getDirectPeer(conversation, currentUserId);
-	const isAdmin = conversation.participants.find((participant) => participant.id === currentUserId)?.role === "admin";
-	const canUploadPhoto = conversation.isGroup && isAdmin;
+	const { canEditInfo } = getGroupPermissions(conversation, currentUserId);
 	const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
+	const [isRenameOpen, setIsRenameOpen] = useState(false);
+	const title = getConversationTitle(conversation, currentUserId);
+	const isOnline = peer ? onlineUserIds.has(peer.id) : false;
 
 	return (
-		<div className="flex shrink-0 flex-col items-center gap-2 border-b border-rule px-5 py-5 text-center">
-			<div
-				onClick={() => {
-					if (canUploadPhoto) setIsPhotoDialogOpen(true);
-				}}
-				title={canUploadPhoto ? "Change group photo" : undefined}
-				className={cn(
-					"group relative rounded-full transition-all duration-200",
-					canUploadPhoto && "cursor-pointer hover:ring-4 hover:ring-rule-soft",
-				)}
-			>
+		<div className="flex shrink-0 flex-col items-center gap-2.5 px-5 pt-7 pb-4 text-center">
+			<div className="relative">
 				<ConversationAvatar
 					conversation={conversation}
 					currentUserId={currentUserId}
 					onlineUserIds={onlineUserIds}
 					size="lg"
 				/>
-				{canUploadPhoto && (
-					<span className="absolute -right-1 -bottom-1 flex size-6 items-center justify-center rounded-full border-2 border-paper-raised bg-ink text-paper-raised shadow-xs transition-transform group-hover:scale-110">
-						<Camera className="size-3" />
-					</span>
+				{canEditInfo && (
+					<Button
+						variant="ghost"
+						onClick={() => setIsPhotoDialogOpen(true)}
+						aria-label="Edit group photo"
+						className="absolute -right-1 -bottom-1 size-7 rounded-full border-2 border-paper-raised bg-paper-sunken p-0 text-ink hover:bg-paper"
+					>
+						<Camera className="size-3.5" />
+					</Button>
 				)}
 			</div>
 
-			<div className="flex min-w-0 max-w-full flex-col items-center gap-1">
-				<h3 className="max-w-full break-words text-lg font-semibold tracking-tight text-ink">
-					{getConversationTitle(conversation, currentUserId)}
-				</h3>
+			<div className="flex max-w-full min-w-0 flex-col items-center gap-0.5">
+				<div className="flex max-w-full items-center gap-1">
+					<h3 className="max-w-full text-[17px] font-semibold tracking-tight break-words text-ink">
+						{title}
+					</h3>
+					{canEditInfo && (
+						<Button
+							variant="ghost"
+							onClick={() => setIsRenameOpen(true)}
+							aria-label="Edit group name"
+							className="size-7 shrink-0 rounded-full p-0 text-ink-faint hover:text-ink"
+						>
+							<Pencil className="size-3.5" />
+						</Button>
+					)}
+				</div>
 
 				{isSavedConversation(conversation, currentUserId) ? (
-					<p className="text-xs text-ink-faint">Only you can see this</p>
+					<p className="text-[13px] text-ink-faint">Only you can see this</p>
 				) : peer ? (
-					<p className="meta max-w-full truncate text-ink-faint">@{peer.handle}</p>
+					<p className="text-[13px] text-ink-faint">{isOnline ? "Active now" : `@${peer.handle}`}</p>
 				) : (
-					<p className="text-xs text-ink-faint">{conversation.participants.length} members</p>
+					<p className="text-[13px] text-ink-faint">{conversation.participants.length} members</p>
 				)}
 			</div>
 
@@ -70,6 +86,9 @@ export function ConversationDetailsIdentity({
 					onlineUserIds={onlineUserIds}
 					onClose={() => setIsPhotoDialogOpen(false)}
 				/>
+			)}
+			{isRenameOpen && (
+				<ConversationRenameDialog conversation={conversation} onClose={() => setIsRenameOpen(false)} />
 			)}
 		</div>
 	);

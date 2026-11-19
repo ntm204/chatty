@@ -7,6 +7,7 @@ import {
 	listConversationsForUser,
 	removeParticipant,
 	renameConversation,
+	setGroupInfoPolicy,
 	setGroupInvitePolicy,
 	setParticipantRole,
 } from "../src/modules/conversations/conversations.service.js";
@@ -199,5 +200,38 @@ describe("group invite policy", () => {
 				where: { conversationId: group.id, kind: "SYSTEM", content: { contains: "changed group invites" } },
 			}),
 		).resolves.toBe(1);
+	});
+});
+
+describe("group info policy (who can change the name and photo)", () => {
+	it("starts admins-only, then lets everyone rename once opened, announced by name", async () => {
+		const creatorId = await createUser("creator");
+		const memberId = await createUser("member");
+		const otherMemberId = await createUser("other_member");
+		const group = await createGroup(creatorId, [memberId, otherMemberId]);
+		expect(group.infoPolicy).toBe("managers");
+
+		await expect(renameConversation(memberId, group.id, { name: "Ours" })).rejects.toBeInstanceOf(ForbiddenError);
+		await expect(setGroupInfoPolicy(memberId, group.id, { infoPolicy: "everyone" })).rejects.toBeInstanceOf(
+			ForbiddenError,
+		);
+
+		const opened = await setGroupInfoPolicy(creatorId, group.id, { infoPolicy: "everyone" });
+		expect(opened.infoPolicy).toBe("everyone");
+		expect(fakeIO.emits.some((emit) => emit.event === "conversation:updated")).toBe(true);
+		const renamed = await renameConversation(memberId, group.id, { name: "Ours" });
+		expect(renamed.name).toBe("Ours");
+		await expect(
+			prisma.message.count({
+				where: {
+					conversationId: group.id,
+					kind: "SYSTEM",
+					content: { contains: "let everyone change the group name and photo" },
+				},
+			}),
+		).resolves.toBe(1);
+
+		await setGroupInfoPolicy(creatorId, group.id, { infoPolicy: "managers" });
+		await expect(renameConversation(memberId, group.id, { name: "Again" })).rejects.toBeInstanceOf(ForbiddenError);
 	});
 });

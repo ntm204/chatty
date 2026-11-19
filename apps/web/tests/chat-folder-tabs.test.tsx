@@ -12,11 +12,11 @@ function summary(partial: Partial<Record<ChatFolder, FolderSummary>>): Record<Ch
 	return { all: empty, unread: empty, groups: empty, direct: empty, ...partial };
 }
 
-it("offers Groups and Direct only once they hold a chat, and dots each folder with something unread", () => {
+it("always shows the four folders, and dots each folder with something unread", () => {
 	const { rerender } = render(
-		<ChatFolderTabs folder="all" summary={summary({ all: { total: 2, unread: 1 } })} onChange={vi.fn()} />,
+		<ChatFolderTabs folder="all" summary={summary({ all: { total: 2, unread: 0 } })} onChange={vi.fn()} />,
 	);
-	expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["All", "Unread"]);
+	expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["All", "Unread", "Groups", "Direct"]);
 
 	rerender(
 		<ChatFolderTabs
@@ -39,16 +39,15 @@ it("offers Groups and Direct only once they hold a chat, and dots each folder wi
 	expect(direct.querySelector(".sr-only")).toHaveTextContent("1 chat");
 });
 
-it("keeps the folder you are on even when it empties, and moves with the arrow keys", async () => {
+it("moves between folders with the arrow keys, wrapping at the ends", async () => {
 	const onChange = vi.fn();
-	render(<ChatFolderTabs folder="groups" summary={summary({ all: { total: 1, unread: 0 } })} onChange={onChange} />);
-	expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["All", "Unread", "Groups"]);
+	render(<ChatFolderTabs folder="direct" summary={summary({ all: { total: 1, unread: 0 } })} onChange={onChange} />);
 
-	screen.getByRole("tab", { name: "Groups" }).focus();
+	screen.getByRole("tab", { name: "Direct" }).focus();
 	await userEvent.keyboard("{ArrowRight}");
 	expect(onChange).toHaveBeenLastCalledWith("all");
 	await userEvent.keyboard("{ArrowLeft}");
-	expect(onChange).toHaveBeenLastCalledWith("unread");
+	expect(onChange).toHaveBeenLastCalledWith("groups");
 });
 
 it("counts a muted chat in its folder but not as unread", () => {

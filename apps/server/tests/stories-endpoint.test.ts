@@ -61,6 +61,7 @@ it("posts a photo story over multipart, serves it by token without caching, and 
 	const body = new FormData();
 	body.append("photo", new Blob([new Uint8Array(photo)], { type: "image/png" }), "photo.png");
 	body.append("text", "sunset");
+	body.append("audience", "contacts");
 	const posted = await fetch(`${baseUrl}/stories`, {
 		method: "POST",
 		headers: { Authorization: `Bearer ${author.token}` },

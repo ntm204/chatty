@@ -40,6 +40,11 @@ export const setInvitePolicySchema = z.object({
 });
 export type SetInvitePolicyInput = z.infer<typeof setInvitePolicySchema>;
 
+export const setInfoPolicySchema = z.object({
+	infoPolicy: z.enum(["everyone", "managers"]),
+});
+export type SetInfoPolicyInput = z.infer<typeof setInfoPolicySchema>;
+
 export const listConversationsQuerySchema = z.object({
 	archived: z
 		.enum(["true", "false"])

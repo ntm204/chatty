@@ -23,6 +23,7 @@ import {
 	announceConversationUpdated,
 	announceSystemMessage,
 	assertAdmin,
+	assertCanEditGroupInfo,
 	assertParticipant,
 	countUnreadByConversation,
 	createSystemMessage,
@@ -280,8 +281,8 @@ export async function setConversationPhoto(
 	upload: Buffer,
 ): Promise<ConversationDTO> {
 	const { systemMessage, updated } = await prisma.$transaction(async (transaction) => {
-		await prepareGroupMutation(transaction, currentUserId, conversationId);
-		await assertAdmin(transaction, currentUserId, conversationId);
+		const group = await prepareGroupMutation(transaction, currentUserId, conversationId);
+		await assertCanEditGroupInfo(transaction, currentUserId, conversationId, group);
 
 		await saveConversationAvatar(conversationId, upload);
 		await transaction.conversation.update({
@@ -303,11 +304,11 @@ export async function setConversationPhoto(
 	return toConversationDTO(updated, actorUnread.get(conversationId) ?? 0, currentUserId);
 }
 
-/** Removes a group's photo, falling it back to initials. Group-only and admin-gated, like setting one. */
+/** Removes a group's photo, falling it back to initials. Group-only, gated by the info policy like setting one. */
 export async function removeConversationPhoto(currentUserId: string, conversationId: string): Promise<ConversationDTO> {
 	const { systemMessage, updated } = await prisma.$transaction(async (transaction) => {
-		await prepareGroupMutation(transaction, currentUserId, conversationId);
-		await assertAdmin(transaction, currentUserId, conversationId);
+		const group = await prepareGroupMutation(transaction, currentUserId, conversationId);
+		await assertCanEditGroupInfo(transaction, currentUserId, conversationId, group);
 
 		await transaction.conversation.update({
 			where: { id: conversationId },

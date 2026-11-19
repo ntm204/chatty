@@ -15,6 +15,7 @@ import {
 	pinConversationController,
 	removeParticipantController,
 	renameConversationController,
+	setInfoPolicyController,
 	setInvitePolicyController,
 	setMessageTimerController,
 	setSharingRestrictionController,
@@ -64,6 +65,7 @@ conversationsRouter.post("/:conversationId/members", addParticipantController);
 conversationsRouter.delete("/:conversationId/members/:userId", removeParticipantController);
 conversationsRouter.put("/:conversationId/members/:userId/role", setParticipantRoleController);
 conversationsRouter.put("/:conversationId/invite-policy", setInvitePolicyController);
+conversationsRouter.put("/:conversationId/info-policy", setInfoPolicyController);
 conversationsRouter.post("/:conversationId/avatar", uploadConversationAvatar, uploadConversationAvatarController);
 conversationsRouter.delete("/:conversationId/avatar", deleteConversationAvatarController);
 // PATCH, not POST: renaming is a partial update of the conversation resource

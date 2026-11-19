@@ -8,6 +8,14 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 
 ## Unreleased
 
+- Friends and follows, as on Facebook (ADR 0027): add friend, cancel, confirm or delete a request, unfriend,
+  follow and unfollow — from a chat's details or the new Friends dialog (⋯ → Friends: requests, friends,
+  find people), live on both sides. A note goes to Friends by default, or Followers, or Close friends;
+  unfollowing a friend hides their notes. Blocking ends any friendship and follow.
+- Chat details redesigned the Messenger way: no title bar, the photo and name with a camera and pencil for
+  whoever may edit them, round Add / Mute / Search actions, quiet collapsible sections with no rules. Groups
+  get "Group permissions": only admins can add people, and only admins can change name and photo — each a
+  switch, announced in the chat. Sidebar: a yellow compose button and the four folders as one even track.
 - Privacy, laid out as on Instagram: grouped rows (who sees your activity, who sees your notes, how others
   can interact with you), each showing its current value and opening its own page. Close friends and
   "Hide notes from" are picked from a searchable list with round checks, saved on each tap; blocked and
@@ -15,9 +23,8 @@ This project follows [Semantic Versioning](https://semver.org/) and the reposito
 - The default chat background is Telegram's classic sage-and-meadow gradient with a denser doodle pattern,
   and your bubbles on it are its pale green.
 - Sidebar polish: one 16px content edge from the wordmark to the account row, a quiet compose icon in place
-  of the yellow "New chat" pill, a flat account row, and softer row hovers. Folder tabs are soft chips:
-  Groups and Direct appear only once they hold a chat, a dot marks each folder with something unread, and
-  arrow keys move between them. The notes row is compact — row-sized faces, a smaller bubble overlapping
+  of the yellow "New chat" pill, a flat account row, and softer row hovers. A dot marks each folder with
+  something unread, and arrow keys move between them. The notes row is compact — row-sized faces, a smaller bubble overlapping
   the top of the face, as on Messenger.
 - Notes, as on Messenger (ADR 0026): one note per person, up to 60 characters and an optional song, in a
   thought bubble above your face for 24 hours; a new note replaces the last. Tap someone's note to like it

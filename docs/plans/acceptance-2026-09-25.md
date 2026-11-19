@@ -502,6 +502,15 @@ tối, điện thoại), khung chat sáng/tối với nền mới, sidebar sáng
 Lượt hai (tab dạng chip, note gọn): `verify:full` qua (web 718, server 567, audit 0); e2e Chromium 114/115,
 lỗi duy nhất là `chat-extras` bấm tab Groups nay đã ẩn khi chưa có nhóm — sửa spec theo hành vi mới, chạy lại qua.
 
+### Kết bạn/follow, bảng thông tin, quyền nhóm — 2026-11-19
+
+`npm run verify:full` (dưới `caffeinate -i`): qua (web 724, server 574, audit 0). `npm run test:e2e --
+--project=chromium`: 116/116, gồm `e2e/friends.spec.ts` (gửi, thấy realtime, xác nhận từ bảng thông tin, cả
+hai trong Friends, huỷ kết bạn hai phía) và `e2e/stories.spec.ts` kết bạn qua giao diện trước khi đăng note.
+Máy tự ngủ giữa các lần chạy đêm 18→19 làm vài lượt vitest treo ~15 phút ("Timeout waiting for worker");
+chạy lại khi máy thức thì qua. Ảnh chụp: bảng thông tin nhóm (quyền nhóm), chat 1-1 sáng/tối với nút kết bạn,
+hộp Friends, sidebar sáng/tối. Chưa thử WebKit.
+
 ### Các bước cần thiết bị thật để đóng ma trận (tham khảo, ngoài phạm vi hiện tại)
 
 Ghi model thiết bị, OS/browser, ngày, pass/fail và lỗi cụ thể cho mỗi bước. Chưa chạy

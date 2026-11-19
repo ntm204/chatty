@@ -25,8 +25,9 @@ the external conditions in [Deployment](docs/DEPLOYMENT.md).
   voice messages with seeking and playback speed, stickers.
 - **Reliability**: a durable offline outbox that resends exactly once, retryable uploads, a
   session that survives network drops, and an offline app shell.
+- **Friends**: Facebook's friend requests and follows, managed from a chat's details or the Friends dialog.
 - **Notes**: as on Messenger — up to 60 characters and an optional song (30-second previews from Apple's
-  catalogue) above your face for 24 hours, one at a time, for the people you chat with or your close
+  catalogue) above your face for 24 hours, one at a time, for your friends, your followers or your close
   friends; others like it with a heart or reply in a direct message.
 - **Groups**: admin/member roles, invite policy, shared nicknames and message color, a media, file
   and link vault per conversation.

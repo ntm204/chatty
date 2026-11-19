@@ -25,6 +25,7 @@ import { themeFromWire } from "../../lib/theme-wire.js";
 import { saveStoryVideo } from "../../lib/video-storage.js";
 import { lookupNoteMusic, searchNoteMusic as searchCatalog } from "../../lib/music-catalog.js";
 import { createConversation, listContactIds } from "../conversations/conversations.service.js";
+import { listFollowerIds, listFriendIds } from "../friends/friends.service.js";
 import { sendMessage } from "../messages/messages.service.js";
 import { toUserDTO, userSelect } from "../users/users.mapper.js";
 import { storySelect, toStoryDTO } from "./stories.mapper.js";
@@ -36,7 +37,27 @@ export const STORY_EXPIRY_SWEEP_MS = 30_000;
 const AUDIENCE_TO_DB: Record<CreateStoryInput["audience"], StoryAudience> = {
 	contacts: "CONTACTS",
 	close_friends: "CLOSE_FRIENDS",
+	friends: "FRIENDS",
+	followers: "FOLLOWERS",
 };
+
+/** Whom someone follows. */
+async function listFollowingIds(userId: string): Promise<string[]> {
+	const rows = await prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } });
+
+	return rows.map((row) => row.followingId);
+}
+
+/** Everyone `userId` knows: people they chat with, their friends and their followers — who the lists draw from. */
+async function listKnownIds(userId: string): Promise<string[]> {
+	const [contacts, friends, followers] = await Promise.all([
+		listContactIds(userId),
+		listFriendIds(userId),
+		listFollowerIds(userId),
+	]);
+
+	return [...new Set([...contacts, ...friends, ...followers])].filter((id) => id !== userId);
+}
 
 /**
  * The stories `viewerId` may see, as one filter: everyone they share a
@@ -46,10 +67,17 @@ const AUDIENCE_TO_DB: Record<CreateStoryInput["audience"], StoryAudience> = {
  * whether or not the sweep has removed them yet.
  */
 async function viewableStoryWhere(viewerId: string, now = new Date()): Promise<Prisma.StoryWhereInput> {
-	const contactIds = (await listContactIds(viewerId)).filter((id) => id !== viewerId);
+	const [contactIds, friendIds, followingIds] = await Promise.all([
+		listContactIds(viewerId).then((ids) => ids.filter((id) => id !== viewerId)),
+		listFriendIds(viewerId),
+		listFollowingIds(viewerId),
+	]);
+	const following = new Set(followingIds);
+	// Facebook's "Friends": a friend you unfollowed drops out of your row, the friendship stays.
+	const followedFriendIds = friendIds.filter((id) => following.has(id));
 
 	return {
-		authorId: { in: contactIds },
+		authorId: { in: [...new Set([...contactIds, ...friendIds, ...followingIds])] },
 		expiresAt: { gt: now },
 		author: {
 			blocksMade: { none: { blockedId: viewerId } },
@@ -57,7 +85,12 @@ async function viewableStoryWhere(viewerId: string, now = new Date()): Promise<P
 			restrictionsMade: { none: { restrictedId: viewerId } },
 			storyHiddenFrom: { none: { hiddenUserId: viewerId } },
 		},
-		OR: [{ audience: "CONTACTS" }, { author: { closeFriends: { some: { friendId: viewerId } } } }],
+		OR: [
+			{ audience: "CONTACTS", authorId: { in: contactIds } },
+			{ audience: "FRIENDS", authorId: { in: followedFriendIds } },
+			{ audience: "FOLLOWERS", authorId: { in: followingIds } },
+			{ audience: "CLOSE_FRIENDS", author: { closeFriends: { some: { friendId: viewerId } } } },
+		],
 	};
 }
 
@@ -67,8 +100,10 @@ async function viewableStoryWhere(viewerId: string, now = new Date()): Promise<P
  * nobody outside the audience learns that a story they cannot see exists.
  */
 async function listAudienceIds(authorId: string, audience: StoryAudience): Promise<string[]> {
-	const [contactIds, author] = await Promise.all([
+	const [contactIds, friendIds, followerIds, author] = await Promise.all([
 		listContactIds(authorId),
+		listFriendIds(authorId),
+		listFollowerIds(authorId),
 		prisma.user.findUniqueOrThrow({
 			where: { id: authorId },
 			select: {
@@ -86,11 +121,17 @@ async function listAudienceIds(authorId: string, audience: StoryAudience): Promi
 		...author.restrictionsMade.map((row) => row.restrictedId),
 		...author.storyHiddenFrom.map((row) => row.hiddenUserId),
 	]);
-	const closeFriends = new Set(author.closeFriends.map((row) => row.friendId));
+	const followers = new Set(followerIds);
+	const reach =
+		audience === "CONTACTS"
+			? contactIds
+			: audience === "FOLLOWERS"
+				? followerIds
+				: audience === "FRIENDS"
+					? friendIds.filter((id) => followers.has(id))
+					: author.closeFriends.map((row) => row.friendId);
 
-	return contactIds.filter(
-		(id) => id === authorId || (!excluded.has(id) && (audience === "CONTACTS" || closeFriends.has(id))),
-	);
+	return [authorId, ...reach.filter((id) => id !== authorId && !excluded.has(id))];
 }
 
 /** Tells these people to refetch their stories row. Best effort: the row is the truth on the next fetch. */
@@ -377,7 +418,7 @@ export async function listStoryLikes(authorId: string, storyId: string): Promise
 }
 
 export async function getStoryAudienceSettings(userId: string): Promise<StoryAudienceSettingsDTO> {
-	const contactIds = (await listContactIds(userId)).filter((id) => id !== userId);
+	const contactIds = await listKnownIds(userId);
 	const [contacts, user] = await Promise.all([
 		prisma.user.findMany({
 			where: { id: { in: contactIds } },
@@ -403,9 +444,9 @@ export async function getStoryAudienceSettings(userId: string): Promise<StoryAud
 
 async function assertContacts(userId: string, userIds: string[]): Promise<string[]> {
 	const unique = [...new Set(userIds)];
-	const contacts = new Set(await listContactIds(userId));
+	const contacts = new Set(await listKnownIds(userId));
 	if (unique.some((id) => id === userId || !contacts.has(id))) {
-		throw new ValidationError("You can only choose people you chat with");
+		throw new ValidationError("You can only choose people you know");
 	}
 
 	return unique;

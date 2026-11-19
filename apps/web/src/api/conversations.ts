@@ -14,6 +14,7 @@ import type {
 	MarkReadRequest,
 	MessageLinkPageDTO,
 	RenameConversationRequest,
+	SetGroupInfoPolicyRequest,
 	SetGroupInvitePolicyRequest,
 	SetMessageTimerRequest,
 	SetSharingRestrictionRequest,
@@ -156,6 +157,17 @@ export const conversationsApi = {
 		const body: SetGroupInvitePolicyRequest = { invitePolicy };
 
 		return request<ConversationDTO>(`/conversations/${conversationId}/invite-policy`, {
+			method: "PUT",
+			body: JSON.stringify(body),
+		});
+	},
+	setGroupInfoPolicy(
+		conversationId: string,
+		infoPolicy: SetGroupInfoPolicyRequest["infoPolicy"],
+	): Promise<ConversationDTO> {
+		const body: SetGroupInfoPolicyRequest = { infoPolicy };
+
+		return request<ConversationDTO>(`/conversations/${conversationId}/info-policy`, {
 			method: "PUT",
 			body: JSON.stringify(body),
 		});

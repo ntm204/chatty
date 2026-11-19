@@ -13,6 +13,7 @@ import { toConversationDTO, toConversationUpdatedEvent, type ConversationRow } f
 import type {
 	AddParticipantInput,
 	RenameConversationInput,
+	SetInfoPolicyInput,
 	SetInvitePolicyInput,
 	SetParticipantRoleInput,
 } from "./conversations.schema.js";
@@ -21,6 +22,7 @@ import {
 	announceNewConversation,
 	announceSystemMessage,
 	assertAdmin,
+	assertCanEditGroupInfo,
 	countUnreadByConversation,
 	createSystemMessage,
 	displayNamesOf,
@@ -235,8 +237,8 @@ export async function renameConversation(
 	input: RenameConversationInput,
 ): Promise<ConversationDTO> {
 	const { systemMessage, updated } = await prisma.$transaction(async (transaction) => {
-		await prepareGroupMutation(transaction, currentUserId, conversationId);
-		await assertAdmin(transaction, currentUserId, conversationId);
+		const group = await prepareGroupMutation(transaction, currentUserId, conversationId);
+		await assertCanEditGroupInfo(transaction, currentUserId, conversationId, group);
 
 		// `@updatedAt` bumps `Conversation.updatedAt` on this write, which moves the
 		// conversation to the top of everyone's sidebar (sorted by that column).
@@ -339,11 +341,38 @@ export async function setGroupInvitePolicy(
 	conversationId: string,
 	input: SetInvitePolicyInput,
 ): Promise<ConversationDTO> {
+	return setGroupPolicy(currentUserId, conversationId, "invitePolicy", input.invitePolicy);
+}
+
+/** Who may rename the group and change its photo. Admin-only to change, announced like invites. */
+export async function setGroupInfoPolicy(
+	currentUserId: string,
+	conversationId: string,
+	input: SetInfoPolicyInput,
+): Promise<ConversationDTO> {
+	return setGroupPolicy(currentUserId, conversationId, "infoPolicy", input.infoPolicy);
+}
+
+const POLICY_ANNOUNCEMENT: Record<"invitePolicy" | "infoPolicy", Record<"EVERYONE" | "MANAGERS", string>> = {
+	invitePolicy: { EVERYONE: "changed group invites to everyone", MANAGERS: "changed group invites to admins" },
+	infoPolicy: {
+		EVERYONE: "let everyone change the group name and photo",
+		MANAGERS: "let only admins change the group name and photo",
+	},
+};
+
+/** One admin-only group permission, set under the row lock and announced by name when it changes. */
+async function setGroupPolicy(
+	currentUserId: string,
+	conversationId: string,
+	field: "invitePolicy" | "infoPolicy",
+	wire: "everyone" | "managers",
+): Promise<ConversationDTO> {
 	const { systemMessage, updated, didChange } = await prisma.$transaction(async (transaction) => {
 		const group = await prepareGroupMutation(transaction, currentUserId, conversationId);
 		await assertAdmin(transaction, currentUserId, conversationId);
-		const nextPolicy = input.invitePolicy === "managers" ? "MANAGERS" : "EVERYONE";
-		if (group.invitePolicy === nextPolicy) {
+		const nextPolicy = wire === "managers" ? "MANAGERS" : "EVERYONE";
+		if (group[field] === nextPolicy) {
 			return {
 				systemMessage: null,
 				updated: await reloadConversation(transaction, conversationId),
@@ -353,15 +382,14 @@ export async function setGroupInvitePolicy(
 
 		await transaction.conversation.update({
 			where: { id: conversationId },
-			data: { invitePolicy: nextPolicy },
+			data: { [field]: nextPolicy },
 			select: { id: true },
 		});
 		const [actorName] = await displayNamesOf(transaction, [currentUserId]);
-		const description = nextPolicy === "MANAGERS" ? "admins" : "everyone";
 		const message = await createSystemMessage(
 			transaction,
 			conversationId,
-			`${actorName} changed group invites to ${description}`,
+			`${actorName} ${POLICY_ANNOUNCEMENT[field][nextPolicy]}`,
 		);
 
 		return {

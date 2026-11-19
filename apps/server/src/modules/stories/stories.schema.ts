@@ -2,7 +2,8 @@ import { STORY_DURATION_HOURS, STORY_TEXT_MAX_LENGTH, type StoryDurationHours } 
 import { z } from "zod";
 
 const THEMES = ["azure", "amber", "moss", "plum", "clay", "teal", "iris", "fern"] as const;
-const AUDIENCES = ["contacts", "close_friends"] as const;
+// "contacts" stays accepted for notes posted before friends existed; the app offers the other three.
+const AUDIENCES = ["friends", "followers", "close_friends", "contacts"] as const;
 
 /**
  * The fields of `POST /stories`. The photo arrives as `req.file`, so whether a
@@ -17,7 +18,7 @@ export const createStorySchema = z.object({
 		.string()
 		.regex(/^\d{1,20}$/u)
 		.optional(),
-	audience: z.enum(AUDIENCES).default("contacts"),
+	audience: z.enum(AUDIENCES).default("friends"),
 	// Multipart sends numbers as strings; one of the offered lifetimes or nothing (24h).
 	durationHours: z.coerce
 		.number()

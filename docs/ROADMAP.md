@@ -58,6 +58,14 @@ The conversation background remains unchanged. The header and pin bar float over
 a subtle blur, so nearby messages remain softly visible while scrolling. Browser
 regressions cover dismissal, preview/cancel, two-client sync, reload/reset, mobile sizing and pins.
 
+## November 19 — Friends and follows, chat details, group permissions — `done`
+
+Facebook's friendship model ([ADR 0027](adr/0027-friends-and-follows.md)): requests, friends, one-way follows,
+blocks that sever them, and live updates on both sides. Notes are shared with friends (default), followers or
+close friends. The chat details panel lost its title bar and dividers, gained Add for groups and the
+friendship buttons for direct chats, and groups got an info permission beside the invite one. The sidebar's
+compose button is the brand yellow again and the folders are an even four-part track.
+
 ## November 18 — Privacy like Instagram, Telegram background, sidebar polish — `done`
 
 Privacy became Instagram's grouped list with a page per setting; close friends and "Hide notes from" are

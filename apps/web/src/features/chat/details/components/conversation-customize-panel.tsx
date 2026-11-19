@@ -11,7 +11,8 @@ interface ConversationCustomizePanelProps {
 	conversation: ConversationDTO;
 	currentUserId: string;
 	onlineUserIds: Set<string>;
-	isAdmin: boolean;
+	/** Whether the group's info policy lets this person rename it and change its photo. */
+	canEditInfo: boolean;
 }
 
 /**
@@ -20,14 +21,15 @@ interface ConversationCustomizePanelProps {
  * the way rename and nickname used to be. Rename, photo and nicknames each
  * open their own modal rather than an inline field-plus-Save, for the same
  * reason the pinned-messages list does — see conventions/frontend.md. Rename
- * and photo are group-identity changes and stay admin-gated; theme and
- * nicknames are cosmetic, so any participant may change them. See ADR 0022.
+ * and photo follow the group's info policy (admins only unless opened to
+ * everyone); theme and nicknames are cosmetic, so any participant may change
+ * them. See ADR 0022.
  */
 export function ConversationCustomizePanel({
 	conversation,
 	currentUserId,
 	onlineUserIds,
-	isAdmin,
+	canEditInfo,
 }: ConversationCustomizePanelProps) {
 	const [isRenameOpen, setIsRenameOpen] = useState(false);
 	const [isPhotoOpen, setIsPhotoOpen] = useState(false);
@@ -42,7 +44,7 @@ export function ConversationCustomizePanel({
 				<Button
 					variant="ghost"
 					onClick={() => setIsRenameOpen(true)}
-					disabled={!isAdmin}
+					disabled={!canEditInfo}
 					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
 				>
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
@@ -58,7 +60,7 @@ export function ConversationCustomizePanel({
 				<Button
 					variant="ghost"
 					onClick={() => setIsPhotoOpen(true)}
-					disabled={!isAdmin}
+					disabled={!canEditInfo}
 					className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
 				>
 					<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
@@ -69,7 +71,7 @@ export function ConversationCustomizePanel({
 				</Button>
 			)}
 
-			{conversation.isGroup && !isAdmin && (
+			{conversation.isGroup && !canEditInfo && (
 				<p className="px-3 py-2 text-sm text-ink-soft">
 					Only group admins can rename this group or change its photo.
 				</p>

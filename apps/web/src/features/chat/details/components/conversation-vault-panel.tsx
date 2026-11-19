@@ -8,13 +8,16 @@ import { VAULT_CATEGORY_TABS, VAULT_TABS, type VaultTab } from "../constants/vau
 import { useConversationVault } from "../hooks/use-conversation-vault";
 import { useVaultReadingPosition } from "../hooks/use-vault-reading-position";
 import { getDirectPeer, isSavedConversation } from "../../utils";
+import { getGroupPermissions } from "../utils/group-permissions";
 import { ConversationBlockControl } from "./conversation-block-control";
 import { ConversationCustomizePanel } from "./conversation-customize-panel";
 import { ConversationMessageTimerControl } from "./conversation-message-timer-control";
 import { ConversationSharingControl } from "./conversation-sharing-control";
 import { ConversationDetailsIdentity } from "./conversation-details-identity";
 import { ConversationQuickActions } from "./conversation-quick-actions";
-import { GroupInvitePolicyControl } from "./group-invite-policy-control";
+import { GroupPermissionsControl } from "./group-permissions-control";
+import { FriendshipActions } from "../../friends/components";
+import { AddGroupMembersDialog } from "./add-group-members-dialog";
 import { PanelResizeHandle } from "../../components/panel-resize-handle";
 import { PinnedMessagesDialog } from "../../components/pinned-messages-dialog";
 import { GroupMembersPanel } from "./group-members-panel";
@@ -50,7 +53,8 @@ export function ConversationVaultPanel({
 	const vault = useConversationVault(conversation.id, activeTab);
 	const blockablePeer = conversation.isGroup ? null : getDirectPeer(conversation, currentUserId);
 	const activeLabel = VAULT_TABS.find((tab) => tab.id === activeTab)?.label ?? "";
-	const isAdmin = conversation.participants.find((participant) => participant.id === currentUserId)?.role === "admin";
+	const permissions = getGroupPermissions(conversation, currentUserId);
+	const [isAddingPeople, setIsAddingPeople] = useState(false);
 	const rememberPosition = useVaultReadingPosition(
 		categoryScrollRef,
 		activeTab,
@@ -85,29 +89,32 @@ export function ConversationVaultPanel({
 			id="conversation-details"
 			className="conversation-details-panel relative flex min-h-0 w-full shrink-0 flex-col bg-paper-raised lg:rounded-xl lg:border lg:border-rule xl:w-[var(--panel-width,320px)]"
 		>
-			<div className="relative flex h-[70px] shrink-0 items-center border-b border-rule px-5">
-				{activeTab && (
+			{/* The overview has no title bar, as on Messenger — the face and name are the
+			    heading people see; the panel name stays for assistive technology. A
+			    category page gets a compact bar with its own back button. */}
+			{activeTab ? (
+				<div className="relative flex h-14 shrink-0 items-center border-b border-rule-soft px-3">
 					<Button
 						variant="ghost"
 						onClick={() => setActiveTab(null)}
 						aria-label="Back to conversation details"
-						className="absolute left-3 size-8 p-0"
+						className="size-9 rounded-full p-0"
 					>
-						<ChevronLeft className="size-4" />
+						<ChevronLeft className="size-[18px]" />
 					</Button>
-				)}
-				<h2 className={cn("pr-10 text-sm font-semibold text-ink", activeTab && "pl-9")}>
-					{activeTab ? activeLabel : "Conversation details"}
-				</h2>
-				<Button
-					variant="ghost"
-					onClick={onClose}
-					aria-label="Close conversation storage"
-					className="absolute right-3 size-8 p-0"
-				>
-					<X className="size-4" />
-				</Button>
-			</div>
+					<h2 className="ml-1 text-[15px] font-semibold text-ink">{activeLabel}</h2>
+				</div>
+			) : (
+				<h2 className="sr-only">Conversation details</h2>
+			)}
+			<Button
+				variant="ghost"
+				onClick={onClose}
+				aria-label="Close conversation storage"
+				className="absolute top-2.5 right-2.5 z-10 size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+			>
+				<X className="size-[18px]" />
+			</Button>
 
 			{!activeTab && (
 				<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -116,51 +123,43 @@ export function ConversationVaultPanel({
 						currentUserId={currentUserId}
 						onlineUserIds={onlineUserIds}
 					/>
-					<ConversationQuickActions conversation={conversation} onOpenSearch={onOpenSearch} />
+					{blockablePeer && (
+						<FriendshipActions user={blockablePeer} className="mx-auto w-full max-w-[300px] px-5 pb-4" />
+					)}
+					<ConversationQuickActions
+						conversation={conversation}
+						onOpenSearch={onOpenSearch}
+						onAddPeople={permissions.canInvite ? () => setIsAddingPeople(true) : undefined}
+					/>
 
-					<div className="px-3 pt-4">
-						<h3 className="mb-2 px-3 text-xs font-medium text-ink-faint">Chat info</h3>
-						<Button
-							variant="ghost"
-							onClick={() => setIsPinsDialogOpen(true)}
-							className="min-h-12 w-full justify-start gap-3 rounded-panel px-3 py-2.5 text-left font-normal"
-						>
-							<span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-paper-sunken">
-								<Pin className="size-4 text-ink-soft" aria-hidden="true" />
-							</span>
-							<span className="min-w-0 flex-1 text-[14px] text-ink">Pinned messages</span>
-							<span className="meta text-ink-faint">{conversation.pinnedMessages.length}</span>
-							<ChevronRight className="size-4 text-ink-faint" />
-						</Button>
-					</div>
+					{/* Messenger's order — what the chat holds, how it looks, who is in it,
+					    who may do what, then the rare and sensitive controls — as quiet
+					    collapsible sections with no rules between them. */}
+					<div className="flex flex-col gap-0.5 px-2 pb-6">
+						<Disclosure label="Chat info" defaultOpen>
+							<Button
+								variant="ghost"
+								onClick={() => setIsPinsDialogOpen(true)}
+								className="min-h-11 w-full justify-start gap-3 rounded-control px-3 py-2 text-left font-normal"
+							>
+								<Pin className="size-[18px] shrink-0 text-ink-soft" aria-hidden="true" />
+								<span className="min-w-0 flex-1 text-[14px] text-ink">Pinned messages</span>
+								<span className="meta text-ink-faint">{conversation.pinnedMessages.length}</span>
+								<ChevronRight className="size-4 text-ink-faint" />
+							</Button>
+						</Disclosure>
 
-					{/* Content → people → settings → safety: what this chat holds, who is
-					    in it, how it is configured, and only then the rare, sensitive
-					    controls — rather than interleaving settings between content. */}
-					<div className="mx-3 mt-3 border-t border-rule-soft py-1">
 						<Disclosure label="Customize chat" defaultOpen>
 							<ConversationCustomizePanel
 								conversation={conversation}
 								currentUserId={currentUserId}
 								onlineUserIds={onlineUserIds}
-								isAdmin={isAdmin}
+								canEditInfo={permissions.canEditInfo}
 							/>
 						</Disclosure>
-					</div>
 
-					<div className="mx-3 mt-1 border-t border-rule-soft py-1">
-						<Disclosure
-							label="Media, files and links"
-							isOpen={isVaultSectionOpen}
-							onOpenChange={setIsVaultSectionOpen}
-						>
-							<VaultCategoryList summary={vault.summary} memberCount={null} onSelect={setActiveTab} />
-						</Disclosure>
-					</div>
-
-					{conversation.isGroup && (
-						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
-							<Disclosure label="Members">
+						{conversation.isGroup && (
+							<Disclosure label={`Chat members · ${conversation.participants.length}`}>
 								<GroupMembersPanel
 									conversation={conversation}
 									currentUserId={currentUserId}
@@ -168,45 +167,48 @@ export function ConversationVaultPanel({
 									isEmbedded
 								/>
 							</Disclosure>
-						</div>
-					)}
+						)}
 
-					{conversation.isGroup && (
-						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
-							<Disclosure label="Group options">
-								<div className="px-3 py-2">
-									<GroupInvitePolicyControl
-										conversationId={conversation.id}
-										policy={conversation.invitePolicy}
-										isAdmin={isAdmin}
+						<Disclosure
+							label="Media, files and links"
+							isOpen={isVaultSectionOpen}
+							onOpenChange={setIsVaultSectionOpen}
+						>
+							<VaultCategoryList summary={vault.summary} memberCount={null} onSelect={setActiveTab} />
+						</Disclosure>
+
+						{conversation.isGroup && (
+							<Disclosure label="Group permissions">
+								<div className="px-3 py-1">
+									<GroupPermissionsControl
+										conversation={conversation}
+										isAdmin={permissions.isAdmin}
 									/>
 								</div>
 							</Disclosure>
-						</div>
-					)}
+						)}
 
-					{/* Last, not first. Blocking is direct-only: a block is between two
-					    people and deliberately does not reach into a group they share.
-					    Your own Saved chat has nobody to keep anything private from. */}
-					{!isSavedConversation(conversation, currentUserId) && (
-						<div className="mx-3 mt-1 border-t border-rule-soft py-1">
+						{/* Last, not first. Blocking is direct-only: a block is between two
+						    people and deliberately does not reach into a group they share.
+						    Your own Saved chat has nobody to keep anything private from. */}
+						{!isSavedConversation(conversation, currentUserId) && (
 							<Disclosure label="Privacy & support">
 								<div className="px-3">
 									<ConversationMessageTimerControl
 										conversationId={conversation.id}
 										timer={conversation.messageTimerSeconds}
-										canChange={!conversation.isGroup || isAdmin}
+										canChange={!conversation.isGroup || permissions.isAdmin}
 									/>
 									<ConversationSharingControl
 										conversationId={conversation.id}
 										isRestricted={conversation.isSharingRestricted}
-										canChange={!conversation.isGroup || isAdmin}
+										canChange={!conversation.isGroup || permissions.isAdmin}
 									/>
 								</div>
 								{blockablePeer && <ConversationBlockControl peer={blockablePeer} />}
 							</Disclosure>
-						</div>
-					)}
+						)}
+					</div>
 				</div>
 			)}
 
@@ -254,6 +256,14 @@ export function ConversationVaultPanel({
 				</div>
 			)}
 
+			{isAddingPeople && (
+				<AddGroupMembersDialog
+					conversationId={conversation.id}
+					participantIds={conversation.participants.map((participant) => participant.id)}
+					canInvite={permissions.canInvite}
+					onClose={() => setIsAddingPeople(false)}
+				/>
+			)}
 			{isPinsDialogOpen && (
 				<PinnedMessagesDialog
 					pinnedMessages={conversation.pinnedMessages}

@@ -224,7 +224,7 @@ describe("posting", () => {
 		expect(within(dialog).getByText("Shared for 24 hours.")).toBeInTheDocument();
 		await userEvent.type(within(dialog).getByLabelText("Note text"), "Good morning");
 		expect(within(dialog).getByText("12/60")).toBeInTheDocument();
-		await userEvent.click(within(dialog).getByRole("button", { name: "People you chat with" }));
+		await userEvent.click(within(dialog).getByRole("button", { name: "Friends" }));
 		await userEvent.click(within(dialog).getByRole("radio", { name: "Close friends" }));
 		await userEvent.click(within(dialog).getByRole("button", { name: "Share" }));
 
@@ -275,7 +275,7 @@ describe("posting", () => {
 		expect(within(dialog).getByRole("button", { name: "Change song" })).toBeInTheDocument();
 		await userEvent.click(within(dialog).getByRole("button", { name: "Share" }));
 
-		await waitFor(() => expect(post).toHaveBeenCalledWith("", "42", "contacts"));
+		await waitFor(() => expect(post).toHaveBeenCalledWith("", "42", "friends"));
 	});
 
 	it("says so when music is unavailable, and the note can still be posted without one", async () => {

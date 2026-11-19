@@ -1,5 +1,5 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { BellOff, Search } from "lucide-react";
+import { BellOff, Search, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/api/client";
 import { Button } from "@/components/button";
@@ -12,10 +12,12 @@ import { ConversationMuteMenu } from "../../components/conversation-mute-menu";
 interface ConversationQuickActionsProps {
 	conversation: ConversationDTO;
 	onOpenSearch: () => void;
+	/** Set in a group the person may add people to: Messenger's first circle, "Add". */
+	onAddPeople?: (() => void) | undefined;
 }
 
-/** The two icon-button quick actions at the top of the details panel, matching Messenger's row. */
-export function ConversationQuickActions({ conversation, onOpenSearch }: ConversationQuickActionsProps) {
+/** The round quick actions under the name, matching Messenger's row: Add (groups), Mute, Search. */
+export function ConversationQuickActions({ conversation, onOpenSearch, onAddPeople }: ConversationQuickActionsProps) {
 	const [isChoosingMute, setIsChoosingMute] = useState(false);
 	const { isSaving, error, clearError, run } = useConversationMutation(conversation.id);
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,20 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 	}
 
 	return (
-		<div className="flex flex-wrap justify-center gap-x-8 gap-y-3 border-b border-rule px-5 py-4">
+		<div className="flex flex-wrap justify-center gap-x-7 gap-y-3 px-5 pb-4">
+			{onAddPeople && (
+				<div className="flex flex-col items-center gap-1.5">
+					<Button
+						variant="ghost"
+						onClick={onAddPeople}
+						aria-label="Add members"
+						className="size-10 rounded-full bg-paper-sunken p-0 hover:bg-paper"
+					>
+						<UserPlus className="size-[18px]" />
+					</Button>
+					<span className="text-[12px] text-ink-soft">Add</span>
+				</div>
+			)}
 			<div ref={rootRef} className="relative flex flex-col items-center gap-1.5">
 				<Button
 					variant="ghost"
@@ -53,11 +68,11 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 					aria-haspopup="menu"
 					aria-expanded={isChoosingMute}
 					aria-busy={isSaving}
-					className={cn("size-11 rounded-full border border-rule p-0", isMuted && "text-signal")}
+					className={cn("size-10 rounded-full bg-paper-sunken p-0 hover:bg-paper", isMuted && "text-signal")}
 				>
-					<BellOff className="size-4" />
+					<BellOff className="size-[18px]" />
 				</Button>
-				<span className="eyebrow text-ink-faint">{isMuted ? "Turn back on" : "Mute"}</span>
+				<span className="text-[12px] text-ink-soft">{isMuted ? "Unmute" : "Mute"}</span>
 
 				{isChoosingMute && (
 					<div
@@ -83,11 +98,11 @@ export function ConversationQuickActions({ conversation, onOpenSearch }: Convers
 					variant="ghost"
 					onClick={onOpenSearch}
 					aria-label="Search in conversation"
-					className="size-11 rounded-full border border-rule p-0"
+					className="size-10 rounded-full bg-paper-sunken p-0 hover:bg-paper"
 				>
-					<Search className="size-4" />
+					<Search className="size-[18px]" />
 				</Button>
-				<span className="eyebrow text-ink-faint">Search</span>
+				<span className="text-[12px] text-ink-soft">Search</span>
 			</div>
 			{error && !isChoosingMute && (
 				<ConversationActionError error={error} onDismiss={clearError} className="basis-full" />

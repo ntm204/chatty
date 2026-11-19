@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { API_URL, makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
+import { API_URL, befriend, makeUser, openConversationWith, register, startDirectChat } from "./helpers.js";
 
 test("a note reaches the people you chat with, and its replies land in a conversation", async ({ browser }) => {
 	test.setTimeout(90_000);
@@ -17,6 +17,8 @@ test("a note reaches the people you chat with, and its replies land in a convers
 	await register(author, minh);
 	await startDirectChat(author, an);
 	await openConversationWith(friend, minh);
+	// A note goes to friends by default, as on Facebook.
+	await befriend(author, friend, an);
 
 	// ── Post a note, then a new one that replaces it (one note per person) ──
 	await author.getByRole("button", { name: "New note" }).click();

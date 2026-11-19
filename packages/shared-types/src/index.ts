@@ -188,6 +188,8 @@ export interface ConversationDTO {
 	name: string | null; // null for 1-1 conversations; derived from participants on the client
 	/** Who may add people; meaningful only for groups. */
 	invitePolicy: GroupInvitePolicy;
+	/** Who may rename the group and change its photo: everyone, or admins ("managers"). */
+	infoPolicy: GroupInvitePolicy;
 	/** A group's own photo, or null (initials shown instead). Always null for a direct conversation — see ADR 0022. */
 	avatarUrl: string | null;
 	/** The whole conversation's shared accent, or null for the fixed default. Any participant may change it. */
@@ -716,6 +718,10 @@ export interface SetGroupInvitePolicyRequest {
 	invitePolicy: GroupInvitePolicy;
 }
 
+export interface SetGroupInfoPolicyRequest {
+	infoPolicy: GroupInvitePolicy;
+}
+
 export interface SetThemeRequest {
 	theme: ConversationTheme | null;
 }
@@ -994,6 +1000,8 @@ export interface ConversationUpdatedEvent {
 	conversationId: string;
 	name: string | null;
 	invitePolicy: GroupInvitePolicy;
+	/** Who may rename the group and change its photo: everyone, or admins ("managers"). */
+	infoPolicy: GroupInvitePolicy;
 	avatarUrl: string | null;
 	themeColor: ConversationTheme | null;
 	quickReactionEmoji: string | null;
@@ -1029,6 +1037,38 @@ export interface BookmarkChangedEvent {
 }
 
 /** Events the server pushes down. The client only listens to these. */
+/** Where you stand with one person, from your side — Facebook's profile buttons. */
+export interface RelationshipDTO {
+	userId: string;
+	isFriend: boolean;
+	isFollowing: boolean;
+	isFollowedBy: boolean;
+	/** A pending friend request between you: one you sent, or one waiting for your answer. */
+	request: "outgoing" | "incoming" | null;
+	mutualFriendCount: number;
+}
+
+export interface FriendDTO {
+	user: UserDTO;
+	since: string;
+}
+
+export interface FriendRequestDTO {
+	user: UserDTO;
+	createdAt: string;
+}
+
+/** Requests waiting for you, and the ones you sent that are still unanswered — newest first. */
+export interface FriendRequestsDTO {
+	incoming: FriendRequestDTO[];
+	outgoing: FriendRequestDTO[];
+}
+
+/** Sent to both people when a request, friendship or follow between them changes. */
+export interface RelationshipChangedEvent {
+	userId: string;
+}
+
 export interface ServerToClientEvents {
 	/** Private invalidation, sent only to the bookmarking account's sessions. */
 	"bookmark:changed": (event: BookmarkChangedEvent) => void;
@@ -1047,6 +1087,8 @@ export interface ServerToClientEvents {
 	"user:forwarding-changed": (event: { userId: string; allowMessageForwarding: boolean }) => void;
 	/** The stories row changed for this person — sent to each audience member's own room. */
 	"story:changed": (event: StoryChangedEvent) => void;
+	/** Refetch your relationship with `userId`, your friends and your requests. */
+	"relationship:changed": (event: RelationshipChangedEvent) => void;
 	/**
 	 * A message already on screen changed — its author edited it, or deleted it.
 	 *
@@ -1116,7 +1158,12 @@ export type BuiltinStickerKey = (typeof BUILTIN_STICKER_KEYS)[number];
 // ---- Stories (ADR 0025) ----
 
 export type StoryKind = "photo" | "text" | "video";
-export type StoryAudience = "contacts" | "close_friends";
+/**
+ * Who a note reaches: friends (who still follow you), followers, or close
+ * friends. "contacts" — everyone you chat with — is what notes posted before
+ * friends existed carry; the app no longer offers it.
+ */
+export type StoryAudience = "friends" | "followers" | "close_friends" | "contacts";
 
 /** How long a story lasts unless its author chooses otherwise. */
 export const STORY_LIFETIME_SECONDS = 86_400;

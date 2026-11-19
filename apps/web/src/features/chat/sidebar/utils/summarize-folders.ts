@@ -25,14 +25,3 @@ export function summarizeFolders(conversations: ConversationDTO[]): Record<ChatF
 
 	return summary;
 }
-
-/**
- * The tabs worth showing: All and Unread always; Groups and Direct only once
- * there is something in them (or while you are on one), so a person with no
- * groups is never offered an empty folder.
- */
-export function visibleFolders(summary: Record<ChatFolder, FolderSummary>, current: ChatFolder): ChatFolder[] {
-	return CHAT_FOLDERS.map(({ id }) => id).filter(
-		(id) => id === "all" || id === "unread" || id === current || summary[id].total > 0,
-	);
-}

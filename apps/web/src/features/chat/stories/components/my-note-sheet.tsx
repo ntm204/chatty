@@ -6,7 +6,7 @@ import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { getErrorMessage } from "@/utils/get-error-message";
-import { STORY_AUDIENCE_OPTIONS } from "../constants/stories";
+import { STORY_AUDIENCE_LABELS } from "../constants/stories";
 import { NoteSheetFrame } from "./note-sheet-frame";
 
 interface MyNoteSheetProps {
@@ -22,7 +22,7 @@ export function MyNoteSheet({ note, onNewNote, onDeleted, onClose }: MyNoteSheet
 	const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [error, setError] = useState("");
-	const audience = STORY_AUDIENCE_OPTIONS.find((option) => option.value === note.audience)?.label;
+	const audience = note.audience ? STORY_AUDIENCE_LABELS[note.audience] : null;
 
 	useEffect(() => {
 		let isCurrent = true;
@@ -50,7 +50,7 @@ export function MyNoteSheet({ note, onNewNote, onDeleted, onClose }: MyNoteSheet
 
 	return (
 		<NoteSheetFrame note={note} label="Your note" title="Your note" onClose={onClose}>
-			{audience && <p className="note -mt-2 text-center text-ink-soft">Shared with {audience.toLowerCase()}</p>}
+			{audience && <p className="note -mt-2 text-center text-ink-soft">Shared with {audience}</p>}
 
 			<section aria-labelledby="note-likes-heading" className="flex flex-col gap-1">
 				<h3 id="note-likes-heading" className="meta flex items-center gap-1.5 text-ink-soft">

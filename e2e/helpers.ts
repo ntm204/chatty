@@ -153,3 +153,27 @@ export async function sendMessage(page: Page, text: string): Promise<void> {
 	await page.getByLabel("Message", { exact: true }).fill(text);
 	await page.getByLabel("Message", { exact: true }).press("Enter");
 }
+
+/**
+ * Makes two people friends through the app itself: the asker adds the other
+ * from the chat's details, and the other confirms in Friends. Both must
+ * already share an open direct chat (`startDirectChat` / `openConversationWith`).
+ */
+export async function befriend(asker: Page, answerer: Page, answererUser: TestUser): Promise<void> {
+	const details = asker.getByRole("complementary", { name: "Conversation details" });
+	if (!(await details.isVisible())) {
+		await asker.getByRole("button", { name: "Conversation storage and details" }).click();
+	}
+	await details.getByRole("button", { name: "Add friend" }).click();
+	await expect(details.getByRole("button", { name: "Cancel request" })).toBeVisible();
+	await asker.getByRole("button", { name: "Close conversation storage" }).click();
+
+	await answerer.getByRole("button", { name: /^More/ }).click();
+	await answerer.getByRole("menuitem", { name: /Friends/ }).click();
+	const friends = answerer.getByRole("dialog", { name: "Friends" });
+	await friends.getByRole("button", { name: /^Confirm / }).click();
+	await friends.getByRole("radio", { name: "Friends" }).click();
+	await expect(friends.getByRole("list", { name: "Your friends" })).toBeVisible();
+	await answerer.keyboard.press("Escape");
+	void answererUser;
+}

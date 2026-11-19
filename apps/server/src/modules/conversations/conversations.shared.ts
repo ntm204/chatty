@@ -199,13 +199,15 @@ export async function prepareGroupMutation(
 	transaction: Prisma.TransactionClient,
 	userId: string,
 	conversationId: string,
-): Promise<{ invitePolicy: DbConversationInvitePolicy }> {
+): Promise<{ invitePolicy: DbConversationInvitePolicy; infoPolicy: DbConversationInvitePolicy }> {
 	// Every membership or name mutation takes the same row lock first. It makes
 	// two requests for one group happen in a stable order — most importantly the
 	// last admin leaving at the same time as their likely successor. Without it,
 	// one request can promote a participant the other request has just removed.
-	const conversations = await transaction.$queryRaw<{ isGroup: boolean; invitePolicy: DbConversationInvitePolicy }[]>`
-		SELECT "isGroup", "invitePolicy"
+	const conversations = await transaction.$queryRaw<
+		{ isGroup: boolean; invitePolicy: DbConversationInvitePolicy; infoPolicy: DbConversationInvitePolicy }[]
+	>`
+		SELECT "isGroup", "invitePolicy", "infoPolicy"
 		FROM "Conversation"
 		WHERE id = ${conversationId}
 		FOR UPDATE
@@ -217,7 +219,7 @@ export async function prepareGroupMutation(
 		throw new ValidationError("This operation is only available in a group conversation");
 	}
 
-	return { invitePolicy: conversations[0].invitePolicy };
+	return { invitePolicy: conversations[0].invitePolicy, infoPolicy: conversations[0].infoPolicy };
 }
 
 /**
@@ -247,6 +249,27 @@ export async function assertAdmin(
 	});
 
 	if (participant?.role !== "ADMIN") throw new ForbiddenError("Only group admins can do this");
+}
+
+/**
+ * Renaming and the group photo follow the group's info policy: anyone in the
+ * group when it is open, admins otherwise — Facebook's "who can change group
+ * info". `group` is what `prepareGroupMutation` returned under its row lock.
+ */
+export async function assertCanEditGroupInfo(
+	transaction: Prisma.TransactionClient,
+	userId: string,
+	conversationId: string,
+	group: { infoPolicy: DbConversationInvitePolicy },
+): Promise<void> {
+	if (group.infoPolicy === "EVERYONE") return;
+	const participant = await transaction.conversationParticipant.findUnique({
+		where: { conversationId_userId: { conversationId, userId } },
+		select: { role: true },
+	});
+
+	if (participant?.role !== "ADMIN")
+		throw new ForbiddenError("Only group admins can change the group's name and photo");
 }
 
 /**

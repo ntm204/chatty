@@ -37,7 +37,7 @@ export function NoteComposer({ currentUser, hasNote, onPosted, onClose }: NoteCo
 	const dialogRef = useDialog<HTMLDivElement>(close, { closeOnEscape: false });
 	const [text, setText] = useState("");
 	const [music, setMusic] = useState<NoteMusicDTO | null>(null);
-	const [audience, setAudience] = useState<StoryAudience>("contacts");
+	const [audience, setAudience] = useState<StoryAudience>("friends");
 	const [isChoosingAudience, setIsChoosingAudience] = useState(false);
 	const [isEditingLists, setIsEditingLists] = useState(false);
 	const [isMusicPickerOpen, setIsMusicPickerOpen] = useState(false);

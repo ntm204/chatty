@@ -75,6 +75,7 @@ export interface ConversationRow {
 	isGroup: boolean;
 	name: string | null;
 	invitePolicy: DbConversationInvitePolicy;
+	infoPolicy: DbConversationInvitePolicy;
 	avatarUpdatedAt: Date | null;
 	themeColor: DbConversationTheme | null;
 	quickReactionEmoji: string | null;
@@ -156,6 +157,7 @@ export function toConversationDTO(row: ConversationRow, unreadCount: number, vie
 		isGroup: row.isGroup,
 		name: row.name,
 		invitePolicy: invitePolicyByDatabaseValue[row.invitePolicy],
+		infoPolicy: invitePolicyByDatabaseValue[row.infoPolicy],
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
 		themeColor: row.themeColor ? themeToWire(row.themeColor) : null,
 		quickReactionEmoji: row.quickReactionEmoji,
@@ -190,6 +192,7 @@ export function toConversationUpdatedEvent(row: ConversationRow): ConversationUp
 		conversationId: row.id,
 		name: row.name,
 		invitePolicy: invitePolicyByDatabaseValue[row.invitePolicy],
+		infoPolicy: invitePolicyByDatabaseValue[row.infoPolicy],
 		avatarUrl: buildConversationAvatarUrl(row.id, row.avatarUpdatedAt),
 		themeColor: row.themeColor ? themeToWire(row.themeColor) : null,
 		quickReactionEmoji: row.quickReactionEmoji,

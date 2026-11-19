@@ -4,6 +4,7 @@
  */
 import { authApi } from "./auth";
 import { conversationsApi } from "./conversations";
+import { friendsApi } from "./friends";
 import { messagesApi } from "./messages";
 import { storiesApi } from "./stories";
 import { usersApi } from "./users";
@@ -28,4 +29,5 @@ export const api = {
 	...conversationsApi,
 	...messagesApi,
 	...storiesApi,
+	...friendsApi,
 };

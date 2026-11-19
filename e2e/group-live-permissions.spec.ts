@@ -55,7 +55,7 @@ test("live admin changes retain invite choices and invalidate an open removal de
 		await setRole("admin");
 		await openConversationNamed(member, "Live permissions");
 		await member.getByRole("button", { name: "Group members", exact: true }).click();
-		await member.getByRole("button", { name: "Members", exact: true }).click();
+		await member.getByRole("button", { name: /^Chat members/ }).click();
 		await member.getByRole("button", { name: "Add people", exact: true }).click();
 		const dialog = member.getByRole("dialog", { name: "Add people", exact: true });
 		await dialog.getByLabel("Search for someone to add").fill(guestUser.handle);

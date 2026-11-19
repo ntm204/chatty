@@ -269,7 +269,18 @@ How the three lay out a chat-list row's small parts, and the arrangement Chatty 
   reads as a darker shade of the colours under it. Your bubble on it is its pale green.
 - Sidebar: one 16px content edge for every section; header actions are two 36px icon buttons (More,
   compose); the account row is flat under a hairline.
-- Folder tabs (same day, second pass): Messenger's soft chips — the open one filled with the selection
-  colour, the rest text until hovered; no rule under the row. Groups and Direct show only once they hold a
-  chat (or while open); a dot, never a number, marks a folder with unread chats (muted ones excluded).
+- Folder tabs (same day, second pass, superseded on 2026-11-19 by the even track below): a dot, never a
+  number, marks a folder with unread chats (muted ones excluded).
 - Notes row, compact: faces at the chat-row size (44px), 74px tiles, a 10.5px bubble overlapping the face.
+
+## Chat details, friends, sidebar accents — Messenger and Facebook, owner review — 2026-11-19
+
+- Details panel: no title bar (the name is the heading; the panel name stays for screen readers), a floating
+  close, photo with a camera and name with a pencil for whoever the group lets edit, round filled Add / Mute
+  / Search, then collapsible sections with no rules: Chat info, Customize chat, Chat members · N, Media,
+  Group permissions, Privacy & support.
+- Group permissions are Facebook's "Only admins can …" switches — on means admins only.
+- Friendship buttons: Add friend (yellow) → Cancel request, Follow/Following beside it; Confirm / Delete for
+  a request to you; Friends ▾ with Unfollow and Unfriend once friends; mutual friends under them.
+- Sidebar, owner's correction: keep the brand yellow — the compose button is a yellow round mark; the four
+  folders are one rounded track split evenly, the open one lifted on paper, always all four.

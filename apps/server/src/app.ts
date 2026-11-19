@@ -13,6 +13,7 @@ import { storiesRouter } from "./modules/stories/stories.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { blocksRouter } from "./modules/blocks/blocks.routes.js";
 import { conversationsRouter } from "./modules/conversations/conversations.routes.js";
+import { friendsRouter } from "./modules/friends/friends.routes.js";
 import { messagesRouter } from "./modules/messages/messages.routes.js";
 import { metricsRouter } from "./modules/metrics/metrics.routes.js";
 import { restrictionsRouter } from "./modules/restrictions/restrictions.routes.js";
@@ -105,6 +106,7 @@ export function createApp() {
 	app.use("/search", searchRouter);
 	app.use("/blocks", blocksRouter);
 	app.use("/restrictions", restrictionsRouter);
+	app.use("/friends", friendsRouter);
 	app.use("/conversations", conversationsRouter);
 	app.use("/conversations/:conversationId", conversationVaultRouter);
 	app.use("/conversations/:conversationId/messages", messagesRouter);

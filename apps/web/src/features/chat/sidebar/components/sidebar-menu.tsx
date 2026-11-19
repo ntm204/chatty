@@ -1,5 +1,5 @@
 import type { ConversationDTO } from "@chatty/shared-types";
-import { Archive, Keyboard, MoreHorizontal } from "lucide-react";
+import { Archive, Keyboard, MoreHorizontal, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { cn } from "@/utils/cn";
@@ -12,11 +12,14 @@ interface SidebarMenuProps {
 	onOpenBookmarkedMessage: (conversation: ConversationDTO, messageId: string) => void;
 	onShowArchived: () => void;
 	onShowKeyboardShortcuts?: (() => void) | undefined;
+	onShowFriends: () => void;
+	/** Friend requests waiting for an answer: a dot on "⋯" and the number on the Friends row. */
+	friendRequestCount: number;
 }
 
 /**
- * Everything the sidebar offers that is not a chat, behind one "⋯": notes,
- * bookmarks, archived chats and the keyboard shortcuts. A row of chips and
+ * Everything the sidebar offers that is not a chat, behind one "⋯": friends,
+ * notes, bookmarks, archived chats and the keyboard shortcuts. A row of chips and
  * three footer icons made the sidebar busier than the list it holds.
  *
  * The panel is hidden rather than unmounted when it closes: the bookmarks
@@ -29,6 +32,8 @@ export function SidebarMenu({
 	onOpenBookmarkedMessage,
 	onShowArchived,
 	onShowKeyboardShortcuts,
+	onShowFriends,
+	friendRequestCount,
 }: SidebarMenuProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -55,12 +60,18 @@ export function SidebarMenu({
 			<Button
 				variant="ghost"
 				onClick={() => setIsOpen((current) => !current)}
-				aria-label="More"
+				aria-label={friendRequestCount > 0 ? `More, ${friendRequestCount} friend requests` : "More"}
 				aria-haspopup="menu"
 				aria-expanded={isOpen}
-				className="size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
+				className="relative size-9 rounded-full p-0 text-ink-soft hover:bg-paper-sunken hover:text-ink"
 			>
 				<MoreHorizontal className="size-[18px]" />
+				{friendRequestCount > 0 && (
+					<span
+						aria-hidden="true"
+						className="absolute top-1.5 right-1.5 size-2 rounded-full bg-signal ring-2 ring-paper-raised"
+					/>
+				)}
 			</Button>
 			<div
 				role="menu"
@@ -72,6 +83,20 @@ export function SidebarMenu({
 					"popover-enter absolute top-full right-0 z-40 mt-1.5 w-52 rounded-2xl bg-paper-raised p-1.5 shadow-lift",
 				)}
 			>
+				<Button
+					variant="ghost"
+					role="menuitem"
+					onClick={onShowFriends}
+					className="h-9 w-full justify-start gap-2.5 rounded-lg px-2.5 text-[13px] font-normal text-ink hover:bg-paper-sunken"
+				>
+					<Users className="size-4 text-ink-faint" />
+					<span className="flex-1 text-left">Friends</span>
+					{friendRequestCount > 0 && (
+						<span className="min-w-5 rounded-full bg-signal px-1.5 text-center text-[11px] font-semibold text-paper">
+							{friendRequestCount}
+						</span>
+					)}
+				</Button>
 				<SavedMessagesShortcut userId={currentUserId} onOpen={onOpenNotes} />
 				<BookmarksShortcut currentUserId={currentUserId} onSelectMessage={onOpenBookmarkedMessage} />
 				<Button

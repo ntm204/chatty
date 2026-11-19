@@ -79,6 +79,12 @@ model User {
   stories             Story[]
   storyViews          StoryView[]
   storyLikes          StoryLike[]
+  friendshipsAsA      Friendship[]       @relation("FriendshipA")
+  friendshipsAsB      Friendship[]       @relation("FriendshipB")
+  friendRequestsSent  FriendRequest[]    @relation("FriendRequestsSent")
+  friendRequestsIn    FriendRequest[]    @relation("FriendRequestsReceived")
+  following           Follow[]           @relation("Following")
+  followers           Follow[]           @relation("Followers")
   closeFriends        CloseFriend[]             @relation("CloseFriendsOf")
   closeFriendOf       CloseFriend[]             @relation("CloseFriendOn")
   storyHiddenFrom     StoryHiddenFrom[]         @relation("StoryHidesFrom")
@@ -361,6 +367,9 @@ model Conversation {
   /// Who may add people. Any admin may change this; EVERYONE preserves the
   /// original open-invite behaviour, MANAGERS means admins only.
   invitePolicy        ConversationInvitePolicy @default(EVERYONE)
+  /// Who may rename the group and change its photo (Facebook's group-info
+  /// permission). MANAGERS — admins only — keeps the original behaviour.
+  infoPolicy          ConversationInvitePolicy @default(MANAGERS)
   /// Set only for a group's own photo — mirrors `User.avatarUpdatedAt` exactly,
   /// including the cache-busting scheme. Null in a direct conversation, which
   /// always shows the peer's own avatar instead. Group-only and admin-gated,
@@ -829,10 +838,14 @@ enum StoryKind {
 
 /// Who may see a story, besides the always-excluded blocked, restricted and hidden people.
 enum StoryAudience {
-  /// Everyone who shares a conversation with the author.
+  /// Everyone who shares a conversation with the author (notes posted before friends existed).
   CONTACTS
   /// Only the author's close friends.
   CLOSE_FRIENDS
+  /// The author's friends who still follow them — Facebook's "Friends".
+  FRIENDS
+  /// Everyone who follows the author, friends included.
+  FOLLOWERS
 }
 
 /// A story that lasts 6, 12, 24 or 48 hours, chosen when it is posted. Hard-deleted
@@ -901,6 +914,49 @@ model StoryLike {
 
   @@id([storyId, userId])
   @@index([userId])
+}
+
+/// Two people who are friends, Facebook's mutual relationship. Stored once per
+/// pair with the smaller id first, so "are A and B friends" is one key lookup.
+model Friendship {
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  userA User @relation("FriendshipA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("FriendshipB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@id([userAId, userBId])
+  @@index([userBId])
+}
+
+/// A friend request waiting for an answer. Accepting turns it into a Friendship;
+/// declining or cancelling deletes it. At most one per direction.
+model FriendRequest {
+  senderId   String
+  receiverId String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  sender   User @relation("FriendRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendRequestsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@id([senderId, receiverId])
+  @@index([receiverId, createdAt])
+}
+
+/// One person following another — one-way, as on Facebook. Sending a friend
+/// request follows; becoming friends follows both ways; unfollowing a friend
+/// keeps the friendship but drops their notes from your row.
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  follower  User @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
 }
 
 /// One person on someone's close-friends list. Private to the list's owner.

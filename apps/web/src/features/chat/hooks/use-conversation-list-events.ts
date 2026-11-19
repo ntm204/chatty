@@ -273,6 +273,7 @@ export function useConversationListEvents({
 								...conversation,
 								name: event.name,
 								invitePolicy: event.invitePolicy,
+								infoPolicy: event.infoPolicy,
 								avatarUrl: event.avatarUrl,
 								themeColor: event.themeColor,
 								quickReactionEmoji: event.quickReactionEmoji,

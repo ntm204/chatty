@@ -146,7 +146,7 @@ describe("ConversationVaultPanel", () => {
 		const user = userEvent.setup();
 		renderPanel({ isGroup: true });
 
-		await user.click(screen.getByRole("button", { name: "Members" }));
+		await user.click(screen.getByRole("button", { name: /^Chat members/ }));
 		expect(screen.getByRole("button", { name: "Leave group" })).toBeInTheDocument();
 
 		await user.click(screen.getByRole("button", { name: "Media, files and links" }));
